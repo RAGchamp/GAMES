@@ -135,8 +135,35 @@
   .stage:fullscreen .game-wrap{ width:min(100vw, calc((100vh - var(--deck)) * var(--ar))); border:0; border-radius:0; }
   @media (orientation:landscape){
     .stage:fullscreen .game-wrap{ width:min(100vw, calc(100vh * var(--ar))); }
-    .stage:fullscreen .deck{ position:absolute; left:0; right:0; bottom:0; max-width:none; background:transparent; }
-    .stage:fullscreen .tb{ opacity:.55; }
+  }
+
+  /* Phones held sideways: the game fills the height and the controls become round thumb buttons
+     in the bottom corners (mostly in the side bars), so they never cover Chintu or the road. */
+  @media (orientation:landscape) and (max-height:540px){
+    body.touch{ --deck:0px; }
+    body.touch .topnav{ position:static; }
+    body.touch .game-wrap{ width:min(100%, calc((100vh - 16px) * var(--ar))); }
+    body.touch .deck{
+      position:absolute; inset:0; margin:0; padding:0; max-width:none;
+      background:transparent; pointer-events:none; z-index:5;
+    }
+    body.touch:not(.playing) .deck{ display:none; }
+    body.touch .tb{
+      position:absolute; pointer-events:auto; flex:none;
+      width:clamp(64px, 22vh, 92px); height:clamp(64px, 22vh, 92px); border-radius:50%;
+      bottom:max(10px, env(safe-area-inset-bottom)); font-size:1.4rem; padding:0;
+      background:rgba(4,38,77,.38); border:3px solid rgba(255,255,255,.75);
+      box-shadow:0 2px 10px rgba(0,0,0,.3); backdrop-filter:blur(2px);
+    }
+    body.touch .tb span{ font-size:.62rem; letter-spacing:.08em; margin-top:.15rem; }
+    body.touch .tb.slide{ left:max(10px, env(safe-area-inset-left)); border-color:rgba(110,168,254,.95); }
+    body.touch .tb.jump{ right:max(10px, env(safe-area-inset-right)); border-color:rgba(255,160,120,.95); }
+    body.touch .tb.down{ background:rgba(255,255,255,.35); transform:scale(.94); }
+    body.touch .tb.mini{
+      width:40px; height:40px; bottom:auto; top:max(12%, 40px); right:max(10px, env(safe-area-inset-right));
+      font-size:1rem; border-color:rgba(255,255,255,.6);
+    }
+    body.touch .stop-btn{ bottom:auto; top:12%; left:8px; font-size:.75rem; padding:.2rem .6rem; }
   }
 
   .toolbar{ display:flex; flex-wrap:wrap; gap:.5rem; justify-content:center; margin:.8rem 0; }
@@ -1058,7 +1085,12 @@
   function overlayIsTitle() { return !overlays.title.hidden; }
   function showBanner(html) { const b = $('banner'); b.innerHTML = html; b.hidden = false; }
   function hideBanner() { $('banner').hidden = true; }
-  function updateStopBtn() { $('stopBtn').hidden = !(isTouch && (state === 'play' || state === 'fall')); }
+  function updateStopBtn() {
+    const running = state === 'play' || state === 'fall';
+    $('stopBtn').hidden = !(isTouch && running);
+    document.body.classList.toggle('playing', running || state === 'pause');
+  }
+  const isPhoneLandscape = () => isTouch && window.matchMedia && matchMedia('(orientation: landscape) and (max-height: 540px)').matches;
 
   function bestTime() { const v = parseFloat(store.get('chintu.best.test')); return isFinite(v) ? v : null; }
   function refreshTitleBest() {
@@ -1072,7 +1104,9 @@
     state = 'play';
     showOverlay(null);
     updateStopBtn();
-    if (isTouch) wrap.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    if (isPhoneLandscape() && canFull && !(document.fullscreenElement || document.webkitFullscreenElement)) {
+      try { const r = (fullEl.requestFullscreen || fullEl.webkitRequestFullscreen).call(fullEl); if (r && r.catch) r.catch(() => {}); } catch (e) { /* ignore */ }
+    } else if (isTouch) wrap.scrollIntoView({ block: 'start', behavior: 'smooth' });
   }
   function toTitle() {
     hideBanner();
