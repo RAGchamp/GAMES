@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contact Us — AI Games Portal</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+  :root{
+    --biz-blue:#0d6efd;
+    --biz-blue-dark:#084298;
+    --biz-purple:#6f42c1;
+    --nav-blue:#04264d;
+    --nav-yellow:#ffd60a;
+    --biz-yellow:#ffc107;
+  }
+  body{ background:#f7f8fa; margin:0; }
+
+  /* Sticky top nav: deep blue background, yellow font */
+  .topnav{
+    position:sticky; top:0; z-index:1030;
+    background:var(--nav-blue);
+    color:var(--nav-yellow);
+    padding:.9rem 1.5rem;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    box-shadow:0 .15rem .5rem rgba(0,0,0,.25);
+  }
+  .topnav .brand{ display:inline-flex; align-items:center; text-decoration:none; }
+  .topnav .brand-logo{ height:44px; width:auto; display:block; }
+  .topnav .tagline{
+    font-weight:600; font-size:1.05rem; color:var(--nav-yellow);
+    letter-spacing:.15em; word-spacing:.6em; font-style:italic;
+  }
+  @media (max-width:576px){
+    .topnav{ flex-direction:column; text-align:center; gap:.15rem; padding:.75rem 1rem; }
+  }
+
+  .hero{ background:#f7f8fa; padding-top:2rem; padding-bottom:2rem; }
+  .hero-subtitle{
+    font-size:1.25rem; background:#5BF527; color:#000;
+    padding:1rem 1.25rem; border-radius:.375rem;
+  }
+  @media (max-width:768px){ .hero-subtitle{ font-size:1rem; } }
+  @media (max-width:480px){ .hero-subtitle{ font-size:.85rem; } }
+
+  .about-card h2{
+    color:var(--nav-blue); font-size:1.35rem; font-weight:700;
+    margin-top:2rem; margin-bottom:.75rem;
+  }
+  .about-card h2:first-child{ margin-top:0; }
+  .about-card p, .about-card ul, .about-card ol{ line-height:1.7; }
+  .linkedin-btn{
+    display:inline-flex; align-items:center; gap:.5rem;
+    background:var(--nav-blue); color:#fff; font-weight:600;
+    padding:.6rem 1.25rem; border-radius:.375rem; text-decoration:none;
+  }
+  .linkedin-btn:hover{ background:#08386e; color:#fff; }
+
+  /* three passions */
+  .passions{ display:flex; flex-wrap:wrap; gap:.8rem; margin:1rem 0 .5rem; }
+  .passion{ flex:1 1 180px; background:#fff8e1; border:2px solid var(--biz-yellow); border-radius:.6rem; padding:.7rem .9rem; }
+  .passion b{ display:block; font-size:1.05rem; color:var(--nav-blue); }
+  .passion span{ font-size:.9rem; }
+
+  /* what's on the site */
+  .app-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(230px, 1fr)); gap:.8rem; margin:1rem 0; }
+  .app-card{ display:block; background:#fff; border:2px solid #c9d3e3; border-radius:.6rem; padding:.75rem .9rem; text-decoration:none; color:#212529; }
+  .app-card:hover{ border-color:var(--nav-blue); box-shadow:0 .2rem .6rem rgba(4,38,77,.15); }
+  .app-card b{ display:block; color:var(--nav-blue); font-size:1rem; margin-bottom:.15rem; }
+  .app-card span{ font-size:.86rem; color:#4a5363; }
+  .app-card.soon{ border-style:dashed; opacity:.8; }
+
+  /* who did what */
+  .split{ display:flex; flex-wrap:wrap; gap:.8rem; margin:1rem 0; }
+  .split > div{ flex:1 1 260px; border-radius:.6rem; padding:.8rem 1rem; }
+  .split .me{ background:#e8f5e9; border:2px solid #2e7d32; }
+  .split .claude{ background:#f1ebfb; border:2px solid var(--biz-purple); }
+  .split h3{ font-size:1rem; font-weight:800; margin-bottom:.4rem; }
+  .split .me h3{ color:#1b5e20; } .split .claude h3{ color:var(--biz-purple); }
+  .split ul{ margin-bottom:0; padding-left:1.1rem; font-size:.92rem; }
+
+  /* feedback -> fix examples */
+  .fixes{ display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:.7rem; margin:1rem 0; }
+  .fix{ background:#fff; border:2px solid #dde3ec; border-radius:.6rem; padding:.65rem .85rem; font-size:.9rem; }
+  .fix q{ display:block; font-style:italic; color:#1b5e20; margin-bottom:.3rem; }
+  .fix span{ color:#4a5363; }
+
+  .note-box{ background:#fde2ec; border:2px solid #f5a3c0; border-radius:.6rem; padding:.8rem 1rem; color:#3b2a31; }
+
+  footer{ background:var(--nav-blue); }
+  footer a{ color:#fff; }
+</style>
+</head>
+<body>
+
+<!-- STICKY TOP NAV -->
+<div class="topnav">
+  <a class="brand" href="index.html"><img class="brand-logo" src="logo.svg" alt="RAG Champ"></a>
+  <div class="tagline">AI Games Portal</div>
+</div>
+
+<!-- HERO -->
+<header class="hero">
+  <div class="container text-center">
+    <p class="lead mb-0 fst-italic fw-bold hero-subtitle">Games, software and AI: the person behind these games</p>
+  </div>
+</header>
+
+<main class="container mb-5">
+
+  <section id="contact">
+    <div class="card shadow-sm">
+      <div class="card-body p-4 p-md-5 about-card">
+
+        <div class="text-center mb-4 d-flex flex-column flex-md-row justify-content-center gap-3">
+          <a class="linkedin-btn" href="https://www.linkedin.com/in/dayanand-menashi-04969aba/" target="_blank" rel="noopener">
+            Connect with me on LinkedIn
+          </a>
+          <a class="linkedin-btn" href="mailto:d_menashi@yahoo.com">
+            Email me: d_menashi@yahoo.com
+          </a>
+        </div>
+        <p class="text-center fst-italic text-muted mb-4">Yes, a Yahoo email - I love to hold on to old stuff — Yahoo Mail is one of them (right up there with the arcade racers I grew up with, where the road was only ever pretending to be 3D).</p>
+
+        <h2>About Me</h2>
+        <p>I am Daya, an AI professional. I started my tech career in 1997 working on COBOL mainframe, and my work has since spanned Mainframe, Web
+          technologies, Data Engineering and AI, building solutions for some of the world's largest Insurance and Financial Services organizations.
+          Outside work, and more and more inside it, three things keep me curious:</p>
+        <div class="passions">
+          <div class="passion"><b>🎮 Games</b><span>The simple, fast, play-in-a-minute games everyone remembers, and the clever tricks that made them work on tiny machines.</span></div>
+          <div class="passion"><b>💻 Software</b><span>Nearly three decades of building things that work: from mainframes to the cloud.</span></div>
+          <div class="passion"><b>🤖 AI</b><span>Large language models and coding agents that can turn an idea into a working, playable thing in an afternoon.</span></div>
+        </div>
+        <p>This AI Games Portal is where the three meet.</p>
+
+        <h2>Why Games, and Why AI?</h2>
+        <p>Games are the most honest test of software I know. A game has to run smoothly sixty times a second, respond the instant you press a key,
+          look good, sound right and still be fun. Nobody needs a manual to tell whether a racing game works: you just drive it.</p>
+        <p>That makes games a great way to find out <strong>what an AI coding agent can really build</strong>, and to show it to people who don't write code.
+          My rule for this portal is simple: <em>favourite game ideas, built with AI, using nothing but one HTML file and plain JavaScript.</em>
+          No game engine, no frameworks, no image files, no sound files and no server. Open the page and play, on a laptop or a phone.</p>
+
+        <h2>What's Here</h2>
+        <div class="app-grid">
+          <a class="app-card" href="index.html"><b>🏠 Games Portal</b><span>All the games in one place, with a live, self-driving preview of Car Race.</span></a>
+          <a class="app-card" href="GAME1-CAR-RACE/car-race.html"><b>🏎️ Car Race</b><span>A pseudo-3D arcade racer: 3 tracks (one at night), Grand Prix, Time Attack and Endless modes, rain, nitro and pickups.</span></a>
+          <a class="app-card" href="GAME1-CAR-RACE/car-race.html"><b>🧑‍✈️ Hire a driver</b><span>A computer driver races your car while a coaching box explains every move: when to brake, overtake or fire the nitro.</span></a>
+          <a class="app-card" href="GAME1-CAR-RACE/car-race.html"><b>🎥 Record your race</b><span>Film a race, HUD and sound included, and download the video to share.</span></a>
+          <a class="app-card" href="GAME1-CAR-RACE/car-race.html"><b>📱 Phone friendly</b><span>Touch buttons, tilt steering, an upright control deck and a Stop button. Gamepads work too.</span></a>
+          <a class="app-card" href="info/CAR-RACE-PLAN.html"><b>📋 Car Race build plan</b><span>The written plan the game was built from, phase by phase, with each phase's "done when" test.</span></a>
+          <div class="app-card soon"><b>🎮 Game 2</b><span>Coming soon: the next favourite game, built the same way. Tell me which one you'd like!</span></div>
+        </div>
+
+        <h2>Built Entirely with Claude Code</h2>
+        <p>Every line of these games was written by <strong>Claude Code</strong>, Anthropic's AI coding agent, working in my own folder on my own laptop.
+          I did not hand-write the code. I described what I wanted in plain words (often with a screenshot from my phone), played the result,
+          and said what to change. Claude Code planned, wrote, ran and tested everything else, and published it to GitHub when I asked.</p>
+        <div class="split">
+          <div class="me">
+            <h3>🧑 What I did</h3>
+            <ul>
+              <li>Picked the game and the open-source example to start from</li>
+              <li>Agreed the plan: art style, music, what version 1 should include</li>
+              <li>Asked for the fun extras: a driver who teaches, video recording, 3-minute races</li>
+              <li>Played every phase on my laptop and phone, and reported what felt wrong</li>
+              <li>Decided when it was ready to publish</li>
+            </ul>
+          </div>
+          <div class="claude">
+            <h3>🤖 What Claude Code did</h3>
+            <ul>
+              <li>Read the original 350-line demo, listed its bugs and gaps, and wrote the build plan</li>
+              <li>Rebuilt the road engine and drew every car, tree, sign and skyline in code</li>
+              <li>Generated all the sound live in the browser: engine, tyres, crashes, voice and music</li>
+              <li>Wrote the rival drivers, the coaching driver, the phone controls and the video recorder</li>
+              <li>Tested each phase in a headless browser, by clicking, steering and racing, before handing it over</li>
+            </ul>
+          </div>
+        </div>
+        <p>Some examples of feedback turning into fixes:</p>
+        <div class="fixes">
+          <div class="fix"><q>"After the race was over it still kept making the car noise."</q><span>The race now freezes on the results screen, a voice says "Game over", and music plays.</span></div>
+          <div class="fix"><q>"The menu looks half cut on my phone."</q><span>On phones the menus now scroll with the page instead of being squeezed into the game picture.</span></div>
+          <div class="fix"><q>"There is no way to stop it."</q><span>A ⏹ Stop button now shows on touch screens throughout a race and takes you straight back to the normal browser.</span></div>
+          <div class="fix"><q>"My hired driver crashed 22 times in the rain."</q><span>The driver now works out a safe speed for every bend ahead, allowing for wet grip: 0 crashes in the same test.</span></div>
+        </div>
+
+        <h2>How You Can Play It, and Build on It</h2>
+        <ol>
+          <li><strong>Play it.</strong> Open <a href="index.html">the portal</a> in any browser, on a laptop or phone. No sign-up, nothing to install.
+            Start with <a href="GAME1-CAR-RACE/car-race.html">Car Race</a>, tick <em>Hire a driver</em> once to learn the track, then race on your own.</li>
+          <li><strong>Read how it was made.</strong> The <a href="info/CAR-RACE-PLAN.html">Car Race build plan</a> shows every phase, decision and test.</li>
+          <li><strong>Take the code.</strong> Everything is plain files in a public repository,
+            <a href="https://github.com/RAGchamp/GAMES" target="_blank" rel="noopener">github.com/RAGchamp/GAMES</a>. Each game is a single HTML file you can open,
+            read and change. Adding a new game to the portal is one line in a small list at the bottom of <code>index.html</code>.</li>
+          <li><strong>Build your own with Claude Code.</strong> You don't need to be a programmer to start. What worked for me:
+            <ul>
+              <li>Start from something small that already works (an open-source example) and ask for a written plan in phases before any code.</li>
+              <li>Describe what you want in plain words; paste a screenshot when it is easier to show than to tell.</li>
+              <li>Ask it to <em>play</em> its own game in a browser and check for errors, and to tell you honestly what it could not test (like a real phone or a real gamepad).</li>
+              <li>Test it yourself, especially on a phone, and say exactly what feels wrong. "No way to stop it" is perfect feedback.</li>
+              <li>Ask it to check that any music or pictures you want to reuse are allowed, before they go in.</li>
+            </ul>
+          </li>
+        </ol>
+
+        <div class="note-box mt-4">
+          <strong>A note on this project:</strong> these are personal learning projects, made for fun. Your scores, best laps and settings are saved only in
+          your own browser, and nothing about you is sent anywhere. Car Race's road engine is based on the open-source "Javascript Racer" by Jake Gordon;
+          everything else was drawn, composed and coded with AI. Found a bug, or have a favourite game you would like to see rebuilt next?
+          I would love to hear from you.
+        </div>
+
+        <div class="text-center mt-4 d-flex flex-column flex-md-row justify-content-center gap-3">
+          <a class="linkedin-btn" href="https://www.linkedin.com/in/dayanand-menashi-04969aba/" target="_blank" rel="noopener">Connect with me on LinkedIn</a>
+          <a class="linkedin-btn" href="mailto:d_menashi@yahoo.com">Email me: d_menashi@yahoo.com</a>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="text-white py-4 mt-5">
+  <div class="container text-center small">
+    AI Games Portal · for fun and learning · <a href="index.html">🏠 Games Home</a> · <a href="GAME1-CAR-RACE/car-race.html">🏎️ Car Race</a> ·
+    <a href="info/CAR-RACE-PLAN.html">📋 Car Race plan</a> · <a href="contactus.html" class="text-white text-decoration-underline">✉️ Contact Us</a>
+  </div>
+</footer>
+
+</body>
+</html>
