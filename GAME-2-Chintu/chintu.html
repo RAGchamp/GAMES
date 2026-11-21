@@ -1,0 +1,1222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Chintu</title>
+<!--
+  Chintu · RAG Champ AI Games Portal · Game 2
+  Phase 1: running Chintu (core engine): canvas scaling, fixed-step loop, input, text tile maps,
+           camera with look-ahead, Chintu drawn in code (run / jump / fall / slide), auto-run,
+           coyote time and jump buffering, one test stage.
+  Plan: ../info/CHINTU-GAME-PLAN.html
+
+  Written by Claude Code (an AI coding agent):
+    - one self-contained file: no image files, no external scripts, no network requests
+    - Chintu, tiles and scenery are all drawn with canvas code
+    - strict mode, event.code keys, keys cleared on blur, auto-pause on tab switch
+
+  Test hooks: ?demo lets the computer play (and loops); ?debug shows a status readout; ?touch shows touch buttons.
+-->
+<style>
+  :root{
+    --nav-blue:#04264d;
+    --nav-yellow:#ffd60a;
+    --biz-blue:#0d6efd;
+    --biz-blue-dark:#084298;
+    --chintu-yellow:#f7c531;
+    --chintu-orange:#e8572a;
+    --deck:0px;
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0; background:#f7f8fa; color:#212529;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif; line-height:1.45;
+  }
+  body.touch{ --deck:112px; }
+
+  .topnav{
+    position:sticky; top:0; z-index:1030;
+    background:var(--nav-blue); color:var(--nav-yellow);
+    padding:.9rem 1.5rem; display:flex; justify-content:space-between; align-items:center;
+    box-shadow:0 .15rem .5rem rgba(0,0,0,.25);
+  }
+  .topnav .brand{ display:inline-flex; align-items:center; text-decoration:none; }
+  .topnav .brand-logo{ height:44px; width:auto; display:block; }
+  .topnav .tagline{ font-weight:600; font-size:1.05rem; letter-spacing:.15em; word-spacing:.6em; font-style:italic; }
+  @media (max-width:576px){
+    .topnav{ flex-direction:column; text-align:center; gap:.4rem; padding:.75rem 1rem; }
+  }
+  @media (max-width:700px){ .topnav{ position:static; } }
+
+  main{ max-width:1240px; margin:0 auto; padding:1.25rem 16px 0; }
+
+  .about-box{ background:#fde2ec; border:2px solid #f5a3c0; border-radius:.6rem; padding:.8rem 1.1rem; margin-bottom:1rem; }
+  .about-box h2{ font-size:1rem; font-weight:700; color:#8a1f4a; margin:0 0 .3rem; }
+  .about-box p{ font-size:.9rem; color:#3b2a31; margin:0; }
+  .about-box a{ color:#b0185a; font-weight:700; }
+
+  .title-row{ display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:.25rem 1rem; margin-bottom:.6rem; }
+  h1{ font-size:1.5rem; font-weight:800; margin:0; }
+  .phase-pill{ background:#eef3fb; border-radius:2rem; padding:.2rem .75rem; font-size:.8rem; font-weight:700; color:var(--biz-blue-dark); }
+
+  /* Game area */
+  .stage{ position:relative; }
+  .game-wrap{
+    --ar:16/9;
+    position:relative; margin:0 auto; background:#7fc8f8;
+    width:min(100%, max(320px, calc((100vh - 110px - var(--deck)) * var(--ar))));
+    aspect-ratio:var(--ar);
+    border-radius:.6rem; overflow:hidden; border:3px solid var(--nav-blue);
+    box-shadow:0 .4rem 1.2rem rgba(4,38,77,.25);
+    user-select:none; -webkit-user-select:none; touch-action:none;
+    scroll-margin-top:8px;
+  }
+  @media (max-width:700px) and (orientation:portrait){ .game-wrap{ --ar:4/3; } }
+  #game{ display:block; width:100%; height:100%; }
+
+  .overlay{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    background:rgba(4,38,77,.62); padding:10px; overflow:auto;
+  }
+  .overlay[hidden]{ display:none; }
+  .panel{
+    background:#fff; border:3px solid var(--chintu-yellow); border-radius:.8rem;
+    padding:.9rem 1.1rem; width:100%; max-width:440px; text-align:center; margin:auto;
+    box-shadow:0 .5rem 1.5rem rgba(0,0,0,.35);
+  }
+  .panel h2{ font-size:1.35rem; margin:.1rem 0 .35rem; color:var(--nav-blue); }
+  .panel p{ margin:.3rem 0; font-size:.92rem; }
+  .panel .small{ font-size:.8rem; color:#5a6475; }
+  .btn-go{
+    background:var(--chintu-orange); color:#fff; border:0; border-radius:2rem;
+    padding:.5rem 1.3rem; font-weight:800; font-size:1.02rem; margin:.25rem; cursor:pointer;
+  }
+  .btn-go:hover{ filter:brightness(1.08); }
+  .btn-go.alt{ background:var(--nav-blue); }
+  kbd{ background:var(--nav-blue); color:#fff; border-radius:.25rem; padding:0 .3rem; font-size:.8em; }
+  @media (max-width:520px){
+    .panel{ padding:.6rem .7rem; }
+    .panel h2{ font-size:1.1rem; }
+    .panel p{ font-size:.8rem; }
+    .btn-go{ font-size:.92rem; padding:.4rem 1rem; }
+  }
+
+  .banner{
+    position:absolute; left:50%; top:38%; transform:translate(-50%,-50%);
+    background:rgba(4,38,77,.85); color:#fff; font-weight:800; font-size:1.1rem;
+    padding:.5rem 1.1rem; border-radius:.6rem; border:2px solid var(--chintu-yellow); text-align:center; pointer-events:none;
+  }
+  .banner[hidden]{ display:none; }
+  .stop-btn{
+    position:absolute; left:8px; bottom:8px; border:0; border-radius:2rem; padding:.3rem .8rem;
+    background:rgba(176,42,55,.9); color:#fff; font-weight:800; font-size:.85rem;
+  }
+  .stop-btn[hidden]{ display:none; }
+
+  /* Touch control deck (below the game; overlaid in landscape full screen) */
+  .deck{
+    display:flex; gap:10px; align-items:stretch; margin:8px auto 0; padding:10px;
+    background:var(--nav-blue); border-radius:.6rem; max-width:720px;
+  }
+  .deck[hidden]{ display:none; }
+  .tb{
+    flex:1 1 0; height:84px; border-radius:14px; border:3px solid rgba(255,255,255,.35);
+    color:#fff; font-weight:900; font-size:1.6rem; line-height:1; touch-action:none;
+    user-select:none; -webkit-user-select:none; -webkit-touch-callout:none;
+  }
+  .tb span{ display:block; font-size:.78rem; letter-spacing:.12em; margin-top:.25rem; }
+  .tb.slide{ background:var(--biz-blue); }
+  .tb.jump{ background:var(--chintu-orange); }
+  .tb.mini{ flex:0 0 64px; background:#2d3e5c; font-size:1.3rem; }
+  .tb.down{ filter:brightness(1.3); transform:scale(.97); }
+
+  .stage:fullscreen{ background:#000; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  .stage:fullscreen .game-wrap{ width:min(100vw, calc((100vh - var(--deck)) * var(--ar))); border:0; border-radius:0; }
+  @media (orientation:landscape){
+    .stage:fullscreen .game-wrap{ width:min(100vw, calc(100vh * var(--ar))); }
+    .stage:fullscreen .deck{ position:absolute; left:0; right:0; bottom:0; max-width:none; background:transparent; }
+    .stage:fullscreen .tb{ opacity:.55; }
+  }
+
+  .toolbar{ display:flex; flex-wrap:wrap; gap:.5rem; justify-content:center; margin:.8rem 0; }
+  .tbtn{
+    background:#fff; border:2px solid #c9d3e3; border-radius:2rem; padding:.35rem .9rem;
+    font-weight:700; font-size:.9rem; cursor:pointer; color:var(--nav-blue);
+  }
+  .tbtn:hover{ border-color:var(--nav-blue); }
+
+  .help{ background:#fff; border:2px solid #c9d3e3; border-radius:.6rem; padding:.9rem 1.1rem; margin-bottom:1rem; }
+  .help h2{ font-size:1.05rem; margin:0 0 .4rem; }
+  .help ul{ margin:.2rem 0 .3rem; padding-left:1.2rem; font-size:.92rem; }
+
+  footer{ background:var(--nav-blue); color:#fff; text-align:center; font-size:.85rem; padding:1.3rem 16px; margin-top:2rem; }
+  footer a{ color:#fff; }
+</style>
+</head>
+<body>
+
+<div class="topnav">
+  <a class="brand" href="../index.html"><img class="brand-logo" src="../logo.svg" alt="RAG Champ"></a>
+  <div class="tagline">AI Games Portal</div>
+</div>
+
+<main>
+  <div class="about-box">
+    <h2>What is this and how does AI play a part?</h2>
+    <p>This is <strong>Game 2: Chintu</strong>, a running and jumping game written by Claude Code (an AI coding agent) as one HTML file with plain JavaScript. Chintu and everything around him are drawn with code, with no image files. This first version is <strong>Phase 1</strong> of the <a href="../info/CHINTU-GAME-PLAN.html">development plan</a>: a test run that checks the running, jumping and sliding. <strong>You don't need any AI to play.</strong></p>
+  </div>
+
+  <div class="title-row">
+    <h1>🏃 Chintu</h1>
+    <span class="phase-pill">Phase 1 of 6 · Running Chintu</span>
+  </div>
+
+  <div class="stage" id="stage">
+    <div class="game-wrap" id="gameWrap">
+      <canvas id="game" aria-label="Chintu game"></canvas>
+      <div class="banner" id="banner" hidden></div>
+      <button class="stop-btn" id="stopBtn" hidden aria-label="Stop the run">⏹ Stop</button>
+
+      <div class="overlay" id="titleOverlay">
+        <div class="panel">
+          <h2>🏃 Chintu: Test Run</h2>
+          <p>Chintu has the key to a secret formula, and <strong>Dr. Andhera</strong> wants it! First, practise running, jumping and sliding all the way to the finish gate.</p>
+          <button class="btn-go" id="startBtn">▶ Start</button>
+          <p class="small" id="hintKeys"><kbd>Space</kbd> / <kbd>↑</kbd> / <kbd>W</kbd> jump (hold to go higher) · <kbd>↓</kbd> / <kbd>S</kbd> slide · <kbd>P</kbd> pause</p>
+          <p class="small" id="hintTouch" hidden>📱 Use the <strong>JUMP</strong> and <strong>SLIDE</strong> buttons under the game. Hold JUMP to go higher.</p>
+          <p class="small" id="titleBest"></p>
+        </div>
+      </div>
+
+      <div class="overlay" id="pauseOverlay" hidden>
+        <div class="panel">
+          <h2>⏸ Paused</h2>
+          <p class="small" id="pauseText">Press <kbd>P</kbd> or <kbd>Esc</kbd> to carry on.</p>
+          <button class="btn-go" id="resumeBtn">▶ Resume</button>
+          <button class="btn-go alt" id="restartBtn">↺ Restart</button>
+          <button class="btn-go alt" id="quitBtn">⏹ Stop</button>
+        </div>
+      </div>
+
+      <div class="overlay" id="clearOverlay" hidden>
+        <div class="panel">
+          <h2>🎉 Finish!</h2>
+          <p id="clearText"></p>
+          <p class="small" id="clearBest"></p>
+          <p class="small">Coming next (Phase 2): laddoo coins, formula pages, goons to stomp and more hurdles.</p>
+          <button class="btn-go" id="againBtn">↺ Run again</button>
+          <button class="btn-go alt" id="menuBtn">🏠 Menu</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="deck" id="deck" hidden>
+      <button class="tb slide" id="btnSlide" aria-label="Slide">▼<span>SLIDE</span></button>
+      <button class="tb mini" id="btnPause" aria-label="Pause">⏸</button>
+      <button class="tb jump" id="btnJump" aria-label="Jump">▲<span>JUMP</span></button>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <button class="tbtn" id="pauseBtn">⏸ Pause</button>
+    <button class="tbtn" id="restartBtn2">↺ Restart</button>
+    <button class="tbtn" id="fullBtn">⛶ Full screen</button>
+  </div>
+
+  <div class="help">
+    <h2>How to play</h2>
+    <ul>
+      <li><strong>Chintu runs by himself</strong> and gets a little faster as he goes. You only jump and slide.</li>
+      <li><strong>Jump:</strong> <kbd>Space</kbd>, <kbd>↑</kbd> or <kbd>W</kbd> (the JUMP button on phones). Hold it to jump higher, or tap it for a small hop.</li>
+      <li><strong>Slide:</strong> <kbd>↓</kbd> or <kbd>S</kbd> (the SLIDE button on phones) to get under low roofs. In the air, it makes Chintu drop faster.</li>
+      <li>Bump the <strong>?</strong> blocks from below. In Phase 2 they will have laddoo coins inside.</li>
+      <li>Falling into a gap starts the run again. Hearts and checkpoint flags come in Phase 2.</li>
+    </ul>
+  </div>
+</main>
+
+<footer>AI Games Portal · Chintu · <a href="../info/CHINTU-GAME-PLAN.html">📋 Game plan</a> · <a href="../GAME1-CAR-RACE/car-race.html">🏎️ Car Race</a> · <a href="../index.html">🏠 Games Home</a></footer>
+
+<script>
+'use strict';
+(() => {
+  const $ = id => document.getElementById(id);
+  const params = new URLSearchParams(location.search);
+  const DEMO = params.has('demo');
+  const DEBUG = params.has('debug');
+  const isTouch = params.has('touch') || (window.matchMedia && matchMedia('(pointer: coarse)').matches);
+
+  const canvas = $('game');
+  const ctx = canvas.getContext('2d');
+  const wrap = $('gameWrap');
+  const stage = $('stage');
+
+  // ---------- Tuning ----------
+  const TILE = 30, VIEW_H = 270, STEP = 1 / 60;
+  const PHYS = {
+    gravity: 1800, jumpV: 620, jumpCut: 0.45, maxFall: 900, fastFall: 1400,
+    runMin: 150, runMax: 230, coyote: 0.1, buffer: 0.12, slideMin: 0.45
+  };
+  const PW = 16, STAND_H = 36, SLIDE_H = 18;
+
+  // localStorage can be blocked (private windows): every access is guarded.
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* ignore */ } }
+  };
+
+  // ---------- Level (rows of text, joined left to right) ----------
+  // .  empty      =  ground     #  brick      ?  question block   -  one-way plank
+  // S  start      E  finish     1-9  signpost (text below)
+  const CHUNKS = [
+    [ // start
+      '................',
+      '................',
+      '................',
+      '................',
+      '................',
+      '................',
+      '................',
+      '................',
+      '..S......1......',
+      '================',
+      '================',
+    ],
+    [ // question blocks
+      '..................',
+      '..................',
+      '..................',
+      '..................',
+      '..................',
+      '....#?#?#.........',
+      '..................',
+      '..................',
+      '.2................',
+      '==================',
+      '==================',
+    ],
+    [ // first gap
+      '..............',
+      '..............',
+      '..............',
+      '..............',
+      '..............',
+      '..............',
+      '..............',
+      '..............',
+      '.3............',
+      '========..====',
+      '========..====',
+    ],
+    [ // steps
+      '....................',
+      '....................',
+      '....................',
+      '....................',
+      '....................',
+      '....................',
+      '........####........',
+      '......########......',
+      '....############....',
+      '====================',
+      '====================',
+    ],
+    [ // wide gap with a plank
+      '................',
+      '................',
+      '................',
+      '................',
+      '................',
+      '................',
+      '................',
+      '................',
+      '.....------.....',
+      '===..........===',
+      '===..........===',
+    ],
+    [ // tall wall: hold jump
+      '..............',
+      '..............',
+      '..............',
+      '..............',
+      '..............',
+      '..............',
+      '......##......',
+      '......##......',
+      '.4....##......',
+      '==============',
+      '==============',
+    ],
+    [ // low roof: slide
+      '....................',
+      '....................',
+      '....................',
+      '....................',
+      '....................',
+      '....................',
+      '......##########....',
+      '......##########....',
+      '.5..................',
+      '====================',
+      '====================',
+    ],
+    [ // two gaps and blocks
+      '......................',
+      '......................',
+      '......................',
+      '......................',
+      '......................',
+      '.........#?#..........',
+      '......................',
+      '......................',
+      '......................',
+      '=====...======...=====',
+      '=====...======...=====',
+    ],
+    [ // planks up high (optional route)
+      '........................',
+      '........................',
+      '........................',
+      '........................',
+      '................----....',
+      '........................',
+      '..........----..........',
+      '........................',
+      '....----................',
+      '========================',
+      '========================',
+    ],
+    [ // finish
+      '..................',
+      '..................',
+      '..................',
+      '..................',
+      '..................',
+      '..................',
+      '..................',
+      '..................',
+      '....E.............',
+      '==================',
+      '==================',
+    ],
+  ];
+
+  const SIGNS = {
+    '1': isTouch ? ['Chintu runs by himself!', 'Tap JUMP to jump'] : ['Chintu runs by himself!', 'Jump: Space / ↑ / W'],
+    '2': ['Jump under a ? block', 'to bump it'],
+    '3': ['Mind the gap!', 'Jump over it'],
+    '4': ['Big wall ahead!', 'HOLD jump to go higher'],
+    '5': isTouch ? ['Low roof!', 'Hold SLIDE'] : ['Low roof!', 'Slide: ↓ / S'],
+  };
+
+  function buildRows(chunks) {
+    const rows = chunks[0].length;
+    const out = new Array(rows).fill('');
+    chunks.forEach((c, ci) => {
+      if (c.length !== rows) throw new Error('Chunk ' + ci + ' has ' + c.length + ' rows');
+      const w = c[0].length;
+      c.forEach((r, i) => {
+        if (r.length !== w) throw new Error('Chunk ' + ci + ' row ' + i + ' is ' + r.length + ' wide, not ' + w);
+        out[i] += r;
+      });
+    });
+    return out;
+  }
+
+  const SOURCE = buildRows(CHUNKS);
+  const level = { rows: SOURCE.length, cols: SOURCE[0].length, grid: [], signs: [], start: { x: 0, y: 0 }, goalX: 0, bumps: new Map() };
+  level.w = level.cols * TILE;
+  level.h = level.rows * TILE;
+
+  function loadLevel() {
+    level.grid = SOURCE.map(r => r.split(''));
+    level.signs = [];
+    level.bumps.clear();
+    for (let r = 0; r < level.rows; r++) {
+      for (let c = 0; c < level.cols; c++) {
+        const ch = level.grid[r][c];
+        if (ch === 'S') { level.start = { x: c * TILE + (TILE - PW) / 2, y: (r + 1) * TILE - STAND_H }; level.grid[r][c] = '.'; }
+        else if (ch === 'E') { level.goalX = c * TILE; level.goalRow = r; level.grid[r][c] = '.'; }
+        else if (SIGNS[ch]) { level.signs.push({ x: c * TILE + TILE / 2, y: (r + 1) * TILE, lines: SIGNS[ch] }); level.grid[r][c] = '.'; }
+      }
+    }
+  }
+
+  function tileAt(c, r) {
+    if (c < 0) return '#';
+    if (c >= level.cols || r < 0 || r >= level.rows) return '.';
+    return level.grid[r][c];
+  }
+  const isSolid = ch => ch === '=' || ch === '#' || ch === '?' || ch === 'u';
+  const isSupport = ch => isSolid(ch) || ch === '-';
+
+  function boxHitsSolid(x, y, w, h) {
+    const c0 = Math.floor(x / TILE), c1 = Math.floor((x + w - 0.001) / TILE);
+    const r0 = Math.floor(y / TILE), r1 = Math.floor((y + h - 0.001) / TILE);
+    for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) if (isSolid(tileAt(c, r))) return true;
+    return false;
+  }
+
+  // ---------- State ----------
+  const player = {};
+  const cam = { x: 0, y: 0 };
+  let particles = [];
+  let state = 'title';        // title | play | pause | fall | clear
+  let runTime = 0, stateT = 0, animT = 0;
+  let scale = 1, viewW = 480;
+  const deaths = [], trail = [];   // debug only (?debug)
+
+  const keys = { jump: false, slide: false, jumpPressed: false };
+  const bot = { jump: false, slide: false, prevJump: false };
+
+  function resetRun() {
+    loadLevel();
+    Object.assign(player, {
+      x: level.start.x, y: level.start.y, vx: 0, vy: 0, h: STAND_H,
+      onGround: false, coyoteT: 0, jumpBuf: 0, jumping: false,
+      sliding: false, slideT: 0, runPhase: 0, landT: 0, blocked: false
+    });
+    particles = [];
+    runTime = 0; stateT = 0;
+    keys.jumpPressed = false;
+    snapCamera();
+  }
+
+  function speedNow() {
+    const f = Math.max(0, Math.min(1, player.x / Math.max(1, level.goalX)));
+    return PHYS.runMin + (PHYS.runMax - PHYS.runMin) * f;
+  }
+
+  // ---------- Computer player (attract screen and ?demo) ----------
+  function botThink() {
+    const p = player;
+    const v = speedNow();
+    const feetRow = Math.floor((p.y + p.h - 1) / TILE);
+    const cEdge = Math.floor((p.x + PW + 2) / TILE);
+    const cAhead = Math.floor((p.x + PW + v * 0.1) / TILE);
+    let jump = false, slide = false;
+    if (p.onGround) {
+      const gap = !isSupport(tileAt(cEdge, feetRow + 1));
+      const wallFeet = isSolid(tileAt(cAhead, feetRow));
+      const wallHead = isSolid(tileAt(cAhead, feetRow - 1));
+      if (gap || wallFeet) jump = true;
+      else if (wallHead || (p.sliding && isSolid(tileAt(Math.floor((p.x + PW / 2) / TILE), feetRow - 1)))) slide = true;
+    }
+    bot.jumpPressed = jump && !bot.prevJump;
+    bot.jump = jump || (p.vy < 0 && p.jumping);
+    bot.slide = slide;
+    bot.prevJump = jump;
+  }
+
+  // ---------- Update ----------
+  function update(dt) {
+    animT += dt;
+    if (state === 'pause') return;
+    stateT += dt;
+    updateParticles(dt);
+
+    if (state === 'fall') {
+      if (stateT > 1.2) { hideBanner(); resetRun(); state = 'play'; }
+      return;
+    }
+    if (state === 'clear') {
+      if (Math.random() < 0.5) confetti();
+      if ((DEMO || overlayIsTitle()) && stateT > 2.5) { resetRun(); state = DEMO ? 'play' : 'title'; }
+      return;
+    }
+
+    const auto = state === 'title' || DEMO;
+    let input;
+    if (auto) { botThink(); input = { jump: bot.jump, slide: bot.slide, pressed: bot.jumpPressed }; }
+    else { input = { jump: keys.jump, slide: keys.slide, pressed: keys.jumpPressed }; keys.jumpPressed = false; }
+
+    if (state === 'play') runTime += dt;
+    stepPlayer(dt, input);
+    if (DEBUG) {
+      trail.push([Math.round(player.x), Math.round(player.y), player.onGround ? 1 : 0, player.sliding ? 1 : 0, input.jump ? 1 : 0, input.slide ? 1 : 0]);
+      if (trail.length > 200) trail.shift();
+    }
+
+    // Fell out of the world
+    if (player.y > level.h + 60) {
+      if (state === 'play' && !DEMO) { state = 'fall'; stateT = 0; showBanner('Oops! Chintu fell.<br><small>Try again…</small>'); }
+      else { if (DEBUG) deaths.push({ x: Math.round(player.x), trail: trail.slice(-45) }); resetRun(); }
+      return;
+    }
+    // Finish gate
+    if (player.x > level.goalX + 20) {
+      if (state === 'play') finishRun();
+      else { state = 'clear'; stateT = 0; }
+    }
+    updateCamera(dt);
+  }
+
+  function stepPlayer(dt, input) {
+    const p = player;
+    if (input.pressed) p.jumpBuf = PHYS.buffer; else p.jumpBuf = Math.max(0, p.jumpBuf - dt);
+
+    // Slide start / stop
+    if (input.slide && p.onGround && !p.sliding) {
+      p.sliding = true; p.slideT = 0; p.y += STAND_H - SLIDE_H; p.h = SLIDE_H;
+      puff(p.x + PW / 2, p.y + p.h, 5);
+    }
+    if (p.sliding) {
+      p.slideT += dt;
+      const wantsUp = (!input.slide && p.slideT >= PHYS.slideMin) || !p.onGround || (p.jumpBuf > 0);
+      if (wantsUp && canStand()) { p.y -= STAND_H - SLIDE_H; p.h = STAND_H; p.sliding = false; }
+      else if (p.onGround && Math.random() < 0.5) puff(p.x + 2, p.y + p.h, 1);
+    }
+
+    // Jump (coyote time + buffer)
+    if (p.jumpBuf > 0 && p.coyoteT > 0 && !p.sliding) {
+      p.vy = -PHYS.jumpV; p.onGround = false; p.coyoteT = 0; p.jumpBuf = 0; p.jumping = true;
+      puff(p.x + PW / 2, p.y + p.h, 4);
+    }
+    if (p.jumping && !input.jump && p.vy < 0) { p.vy *= PHYS.jumpCut; p.jumping = false; }
+    if (p.vy >= 0) p.jumping = false;
+
+    // Gravity
+    const g = (!p.onGround && input.slide && p.vy > -100) ? PHYS.fastFall : PHYS.gravity;
+    p.vy = Math.min(PHYS.maxFall, p.vy + g * dt);
+
+    // Horizontal (auto-run)
+    p.vx = speedNow();
+    p.x += p.vx * dt;
+    p.blocked = false;
+    {
+      const c = Math.floor((p.x + PW - 0.001) / TILE);
+      const r0 = Math.floor(p.y / TILE), r1 = Math.floor((p.y + p.h - 0.001) / TILE);
+      for (let r = r0; r <= r1; r++) {
+        if (isSolid(tileAt(c, r))) { p.x = c * TILE - PW; p.blocked = true; break; }
+      }
+    }
+
+    // Vertical
+    const wasGround = p.onGround;
+    const prevBottom = p.y + p.h;
+    p.y += p.vy * dt;
+    p.onGround = false;
+    const c0 = Math.floor(p.x / TILE), c1 = Math.floor((p.x + PW - 0.001) / TILE);
+    if (p.vy >= 0) {
+      const r = Math.floor((p.y + p.h - 0.001) / TILE);
+      for (let c = c0; c <= c1; c++) {
+        const ch = tileAt(c, r);
+        if (isSolid(ch) || (ch === '-' && prevBottom <= r * TILE + 0.5)) {
+          p.y = r * TILE - p.h; p.vy = 0; p.onGround = true; break;
+        }
+      }
+    } else {
+      const r = Math.floor(p.y / TILE);
+      let hit = -1;
+      for (let c = c0; c <= c1; c++) if (isSolid(tileAt(c, r))) { if (hit < 0 || Math.abs(c * TILE + TILE / 2 - (p.x + PW / 2)) < Math.abs(hit * TILE + TILE / 2 - (p.x + PW / 2))) hit = c; }
+      if (hit >= 0) { p.y = (r + 1) * TILE; p.vy = 0; p.jumping = false; bump(hit, r); }
+    }
+    if (p.onGround) {
+      p.coyoteT = PHYS.coyote;
+      if (!wasGround) { p.landT = 0.12; puff(p.x + PW / 2, p.y + p.h, 6); }
+    } else p.coyoteT = Math.max(0, p.coyoteT - dt);
+    p.landT = Math.max(0, p.landT - dt);
+    if (p.onGround && !p.sliding) p.runPhase += p.vx * dt * 0.085;
+  }
+
+  function canStand() {
+    const p = player;
+    return !boxHitsSolid(p.x, p.y + p.h - STAND_H, PW, STAND_H);
+  }
+
+  function bump(c, r) {
+    const ch = tileAt(c, r);
+    level.bumps.set(c + ',' + r, 0.2);
+    if (ch === '?') {
+      level.grid[r][c] = 'u';
+      for (let i = 0; i < 10; i++) {
+        particles.push({ x: c * TILE + TILE / 2, y: r * TILE, vx: (Math.random() - 0.5) * 120, vy: -120 - Math.random() * 120,
+          life: 0.6, max: 0.6, size: 2 + Math.random() * 1.5, color: i % 2 ? '#ffd60a' : '#fff3b0', grav: 300 });
+      }
+    }
+  }
+
+  function updateCamera(dt) {
+    const tx = player.x - viewW * 0.28;
+    const ty = player.y + player.h - VIEW_H * 0.72;
+    cam.x += (tx - cam.x) * Math.min(1, dt * 10);
+    cam.y += (ty - cam.y) * Math.min(1, dt * 4);
+    clampCamera();
+  }
+  function snapCamera() {
+    cam.x = player.x - viewW * 0.28;
+    cam.y = player.y + player.h - VIEW_H * 0.72;
+    clampCamera();
+  }
+  function clampCamera() {
+    cam.x = Math.max(0, Math.min(level.w - viewW, cam.x));
+    cam.y = Math.max(0, Math.min(level.h - VIEW_H, cam.y));
+  }
+
+  // ---------- Particles ----------
+  function puff(x, y, n) {
+    for (let i = 0; i < n; i++) {
+      particles.push({ x: x + (Math.random() - 0.5) * 10, y: y - 1, vx: (Math.random() - 0.7) * 50, vy: -15 - Math.random() * 30,
+        life: 0.35 + Math.random() * 0.2, max: 0.55, size: 2 + Math.random() * 2, color: '#d8bd8f', grav: 40 });
+    }
+  }
+  function confetti() {
+    const cols = ['#e8572a', '#f7c531', '#0d6efd', '#198754', '#d63384'];
+    particles.push({ x: cam.x + Math.random() * viewW, y: cam.y - 5, vx: (Math.random() - 0.5) * 40, vy: 40 + Math.random() * 40,
+      life: 3, max: 3, size: 2 + Math.random() * 1.5, color: cols[(Math.random() * cols.length) | 0], grav: 20, square: true });
+  }
+  function updateParticles(dt) {
+    for (const q of particles) { q.life -= dt; q.vy += (q.grav || 0) * dt; q.x += q.vx * dt; q.y += q.vy * dt; }
+    particles = particles.filter(q => q.life > 0);
+    for (const [k, t] of level.bumps) { if (t - dt <= 0) level.bumps.delete(k); else level.bumps.set(k, t - dt); }
+  }
+
+  // ---------- Rendering ----------
+  function hash(i) { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); }
+
+  function render() {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    drawBackground();
+
+    const ox = Math.round(cam.x * scale) / scale, oy = Math.round(cam.y * scale) / scale;
+    ctx.setTransform(scale, 0, 0, scale, -ox * scale, -oy * scale);
+    drawSigns();
+    drawGoal();
+    drawTiles();
+    drawPlayer();
+    drawParticles();
+
+    ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    drawHUD();
+  }
+
+  function drawBackground() {
+    const sky = ctx.createLinearGradient(0, 0, 0, VIEW_H);
+    sky.addColorStop(0, '#5fb8f5'); sky.addColorStop(0.7, '#c8ecff'); sky.addColorStop(1, '#e8f7ff');
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, viewW, VIEW_H);
+
+    // Sun
+    ctx.fillStyle = 'rgba(255,236,150,.45)'; ctx.beginPath(); ctx.arc(viewW - 70, 50, 30, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ffe680'; ctx.beginPath(); ctx.arc(viewW - 70, 50, 19, 0, Math.PI * 2); ctx.fill();
+
+    // Clouds
+    const cx0 = cam.x * 0.1, cs = 150;
+    for (let i = Math.floor(cx0 / cs) - 1; i <= Math.floor((cx0 + viewW) / cs) + 1; i++) {
+      if (hash(i) < 0.3) continue;
+      const x = i * cs + hash(i + 7) * 70 - cx0, y = 22 + hash(i + 3) * 55 - cam.y * 0.05, s = 0.7 + hash(i + 11) * 0.6;
+      ctx.fillStyle = 'rgba(255,255,255,.92)';
+      ctx.beginPath();
+      ctx.arc(x, y, 11 * s, 0, Math.PI * 2); ctx.arc(x + 13 * s, y - 6 * s, 14 * s, 0, Math.PI * 2);
+      ctx.arc(x + 28 * s, y, 11 * s, 0, Math.PI * 2); ctx.rect(x, y, 28 * s, 11 * s);
+      ctx.fill();
+    }
+
+    // Far hills
+    const hx = cam.x * 0.2, hBase = 190 - (cam.y - 60) * 0.2;
+    ctx.fillStyle = '#a9d98f';
+    ctx.beginPath(); ctx.moveTo(0, VIEW_H);
+    for (let sx = 0; sx <= viewW + 8; sx += 8) {
+      const wx = sx + hx;
+      ctx.lineTo(sx, hBase - 28 - 18 * Math.sin(wx * 0.008) - 10 * Math.sin(wx * 0.021 + 1));
+    }
+    ctx.lineTo(viewW, VIEW_H); ctx.closePath(); ctx.fill();
+
+    // Village layer
+    const vx = cam.x * 0.45, base = 214 - (cam.y - 60) * 0.45, sp = 64;
+    ctx.fillStyle = '#c4dd84'; ctx.fillRect(0, base, viewW, VIEW_H - base);
+    for (let i = Math.floor(vx / sp) - 1; i <= Math.floor((vx + viewW) / sp) + 1; i++) {
+      const h = hash(i * 3.1), x = i * sp + hash(i + 5) * 24 - vx;
+      if (h < 0.42) drawHut(x, base, 0.85 + hash(i + 9) * 0.35, hash(i + 2));
+      else if (h < 0.68) drawTree(x, base, 0.8 + hash(i + 4) * 0.5);
+      else if (h < 0.84) drawPalm(x, base, 0.85 + hash(i + 6) * 0.4);
+    }
+  }
+
+  function drawHut(x, base, s, v) {
+    const w = 34 * s, h = 22 * s;
+    ctx.fillStyle = v < 0.5 ? '#e0ad74' : '#d89a6a'; ctx.fillRect(x, base - h, w, h);
+    ctx.fillStyle = v < 0.5 ? '#a8743c' : '#8f5f33';
+    ctx.beginPath(); ctx.moveTo(x - 5 * s, base - h + 1); ctx.lineTo(x + w / 2, base - h - 17 * s); ctx.lineTo(x + w + 5 * s, base - h + 1); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#6b4423'; ctx.fillRect(x + w * 0.4, base - 13 * s, 7 * s, 13 * s);
+    ctx.fillStyle = '#7a9fc2'; ctx.fillRect(x + w * 0.12, base - h + 6 * s, 6 * s, 5 * s);
+  }
+  function drawTree(x, base, s) {
+    ctx.fillStyle = '#7a5230'; ctx.fillRect(x + 8 * s, base - 20 * s, 4 * s, 20 * s);
+    ctx.fillStyle = '#5ea648';
+    ctx.beginPath(); ctx.arc(x + 10 * s, base - 26 * s, 12 * s, 0, Math.PI * 2); ctx.arc(x + 3 * s, base - 20 * s, 8 * s, 0, Math.PI * 2); ctx.arc(x + 18 * s, base - 20 * s, 8 * s, 0, Math.PI * 2); ctx.fill();
+  }
+  function drawPalm(x, base, s) {
+    ctx.strokeStyle = '#8a6239'; ctx.lineWidth = 3 * s; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(x, base); ctx.quadraticCurveTo(x + 6 * s, base - 22 * s, x + 4 * s, base - 40 * s); ctx.stroke();
+    ctx.strokeStyle = '#4e9a3c'; ctx.lineWidth = 2.6 * s;
+    const tx = x + 4 * s, ty = base - 40 * s;
+    for (const a of [-2.6, -2.0, -1.2, -0.5, 0.2]) {
+      ctx.beginPath(); ctx.moveTo(tx, ty);
+      ctx.quadraticCurveTo(tx + Math.cos(a) * 10 * s, ty + Math.sin(a) * 10 * s - 3 * s, tx + Math.cos(a) * 17 * s, ty + Math.sin(a) * 10 * s + 6 * s);
+      ctx.stroke();
+    }
+  }
+
+  function drawTiles() {
+    const c0 = Math.max(0, Math.floor(cam.x / TILE) - 1), c1 = Math.min(level.cols - 1, Math.ceil((cam.x + viewW) / TILE) + 1);
+    const r0 = Math.max(0, Math.floor(cam.y / TILE)), r1 = Math.min(level.rows - 1, Math.ceil((cam.y + VIEW_H) / TILE));
+    for (let r = r0; r <= r1; r++) {
+      for (let c = c0; c <= c1; c++) {
+        const ch = level.grid[r][c];
+        if (ch === '.') continue;
+        const x = c * TILE, y = r * TILE;
+        if (ch === '=') drawGround(x, y, c, r);
+        else if (ch === '#') drawBrick(x, y, r);
+        else if (ch === '?' || ch === 'u') drawQBlock(x, y, ch, level.bumps.get(c + ',' + r) || 0);
+        else if (ch === '-') drawPlank(x, y, c);
+      }
+    }
+  }
+
+  function drawGround(x, y, c, r) {
+    const top = !isSolid(tileAt(c, r - 1));
+    ctx.fillStyle = '#a8693a'; ctx.fillRect(x, y, TILE + 0.5, TILE + 0.5);
+    ctx.fillStyle = '#8f5730';
+    for (let i = 0; i < 3; i++) {
+      const hx = hash(c * 7 + r * 13 + i), hy = hash(c * 3 + r * 5 + i * 9);
+      ctx.fillRect(x + 3 + hx * 22, y + (top ? 10 : 3) + hy * (top ? 16 : 22), 3, 2);
+    }
+    if (top) {
+      ctx.fillStyle = '#5fb347'; ctx.fillRect(x, y, TILE + 0.5, 7);
+      ctx.fillStyle = '#4a9637'; ctx.fillRect(x, y + 6, TILE + 0.5, 2);
+      ctx.fillStyle = '#74c95a';
+      for (let i = 0; i < 4; i++) ctx.fillRect(x + 2 + i * 7 + hash(c + i) * 3, y - 2, 2, 3);
+      if (!isSolid(tileAt(c - 1, r))) { ctx.fillStyle = '#4a9637'; ctx.fillRect(x, y, 2, TILE); }
+      if (!isSolid(tileAt(c + 1, r))) { ctx.fillStyle = '#7d4b27'; ctx.fillRect(x + TILE - 2, y, 2, TILE); }
+    }
+  }
+
+  function drawBrick(x, y, r) {
+    ctx.fillStyle = '#c8643b'; ctx.fillRect(x, y, TILE + 0.5, TILE + 0.5);
+    ctx.fillStyle = '#8a3f22';
+    ctx.fillRect(x, y, TILE, 1.5); ctx.fillRect(x, y + 15, TILE, 1.5);
+    const off = (r % 2) ? 7 : 0;
+    ctx.fillRect(x + 15 - off, y, 1.5, 15); ctx.fillRect(x + 22 - off, y + 15, 1.5, 15);
+    ctx.fillStyle = 'rgba(255,255,255,.15)'; ctx.fillRect(x + 1, y + 2, TILE - 2, 2);
+  }
+
+  function drawQBlock(x, y, ch, t) {
+    const dy = t > 0 ? -Math.sin((t / 0.2) * Math.PI) * 6 : 0;
+    y += dy;
+    if (ch === '?') {
+      ctx.fillStyle = '#a8701a'; roundRect(x, y, TILE, TILE, 4); ctx.fill();
+      ctx.fillStyle = '#f2b632'; roundRect(x + 2, y + 2, TILE - 4, TILE - 4, 3); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.fillRect(x + 4, y + 4, TILE - 8, 3);
+      const pulse = 0.85 + 0.15 * Math.sin(animT * 5);
+      ctx.font = '900 18px system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#8a5a12'; ctx.fillText('?', x + TILE / 2 + 1, y + TILE / 2 + 2);
+      ctx.fillStyle = `rgba(255,255,255,${pulse})`; ctx.fillText('?', x + TILE / 2, y + TILE / 2 + 1);
+    } else {
+      ctx.fillStyle = '#6b4423'; roundRect(x, y, TILE, TILE, 4); ctx.fill();
+      ctx.fillStyle = '#9c6b3f'; roundRect(x + 2, y + 2, TILE - 4, TILE - 4, 3); ctx.fill();
+      ctx.fillStyle = '#6b4423';
+      for (const [a, b] of [[6, 6], [TILE - 6, 6], [6, TILE - 6], [TILE - 6, TILE - 6]]) { ctx.beginPath(); ctx.arc(x + a, y + b, 1.6, 0, Math.PI * 2); ctx.fill(); }
+    }
+  }
+
+  function drawPlank(x, y, c) {
+    ctx.fillStyle = '#6b4423'; ctx.fillRect(x, y, TILE + 0.5, 9);
+    ctx.fillStyle = '#a5713f'; ctx.fillRect(x, y + 1, TILE + 0.5, 6);
+    ctx.fillStyle = '#c38c55'; ctx.fillRect(x, y + 1, TILE + 0.5, 1.5);
+    ctx.fillStyle = '#4a2f18'; ctx.fillRect(x + 4, y + 3, 1.5, 1.5); ctx.fillRect(x + TILE - 6, y + 3, 1.5, 1.5);
+    if (tileAt(c - 1, Math.floor(y / TILE)) !== '-') { ctx.fillStyle = '#6b4423'; ctx.fillRect(x, y, 2, 9); }
+  }
+
+  function drawSigns() {
+    ctx.font = 'bold 7px system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (const s of level.signs) {
+      if (s.x < cam.x - 120 || s.x > cam.x + viewW + 120) continue;
+      const w = Math.max(...s.lines.map(l => ctx.measureText(l).width)) + 10, h = s.lines.length * 9 + 6;
+      const by = s.y - 16 - h;
+      ctx.fillStyle = '#7a4b25'; ctx.fillRect(s.x - 1.5, by + h - 2, 3, 18);
+      ctx.fillStyle = '#6b4423'; roundRect(s.x - w / 2 - 1.5, by - 1.5, w + 3, h + 3, 3); ctx.fill();
+      ctx.fillStyle = '#f3dcae'; roundRect(s.x - w / 2, by, w, h, 2); ctx.fill();
+      ctx.fillStyle = '#3b2314';
+      s.lines.forEach((l, i) => ctx.fillText(l, s.x, by + 7.5 + i * 9));
+    }
+  }
+
+  function drawGoal() {
+    const x = level.goalX, gy = (level.goalRow + 1) * TILE, w = 60, h = 96;
+    if (x < cam.x - 120 || x > cam.x + viewW + 40) return;
+    ctx.fillStyle = '#7a4b25';
+    ctx.fillRect(x, gy - h, 5, h); ctx.fillRect(x + w, gy - h, 5, h);
+    ctx.fillStyle = '#f7c531';
+    ctx.beginPath(); ctx.arc(x + 2.5, gy - h, 4, 0, Math.PI * 2); ctx.arc(x + w + 2.5, gy - h, 4, 0, Math.PI * 2); ctx.fill();
+    // Banner
+    ctx.fillStyle = '#e8572a'; roundRect(x + 4, gy - h + 6, w - 3, 16, 3); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.font = '900 9px system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('FINISH', x + w / 2 + 2.5, gy - h + 14.5);
+    // Marigold garland
+    for (let i = 0; i <= 10; i++) {
+      const t = i / 10, gx = x + 2.5 + t * w, gyy = gy - h + 28 + Math.sin(t * Math.PI) * 14;
+      ctx.fillStyle = i % 2 ? '#ff9f1c' : '#ffd60a'; ctx.beginPath(); ctx.arc(gx, gyy, 2.6, 0, Math.PI * 2); ctx.fill();
+    }
+    // Flag
+    const wave = Math.sin(animT * 6) * 2;
+    ctx.fillStyle = '#198754';
+    ctx.beginPath(); ctx.moveTo(x + w + 5, gy - h - 2); ctx.lineTo(x + w + 22, gy - h + 3 + wave); ctx.lineTo(x + w + 5, gy - h + 9); ctx.closePath(); ctx.fill();
+  }
+
+  function drawParticles() {
+    for (const q of particles) {
+      ctx.globalAlpha = Math.max(0, Math.min(1, q.life / q.max * 1.5));
+      ctx.fillStyle = q.color;
+      if (q.square) ctx.fillRect(q.x, q.y, q.size, q.size * 1.4);
+      else { ctx.beginPath(); ctx.arc(q.x, q.y, q.size, 0, Math.PI * 2); ctx.fill(); }
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function roundRect(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  }
+
+  // ---------- Chintu (drawn in code) ----------
+  const COL = {
+    skin: '#f3bf8c', skinDark: '#d99a66', hair: '#3a2416', shirt: '#f7c531', shirtDark: '#d9a514',
+    pants: '#e8572a', pantsDark: '#c2431d', shoe: '#1f1f1f', line: '#2a1a10'
+  };
+
+  function limb(x, y, ang, len, w, col) {
+    const ex = x + Math.sin(ang) * len, ey = y + Math.cos(ang) * len;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = COL.line; ctx.lineWidth = w + 1.4;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(ex, ey); ctx.stroke();
+    ctx.strokeStyle = col; ctx.lineWidth = w;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(ex, ey); ctx.stroke();
+    return [ex, ey];
+  }
+
+  function drawLeg(hx, hy, thigh, shin, front) {
+    const pc = front ? COL.pants : COL.pantsDark;
+    const [kx, ky] = limb(hx, hy, thigh, 8.5, 5.4, pc);
+    const [fx, fy] = limb(kx, ky, thigh - shin, 8.5, 5, pc);
+    ctx.fillStyle = COL.line;
+    ctx.beginPath(); ctx.ellipse(fx + 2.6, fy + 0.6, 4.9, 3.2, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = COL.shoe;
+    ctx.beginPath(); ctx.ellipse(fx + 2.6, fy + 0.4, 4.2, 2.6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#555'; ctx.fillRect(fx - 1.2, fy + 1.6, 7.6, 0.9);
+  }
+
+  function drawArm(sx, sy, upper, elbow, front) {
+    const sc = front ? COL.shirt : COL.shirtDark;
+    const [ex, ey] = limb(sx, sy, upper, 5.5, 4.6, sc);
+    const [hx, hy] = limb(ex, ey, upper + elbow, 6.5, 3.3, front ? COL.skin : COL.skinDark);
+    ctx.fillStyle = COL.line; ctx.beginPath(); ctx.arc(hx, hy, 2.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = front ? COL.skin : COL.skinDark; ctx.beginPath(); ctx.arc(hx, hy, 1.9, 0, Math.PI * 2); ctx.fill();
+  }
+
+  function drawChintu(px, py, pose, t) {
+    ctx.save();
+    ctx.translate(px, py);
+    if (pose === 'slide') { ctx.translate(-2, -1); ctx.rotate(-1.2); }
+    if (pose === 'land') ctx.scale(1.08, 0.9);
+    ctx.scale(0.86, 0.86);
+
+    let legA = 0.08, kneeA = 0.1, legB = -0.08, kneeB = 0.1, armA = -0.2, elbA = 0.5, armB = 0.25, elbB = 0.5, bob = 0;
+    if (pose === 'run') {
+      const s = Math.sin(t), c = Math.cos(t);
+      legA = s * 0.8; legB = -s * 0.8;
+      kneeA = 0.25 + Math.max(0, -c) * 1.3; kneeB = 0.25 + Math.max(0, c) * 1.3;
+      armA = -s * 0.9; armB = s * 0.9; elbA = 1.2; elbB = 1.2;
+      bob = -Math.abs(c) * 1.6;
+    } else if (pose === 'jump') {
+      legA = 1.0; kneeA = 1.5; legB = -0.45; kneeB = 0.6; armA = 1.7; elbA = 0.5; armB = -1.0; elbB = 0.4;
+    } else if (pose === 'fall') {
+      legA = 0.35; kneeA = 0.5; legB = -0.25; kneeB = 0.7; armA = 1.5; elbA = -0.4; armB = -2.2; elbB = -0.3;
+    } else if (pose === 'slide') {
+      legA = 0.15; kneeA = 0.05; legB = -0.05; kneeB = 0.15; armA = 2.1; elbA = 0.3; armB = 0.9; elbB = -0.3;
+    }
+    ctx.translate(0, bob);
+
+    const hipX = 0, hipY = -17, shX = 0.5, shY = -28;
+    drawArm(shX - 1, shY, armB, elbB, false);
+    drawLeg(hipX - 1, hipY, legB, kneeB, false);
+
+    // Torso: yellow shirt over orange trousers
+    ctx.fillStyle = COL.line; roundRect(-7.3, -32.3, 14.6, 18.2, 4); ctx.fill();
+    ctx.fillStyle = COL.pants; ctx.fillRect(-6.5, -19, 13, 4.5);
+    ctx.fillStyle = COL.shirt; roundRect(-6.5, -31.5, 13, 13.5, 3.5); ctx.fill();
+    ctx.fillStyle = COL.shirtDark; ctx.fillRect(-6.5, -19.6, 13, 1.6);
+    ctx.fillStyle = 'rgba(255,255,255,.3)'; ctx.fillRect(-5.2, -30, 2, 9);
+    // Collar
+    ctx.fillStyle = COL.skin; ctx.beginPath(); ctx.moveTo(-1, -31.5); ctx.lineTo(4, -31.5); ctx.lineTo(1.5, -27.5); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = COL.shirtDark;
+    ctx.beginPath(); ctx.moveTo(-2.5, -31.8); ctx.lineTo(1.5, -27.3); ctx.lineTo(-0.5, -31.8); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(5.5, -31.8); ctx.lineTo(1.5, -27.3); ctx.lineTo(3.5, -31.8); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#b88a10'; ctx.beginPath(); ctx.arc(1.6, -25, 0.7, 0, Math.PI * 2); ctx.arc(1.6, -22, 0.7, 0, Math.PI * 2); ctx.fill();
+
+    drawLeg(hipX + 1, hipY, legA, kneeA, true);
+
+    // Head
+    const hx = 1.5, hy = -38.5;
+    ctx.fillStyle = COL.skin; ctx.fillRect(-0.5, -34, 4, 3);
+    ctx.fillStyle = COL.line; ctx.beginPath(); ctx.arc(hx, hy, 7.9, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = COL.skin; ctx.beginPath(); ctx.arc(hx, hy, 7.2, 0, Math.PI * 2); ctx.fill();
+    // Hair: cap plus a spiky fringe that points forward
+    ctx.fillStyle = COL.hair;
+    ctx.beginPath();
+    ctx.arc(hx - 0.6, hy - 0.8, 7.7, Math.PI * 0.88, Math.PI * 1.98);
+    ctx.lineTo(hx + 8.6, hy - 4.2); ctx.lineTo(hx + 5.2, hy - 3.4); ctx.lineTo(hx + 6.4, hy - 1.6);
+    ctx.lineTo(hx + 2.6, hy - 3); ctx.lineTo(hx + 1, hy - 1.2); ctx.lineTo(hx - 1.5, hy - 3.2);
+    ctx.lineTo(hx - 4.5, hy + 1); ctx.lineTo(hx - 7.6, hy + 2.5);
+    ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(hx - 2, hy - 8); ctx.lineTo(hx - 5, hy - 10.5); ctx.lineTo(hx - 3.6, hy - 7); ctx.fill();
+    // Ear
+    ctx.fillStyle = COL.skinDark; ctx.beginPath(); ctx.arc(hx - 2.6, hy + 0.8, 1.9, 0, Math.PI * 2); ctx.fill();
+    // Eye and brow
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.ellipse(hx + 3.6, hy - 0.4, 1.9, 2.3, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#1a1a1a'; ctx.beginPath(); ctx.arc(hx + 4.3, hy - 0.2, 1.15, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = COL.hair; ctx.lineWidth = 0.9; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(hx + 2, hy - 3.3); ctx.lineTo(hx + 5.6, hy - 3.7); ctx.stroke();
+    // Nose
+    ctx.fillStyle = COL.skinDark; ctx.beginPath(); ctx.arc(hx + 7.2, hy + 1.4, 1.1, 0, Math.PI * 2); ctx.fill();
+    // Big grin
+    ctx.fillStyle = '#7a1f1f';
+    ctx.beginPath(); ctx.moveTo(hx + 1.2, hy + 2.6); ctx.quadraticCurveTo(hx + 4.6, hy + 7.4, hx + 7.4, hy + 3.2); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.moveTo(hx + 1.6, hy + 2.8); ctx.lineTo(hx + 7, hy + 3.4); ctx.lineTo(hx + 6.2, hy + 4.3); ctx.lineTo(hx + 2.6, hy + 4); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(232,87,42,.25)'; ctx.beginPath(); ctx.arc(hx + 1.2, hy + 2.6, 1.7, 0, Math.PI * 2); ctx.fill();
+
+    drawArm(shX + 0.5, shY, armA, elbA, true);
+    ctx.restore();
+  }
+
+  function drawPlayer() {
+    const p = player;
+    if (p.x === undefined) return;
+    const fx = p.x + PW / 2, fy = p.y + p.h;
+    // Shadow on the ground below
+    const below = groundBelow(fx, fy);
+    if (below !== null) {
+      const d = Math.min(1, (below - fy) / 120);
+      ctx.fillStyle = `rgba(0,0,0,${0.22 * (1 - d)})`;
+      ctx.beginPath(); ctx.ellipse(fx, below, 9 * (1 - d * 0.5), 2.4, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    let pose;
+    if (p.sliding) pose = 'slide';
+    else if (!p.onGround) pose = p.vy < 0 ? 'jump' : 'fall';
+    else if (p.landT > 0) pose = 'land';
+    else pose = 'run';
+    drawChintu(fx, fy, pose, p.runPhase);
+  }
+
+  function groundBelow(x, y) {
+    const c = Math.floor(x / TILE);
+    for (let r = Math.max(0, Math.floor((y - 0.5) / TILE)); r < level.rows; r++) {
+      if (isSupport(tileAt(c, r)) && r * TILE >= y - 0.5) return r * TILE;
+    }
+    return null;
+  }
+
+  function drawHUD() {
+    ctx.textBaseline = 'middle';
+    // Left: stage and distance
+    ctx.fillStyle = 'rgba(4,38,77,.72)'; roundRect(6, 6, 104, 20, 10); ctx.fill();
+    ctx.fillStyle = '#ffd60a'; ctx.font = '800 9px system-ui,sans-serif'; ctx.textAlign = 'left';
+    ctx.fillText('TEST RUN', 14, 16.5);
+    ctx.fillStyle = '#fff'; ctx.fillText(Math.max(0, Math.floor((player.x - level.start.x) / TILE)) + ' m', 66, 16.5);
+    // Right: time
+    ctx.fillStyle = 'rgba(4,38,77,.72)'; roundRect(viewW - 70, 6, 64, 20, 10); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.fillText('⏱ ' + fmtTime(runTime), viewW - 38, 16.5);
+    // Centre: progress to the finish
+    const bw = Math.min(140, viewW - 200), bx = (viewW - bw) / 2;
+    if (bw > 40) {
+      const f = Math.max(0, Math.min(1, (player.x - level.start.x) / (level.goalX - level.start.x)));
+      ctx.fillStyle = 'rgba(4,38,77,.55)'; roundRect(bx - 4, 11, bw + 8, 10, 5); ctx.fill();
+      ctx.fillStyle = '#e8572a'; roundRect(bx, 14, Math.max(4, bw * f), 4, 2); ctx.fill();
+      ctx.fillStyle = '#f7c531'; ctx.beginPath(); ctx.arc(bx + bw * f, 16, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#198754'; ctx.fillRect(bx + bw - 1, 10, 2, 12);
+    }
+    if (DEBUG) {
+      ctx.fillStyle = 'rgba(0,0,0,.6)'; ctx.fillRect(6, 30, 190, 30);
+      ctx.fillStyle = '#9f9'; ctx.font = '7px monospace'; ctx.textAlign = 'left';
+      ctx.fillText(`fps ${fps.toFixed(0)} state ${state} v ${player.vx.toFixed(0)}`, 10, 38);
+      ctx.fillText(`x ${player.x.toFixed(0)} y ${player.y.toFixed(0)} vy ${player.vy.toFixed(0)} g ${player.onGround ? 1 : 0} sl ${player.sliding ? 1 : 0}`, 10, 50);
+    }
+  }
+
+  function fmtTime(t) {
+    const m = Math.floor(t / 60), s = t - m * 60;
+    return m + ':' + (s < 10 ? '0' : '') + s.toFixed(1);
+  }
+
+  // ---------- Flow, overlays and banners ----------
+  const overlays = { title: $('titleOverlay'), pause: $('pauseOverlay'), clear: $('clearOverlay') };
+  function showOverlay(name) { for (const k in overlays) overlays[k].hidden = k !== name; }
+  function overlayIsTitle() { return !overlays.title.hidden; }
+  function showBanner(html) { const b = $('banner'); b.innerHTML = html; b.hidden = false; }
+  function hideBanner() { $('banner').hidden = true; }
+  function updateStopBtn() { $('stopBtn').hidden = !(isTouch && (state === 'play' || state === 'fall')); }
+
+  function bestTime() { const v = parseFloat(store.get('chintu.best.test')); return isFinite(v) ? v : null; }
+  function refreshTitleBest() {
+    const b = bestTime();
+    $('titleBest').textContent = b ? 'Your best time: ' + fmtTime(b) : '';
+  }
+
+  function startRun() {
+    hideBanner();
+    resetRun();
+    state = 'play';
+    showOverlay(null);
+    updateStopBtn();
+    if (isTouch) wrap.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  }
+  function toTitle() {
+    hideBanner();
+    resetRun();
+    state = 'title';
+    showOverlay('title');
+    refreshTitleBest();
+    updateStopBtn();
+  }
+  function pause() {
+    if (state !== 'play' && state !== 'fall') return;
+    pausedFrom = state;
+    state = 'pause';
+    showOverlay('pause');
+    updateStopBtn();
+  }
+  let pausedFrom = 'play';
+  function resume() {
+    if (state !== 'pause') return;
+    state = pausedFrom;
+    showOverlay(null);
+    keys.jump = keys.slide = keys.jumpPressed = false;
+    updateStopBtn();
+  }
+  function finishRun() {
+    state = 'clear'; stateT = 0;
+    const prev = bestTime();
+    const isBest = prev === null || runTime < prev;
+    if (isBest) store.set('chintu.best.test', runTime.toFixed(2));
+    $('clearText').innerHTML = 'Chintu reached the finish gate in <strong>' + fmtTime(runTime) + '</strong>.';
+    $('clearBest').textContent = isBest ? '🏆 New best time!' : 'Best time: ' + fmtTime(prev);
+    for (let i = 0; i < 40; i++) confetti();
+    if (!DEMO) showOverlay('clear');
+    updateStopBtn();
+  }
+
+  // ---------- Input ----------
+  const JUMP_KEYS = ['Space', 'ArrowUp', 'KeyW'];
+  const SLIDE_KEYS = ['ArrowDown', 'KeyS'];
+
+  window.addEventListener('keydown', e => {
+    const inGame = state === 'play' || state === 'fall';
+    if (JUMP_KEYS.includes(e.code) || SLIDE_KEYS.includes(e.code)) {
+      if (inGame) e.preventDefault();
+      if (state === 'title' && (e.code === 'Space') && document.activeElement === document.body) { e.preventDefault(); startRun(); return; }
+    }
+    if (JUMP_KEYS.includes(e.code)) { if (!e.repeat) { keys.jump = true; keys.jumpPressed = true; } }
+    else if (SLIDE_KEYS.includes(e.code)) keys.slide = true;
+    else if (e.code === 'KeyP' || e.code === 'Escape') {
+      if (state === 'pause') resume(); else if (inGame) pause();
+    } else if (e.code === 'Enter') {
+      if (state === 'title' && document.activeElement === document.body) startRun();
+      else if (state === 'clear' && !overlays.clear.hidden && document.activeElement === document.body) startRun();
+    }
+  });
+  window.addEventListener('keyup', e => {
+    if (JUMP_KEYS.includes(e.code)) keys.jump = false;
+    else if (SLIDE_KEYS.includes(e.code)) keys.slide = false;
+  });
+  window.addEventListener('blur', () => { keys.jump = keys.slide = keys.jumpPressed = false; });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
+
+  function holdButton(el, onDown, onUp) {
+    el.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      try { el.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+      el.classList.add('down'); onDown();
+    });
+    const up = () => { if (el.classList.contains('down')) { el.classList.remove('down'); onUp(); } };
+    el.addEventListener('pointerup', up);
+    el.addEventListener('pointercancel', up);
+    el.addEventListener('lostpointercapture', up);
+    el.addEventListener('contextmenu', e => e.preventDefault());
+  }
+  holdButton($('btnJump'), () => { keys.jump = true; keys.jumpPressed = true; }, () => { keys.jump = false; });
+  holdButton($('btnSlide'), () => { keys.slide = true; }, () => { keys.slide = false; });
+  $('btnPause').addEventListener('click', () => { if (state === 'pause') resume(); else pause(); });
+
+  $('startBtn').addEventListener('click', startRun);
+  $('resumeBtn').addEventListener('click', resume);
+  $('restartBtn').addEventListener('click', startRun);
+  $('quitBtn').addEventListener('click', () => { exitFull(); toTitle(); });
+  $('againBtn').addEventListener('click', startRun);
+  $('menuBtn').addEventListener('click', toTitle);
+  $('stopBtn').addEventListener('click', () => { exitFull(); toTitle(); });
+  $('pauseBtn').addEventListener('click', () => { if (state === 'pause') resume(); else pause(); });
+  $('restartBtn2').addEventListener('click', startRun);
+
+  const fullEl = stage;
+  const canFull = !!(fullEl.requestFullscreen || fullEl.webkitRequestFullscreen);
+  if (!canFull) $('fullBtn').hidden = true;
+  $('fullBtn').addEventListener('click', () => {
+    if (document.fullscreenElement || document.webkitFullscreenElement) exitFull();
+    else (fullEl.requestFullscreen || fullEl.webkitRequestFullscreen).call(fullEl);
+  });
+  function exitFull() {
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    else if (document.webkitFullscreenElement && document.webkitExitFullscreen) document.webkitExitFullscreen();
+  }
+
+  if (isTouch) {
+    document.body.classList.add('touch');
+    $('deck').hidden = false;
+    $('hintKeys').hidden = true;
+    $('hintTouch').hidden = false;
+    $('pauseText').textContent = 'Tap Resume to carry on.';
+  }
+
+  // ---------- Canvas size ----------
+  function resize() {
+    const r = canvas.getBoundingClientRect();
+    const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    const w = Math.max(1, Math.round(r.width * dpr)), h = Math.max(1, Math.round(r.height * dpr));
+    if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+    scale = h / VIEW_H;
+    viewW = w / scale;
+    clampCamera();
+  }
+  if (window.ResizeObserver) new ResizeObserver(resize).observe(canvas);
+  window.addEventListener('resize', resize);
+
+  // ---------- Main loop (fixed 1/60 s step) ----------
+  let last = performance.now(), acc = 0, fps = 60, fpsT = 0, fpsN = 0;
+  function frame(now) {
+    const dt = Math.min(0.25, (now - last) / 1000);
+    last = now;
+    fpsT += dt; fpsN++;
+    if (fpsT >= 0.5) { fps = fpsN / fpsT; fpsT = 0; fpsN = 0; }
+    acc += dt;
+    while (acc >= STEP) { update(STEP); acc -= STEP; }
+    render();
+    requestAnimationFrame(frame);
+  }
+
+  resize();
+  resetRun();
+  if (DEMO) { state = 'play'; showOverlay(null); }
+  else { showOverlay('title'); refreshTitleBest(); }
+  updateStopBtn();
+  requestAnimationFrame(frame);
+
+  // Read-only hook for automated checks.
+  window.__chintu = { get state() { return state; }, player, level, get runTime() { return runTime; }, deaths };
+})();
+</script>
+</body>
+</html>

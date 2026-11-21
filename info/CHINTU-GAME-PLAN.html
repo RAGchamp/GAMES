@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chintu Game Plan</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+  :root{
+    --biz-blue:#0d6efd;
+    --biz-blue-dark:#084298;
+    --biz-yellow:#ffc107;
+    --biz-red:#dc3545;
+    --biz-green:#198754;
+    --biz-purple:#6f42c1;
+    --nav-blue:#04264d;
+    --nav-yellow:#ffd60a;
+    --chintu-yellow:#f7c531;
+    --chintu-orange:#e8572a;
+  }
+  body{ background:#f7f8fa; margin:0; }
+
+  .topnav{
+    position:sticky; top:0; z-index:1030;
+    background:var(--nav-blue); color:var(--nav-yellow);
+    padding:.9rem 1.5rem; display:flex; justify-content:space-between; align-items:center;
+    box-shadow:0 .15rem .5rem rgba(0,0,0,.25);
+  }
+  .topnav .brand{ display:inline-flex; align-items:center; text-decoration:none; }
+  .topnav .brand-logo{ height:44px; width:auto; display:block; }
+  .topnav .tagline{
+    font-weight:600; font-size:1.05rem; color:var(--nav-yellow);
+    letter-spacing:.15em; word-spacing:.6em; font-style:italic;
+  }
+  @media (max-width:576px){
+    .topnav{ flex-direction:column; text-align:center; gap:.4rem; padding:.75rem 1rem; }
+  }
+
+  .step-num{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:1.9rem; height:1.9rem; border-radius:50%;
+    background:var(--biz-yellow); color:#2b2b2b; font-weight:800; font-size:.95rem; margin-right:.55rem; flex:none;
+  }
+  .step-title{ display:flex; align-items:center; font-weight:700; font-size:1.1rem; margin-bottom:.75rem; }
+  .step-card{ border:2px solid #c9d3e3; border-radius:.6rem; }
+  .ctrl-label{ font-size:.75rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#6c757d; margin-bottom:.25rem; display:block; }
+  .stat-pill{ background:#eef3fb; border-radius:2rem; padding:.2rem .7rem; font-size:.8rem; font-weight:600; display:inline-block; margin:.15rem .2rem .15rem 0; }
+
+  .prompt{
+    background:linear-gradient(120deg,var(--biz-blue-dark),var(--biz-blue)); color:#fff;
+    border-radius:.6rem; padding:.9rem 1.1rem; font-size:1.02rem;
+  }
+
+  .about-box{ background:#fde2ec; border:2px solid #f5a3c0; border-radius:.6rem; padding:.9rem 1.1rem; }
+  .about-box h2{ font-size:1.05rem; font-weight:700; color:#8a1f4a; margin-bottom:.4rem; }
+  .about-box p{ font-size:.92rem; color:#3b2a31; }
+
+  .now-box{ display:flex; gap:.75rem; flex-wrap:wrap; }
+  .now-card{ flex:1 1 220px; background:#fff; border:2px solid #dde3ec; border-radius:.6rem; padding:.7rem .9rem; }
+  .now-card.now{ border-color:#c79100; background:#fff8e1; }
+  .now-card.bad{ border-color:#b02a37; background:#fdeef0; }
+  .now-card .lbl{ font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#6c757d; }
+  .now-card .val{ font-size:1.15rem; font-weight:800; line-height:1.25; margin:.15rem 0 .25rem; }
+  .now-card .det{ font-size:.86rem; color:#5a6475; }
+
+  .phase{ border-left:5px solid var(--biz-blue); }
+  .phase.p2{ border-left-color:var(--biz-green); }
+  .phase.p3{ border-left-color:var(--biz-purple); }
+  .phase.p4{ border-left-color:#c79100; }
+  .phase.p5{ border-left-color:var(--biz-red); }
+  .phase.p6{ border-left-color:#0aa2c0; }
+  .phase ul{ margin-bottom:.4rem; }
+  .accept{ background:#eefaf3; border:1px solid #bfe3cf; border-radius:.45rem; padding:.5rem .75rem; font-size:.88rem; }
+  .accept b{ color:var(--biz-green); }
+
+  table.plan th{ background:#eef3fb; font-size:.8rem; text-transform:uppercase; letter-spacing:.04em; }
+  table.plan td, table.plan th{ font-size:.9rem; vertical-align:top; }
+
+  pre.tree{ background:#0f1b2d; color:#d7e3f4; border-radius:.5rem; padding:.9rem 1rem; font-size:.85rem; margin:0; overflow-x:auto; }
+  pre.tree .c{ color:#ffd60a; }
+
+  /* Worry meter strip */
+  .worry{ display:flex; border-radius:.5rem; overflow:hidden; border:2px solid #c9d3e3; }
+  .worry div{ flex:1; padding:.55rem .6rem; font-size:.8rem; color:#fff; min-width:0; }
+  .worry b{ display:block; font-size:.9rem; }
+  .w1{ background:#3d8b5a; } .w2{ background:#b58a16; } .w3{ background:#d0621f; } .w4{ background:#b02a37; }
+  @media (max-width:640px){ .worry{ flex-direction:column; } }
+
+  /* Game screen mock */
+  .screen{ position:relative; border-radius:.6rem; overflow:hidden; border:3px solid #1b2a44;
+           background:linear-gradient(#7fc8f8 0%, #bfe6ff 62%, #8c5a2b 62%, #8c5a2b 66%, #5fa83a 66%); height:230px; }
+  .screen .hud{ position:absolute; top:6px; left:8px; right:8px; display:flex; justify-content:space-between; gap:.4rem;
+                font:700 .72rem/1.2 system-ui,sans-serif; color:#fff; text-shadow:0 1px 2px #000; flex-wrap:wrap; }
+  .screen .meter{ background:rgba(0,0,0,.45); border-radius:1rem; padding:.15rem .55rem; }
+  .screen .bar{ display:inline-block; width:70px; height:8px; background:#333; border-radius:4px; vertical-align:middle; overflow:hidden; }
+  .screen .bar i{ display:block; width:60%; height:100%; background:linear-gradient(90deg,#3d8b5a,#d0621f,#b02a37); }
+  .screen .sprite{ position:absolute; font-size:2rem; line-height:1; }
+  .screen .redlight{ position:absolute; top:0; width:90px; height:150px; left:58%;
+                     background:linear-gradient(rgba(255,40,40,.55),rgba(255,40,40,0)); clip-path:polygon(40% 0,60% 0,100% 100%,0 100%); }
+  .screen .block{ position:absolute; width:26px; height:26px; background:#d9822b; border:2px solid #7a4413; border-radius:3px; color:#fff; font-weight:800; text-align:center; font-size:.8rem; line-height:22px; }
+  .screen .ground-note{ position:absolute; bottom:6px; left:8px; font-size:.7rem; color:#fff; text-shadow:0 1px 2px #000; }
+
+  .tag{ border-radius:.3rem; padding:0 .35rem; font-size:.7rem; font-weight:700; color:#fff; }
+  .tag-must{ background:var(--biz-green); } .tag-nice{ background:#6c757d; } .tag-open{ background:var(--biz-red); }
+
+  footer{ background:var(--nav-blue); }
+  footer a{ color:#fff; }
+  kbd{ background:#04264d; }
+</style>
+</head>
+<body>
+
+<!-- STICKY TOP NAV -->
+<div class="topnav">
+  <a class="brand" href="../index.html"><img class="brand-logo" src="../logo.svg" alt="RAG Champ"></a>
+  <div class="tagline">AI Games Portal</div>
+</div>
+
+<main class="container my-4">
+
+  <!-- How AI plays a part (pink box) -->
+  <div class="about-box mb-4">
+    <h2>What is this plan and how does AI play a part?</h2>
+    <p class="mb-0">This page is the build plan for <strong>Game 2: Chintu</strong>, the second game in the RAG Champ Games portal. Like Car Race, it will be written by an AI coding agent (Claude Code) as one HTML file with plain JavaScript and the Canvas API. There are no frameworks, no build step and no server. This time there is no open-source example to start from: the game is built from scratch from a short story idea and two character pictures. <strong>PLEASE NOTE: players don't need any AI to play the game.</strong> The AI is used only to write the code.</p>
+  </div>
+
+  <h1 class="h3 fw-bold mb-1">🏃 Chintu: Development Plan</h1>
+  <p class="text-muted mb-3">Plan date: 20 Nov 2026 · Decisions agreed 21 Nov 2026 · Status: <strong>Phase 1 done (<a href="../GAME-2-Chintu/chintu.html">play the test run</a>) · Phase 2 next</strong></p>
+
+  <div class="prompt mb-4">
+    <strong>Goal:</strong> Build <code class="text-warning">GAME-2-Chintu/chintu.html</code>, a side-scrolling platform runner in the classic jump-and-run style. Chintu keeps running to the right, jumping and sliding past hurdles, stomping henchmen and collecting pages of a secret formula. The villain <strong>Dr. Andhera</strong> watches from his lair and gets more and more worried as Chintu gets closer, sending harder obstacles. The twist: the formula makes people <strong>invisible</strong>, but anyone invisible can still be seen <strong>under red light</strong>.
+  </div>
+
+  <!-- 1. Story -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">1</span>The story</div>
+      <div class="row g-3">
+        <div class="col-lg-7">
+          <p>Chintu is an ordinary, cheerful boy who finds out that he holds the <strong>key to a secret formula</strong>. One drop of it makes a person invisible. There is only one weakness: <strong>red light shows an invisible person</strong> as a glowing red outline.</p>
+          <p>Dr. Andhera wants the formula so his army can never be seen. He has hidden the formula vault inside his fortress, and the vault opens only with the key that Chintu carries. Chintu has to run across the town to the fortress, collect the scattered formula pages on the way, and lock the formula away before Dr. Andhera can use it.</p>
+          <p class="mb-0">Each time Chintu finishes a stage, the game cuts to Dr. Andhera in his control room, watching on his screens. He starts out calm and amused, then turns annoyed, nervous and finally furious. As he gets more worried he puts up more <strong>red searchlights</strong>, because those are the only thing that can catch an invisible Chintu.</p>
+        </div>
+        <div class="col-lg-5">
+          <span class="ctrl-label">Dr. Andhera's worry meter (shown in the HUD)</span>
+          <div class="worry mb-2">
+            <div class="w1"><b>😏 Calm</b>World 1. "A child? Ignore him."</div>
+            <div class="w2"><b>😠 Annoyed</b>World 2. Sends henchmen.</div>
+            <div class="w3"><b>😰 Worried</b>World 3. Red searchlights.</div>
+            <div class="w4"><b>😡 Furious</b>World 4. Faces Chintu himself.</div>
+          </div>
+          <p class="small text-muted mb-0">The meter fills with distance run and formula pages collected. It drops a little when Chintu is hit. Its level decides which hazards appear, so it works as the game's difficulty setting and is part of the story at the same time.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Characters -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">2</span>Characters (drawn in code from the reference pictures)</div>
+      <div class="now-box mb-3">
+        <div class="now-card now">
+          <div class="lbl">Hero</div>
+          <div class="val">🧒 Chintu</div>
+          <div class="det">Short dark-brown hair, big grin, <strong>yellow short-sleeve shirt</strong>, <strong>orange-red trousers</strong> and chunky black shoes. Animations: run (4 frames), jump, fall, slide, stomp, hurt, and a victory pose. While invisible he is drawn as a faint shimmer, and inside red light he becomes a glowing red outline.</div>
+        </div>
+        <div class="now-card bad">
+          <div class="lbl">Villain</div>
+          <div class="val">🦹 Dr. Andhera</div>
+          <div class="det">An original villain: a tall man with a shaved head, a thin curled moustache and <strong>red-lens goggles</strong> (so he can see invisible people). He wears a <strong>black high-collared coat with gold braid</strong>. He appears as a talking portrait in cut-scenes and the HUD, with four faces (calm, annoyed, sweating, furious), and as a full figure in the final boss fight.</div>
+        </div>
+        <div class="now-card">
+          <div class="lbl">Enemies</div>
+          <div class="val">Henchmen and gadgets</div>
+          <div class="det"><strong>Goons</strong> in black and gold who walk and can be stomped. <strong>Sentries</strong> who stand still and shine red torches. <strong>Drones</strong> with red lamps that sweep the sky. <strong>Barrel-rollers</strong> on slopes.</div>
+        </div>
+      </div>
+      <p class="small text-muted mb-0">Both characters will be <strong>original cartoon drawings made with canvas shapes</strong>, Chintu is inspired by the colours and features of the reference picture, which is not copied into the game because it is a watermarked stock image. Dr. Andhera has his own new design and is not based on the villain reference picture, which is a portrait of a real actor.</p>
+    </div>
+  </div>
+
+  <!-- 3. Core gameplay -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">3</span>How it plays</div>
+      <div class="row g-3">
+        <div class="col-lg-6">
+          <ul class="mb-2">
+            <li><strong>Auto-run.</strong> Chintu always runs right. The player controls only jump, slide and power, so the game is easy to pick up on a phone. Speed slowly rises within a stage.</li>
+            <li><strong>Jump physics in the classic platformer style.</strong> Hold to jump higher, a short "coyote time" after running off a ledge, and a jump buffer so that pressing just before landing still counts.</li>
+            <li><strong>Double jump</strong> is unlocked in World 2.</li>
+            <li><strong>Slide</strong> under low banners, washing lines and laser beams.</li>
+            <li><strong>Stomp</strong> goons by landing on top of them. Running into them from the side costs a heart.</li>
+            <li><strong>Bump blocks from below</strong> with a "?" on them to release laddoo coins or power-ups.</li>
+          </ul>
+        </div>
+        <div class="col-lg-6">
+          <ul class="mb-2">
+            <li><strong>3 hearts.</strong> A hit removes one heart and gives 1.5 s of flashing safety. Falling into a gap costs one life and sends Chintu back to the last checkpoint flag.</li>
+            <li><strong>Formula pages.</strong> There are 3 hidden pages in every stage, and they are the main collectible. Collecting all pages in a world unlocks a bonus stage.</li>
+            <li><strong>Invisibility vial</strong> (the signature power-up). For 8 seconds Chintu passes through goons and sentries and they cannot see him. <strong>Red light cancels it</strong>: inside a red beam he is visible and can be hurt, and some red beams set off alarms that drop cages.</li>
+            <li><strong>Score</strong> comes from coins, stomps, pages, time left and a "never seen" bonus for getting through red-light zones without being spotted.</li>
+          </ul>
+        </div>
+      </div>
+      <span class="ctrl-label">Starting tuning values (to be adjusted while playtesting)</span>
+      <span class="stat-pill">tile 32 px</span><span class="stat-pill">view 480 × 270, scaled up</span><span class="stat-pill">run speed 150 → 230 px/s</span><span class="stat-pill">gravity 1800 px/s²</span><span class="stat-pill">jump velocity −620</span><span class="stat-pill">coyote time 0.1 s</span><span class="stat-pill">jump buffer 0.12 s</span><span class="stat-pill">invisibility 8 s</span><span class="stat-pill">stage length ≈ 90 s</span>
+    </div>
+  </div>
+
+  <!-- 4. Screen mock -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">4</span>What the screen looks like</div>
+      <div class="screen mb-2" role="img" aria-label="Mock of the game screen: HUD on top, Chintu running on the left, a red searchlight in the middle, a goon and a question block ahead">
+        <div class="hud">
+          <span class="meter">❤️❤️❤️ · 🟡 x 27 · 📜 1/3</span>
+          <span class="meter">World 2-3 · 01:12</span>
+          <span class="meter">😠 Dr. Andhera <span class="bar"><i></i></span></span>
+        </div>
+        <div class="redlight"></div>
+        <div class="block" style="left:40%; top:42%;">?</div>
+        <div class="block" style="left:calc(40% + 30px); top:42%;"></div>
+        <div class="sprite" style="left:14%; top:45%;">🏃</div>
+        <div class="sprite" style="left:64%; top:44%;">🕴️</div>
+        <div class="sprite" style="left:84%; top:20%;">📜</div>
+        <div class="ground-note">Parallax: sky → distant town → buildings → street tiles</div>
+      </div>
+      <p class="small text-muted mb-0">This is only a layout sketch. In the game, all of this is drawn on a canvas with no emoji or image files. On portrait phones the picture sits on top and a control deck with large Jump, Slide and Power buttons and an always-visible Stop button sits below it, as in Car Race.</p>
+    </div>
+  </div>
+
+  <!-- 5. Worlds -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">5</span>Worlds and stages</div>
+      <div class="table-responsive">
+        <table class="table table-sm plan mb-0">
+          <thead><tr><th>World</th><th>Setting</th><th>New hurdles</th><th>Dr. Andhera</th></tr></thead>
+          <tbody>
+            <tr><td><strong>1</strong> · 3 stages</td><td>Village lanes: mud houses, a well, fields, a sunny sky</td><td>Potholes, carts, sleeping cows (jump over them), "?" blocks, simple gaps, slow goons</td><td>😏 Calm. Laughs it off.</td></tr>
+            <tr><td><strong>2</strong> · 3 stages</td><td>City bazaar: fruit stalls, awnings, rickshaws, washing lines</td><td>Low banners (slide), rolling fruit, moving awnings used as platforms, faster goons. Double jump unlocked.</td><td>😠 Annoyed. Sends henchmen.</td></tr>
+            <tr><td><strong>3</strong> · 3 stages</td><td>Rooftops at night: water tanks, neon signs, dish antennas</td><td><strong>Red searchlights</strong> and sentries, drones with red lamps, crumbling ledges, wide gaps</td><td>😰 Worried and sweating. Orders more lights.</td></tr>
+            <tr><td><strong>4</strong> · 2 stages + boss</td><td>Dr. Andhera's island fortress: docks, conveyor belts, a laser hall</td><td>Laser tripwires (slide), conveyors, timed red alarms, cages that drop</td><td>😡 Furious. Comes out in person.</td></tr>
+            <tr><td><strong>Boss</strong></td><td>The formula vault</td><td colspan="2">Dr. Andhera stands on a control deck with <strong>4 big red lamps</strong>. Chintu drinks a vial, runs under the lamps and jumps on the switches to break them one by one while dodging the barrels Dr. Andhera throws. Once the last lamp is broken, Dr. Andhera can no longer see him. Chintu reaches the vault, turns the key and locks the formula away. Ending cut-scene: Dr. Andhera's last angry rant as the fortress lights go out.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="small text-muted mt-2 mb-0">Levels are written as rows of text characters (for example <code>=</code> ground, <code>?</code> block, <code>g</code> goon, <code>R</code> red light, <code>p</code> page, <code>F</code> checkpoint flag). This makes them easy to read and change, and new stages can be added without new code.</p>
+    </div>
+  </div>
+
+  <!-- 6. Deliverables -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">6</span>Deliverables and folder layout</div>
+      <div class="row g-3">
+        <div class="col-lg-6">
+<pre class="tree">C:\Daya\RAGchamp\GAMES\
+├── index.html               <span class="c">← portal: add a Chintu card</span>
+├── GAME1-CAR-RACE\
+├── GAME-2-Chintu\
+│   └── chintu.html          <span class="c">← the game, one self-contained file</span>
+└── info\
+    ├── CAR-RACE-PLAN.html
+    ├── CHINTU-GAME-PLAN.html <span class="c">← this page</span>
+    └── HOW-CHINTU-WORKS.html <span class="c">← "Learn more" page (Phase 6)</span></pre>
+        </div>
+        <div class="col-lg-6">
+          <ul class="mb-2">
+            <li><strong>One file.</strong> HTML, CSS and JavaScript all inline. It opens with a double-click (<code>file:///</code>), with no server needed.</li>
+            <li><strong>No image or audio files.</strong> Characters, tiles and backgrounds are drawn with the Canvas API. Sounds (jump, coin, stomp, hurt, alarm siren, invisibility shimmer) are made with Web Audio. A short chiptune loop is optional.</li>
+            <li><strong>No external scripts</strong> in the game. Only the info pages use Bootstrap from the CDN.</li>
+            <li><strong>Same look as the portal:</strong> navy sticky top nav with the logo, a pink "how AI plays a part" box, yellow numbered step cards and a navy footer.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. Tech design -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">7</span>Technical design</div>
+      <div class="now-box">
+        <div class="now-card">
+          <div class="lbl">Game loop</div>
+          <div class="val">Fixed 1/60 s step</div>
+          <div class="det">The same accumulator pattern as Car Race: <code>update(dt)</code> runs at a fixed rate and <code>render()</code> runs once per frame. The game pauses when the tab is hidden.</div>
+        </div>
+        <div class="now-card">
+          <div class="lbl">Rendering</div>
+          <div class="val">Low-res canvas, scaled</div>
+          <div class="det">Draws at 480 × 270, then scales up by a whole number with smoothing off, so the art looks crisp and retro. Uses 3–4 parallax layers. Red light is drawn as a transparent beam with <code>globalCompositeOperation</code>.</div>
+        </div>
+        <div class="now-card">
+          <div class="lbl">Physics</div>
+          <div class="val">Tile AABB collision</div>
+          <div class="det">Moves on the X axis and then the Y axis against solid tiles. One-way platforms. Enemies use simple state machines (walk, turn, stunned, squashed).</div>
+        </div>
+        <div class="now-card">
+          <div class="lbl">Red-light check</div>
+          <div class="val">Point-in-cone test</div>
+          <div class="det">Each frame, every red beam (a triangle or cone) is tested against Chintu's box. Inside a beam: <code>visible = true</code>, and invisibility does not protect him there.</div>
+        </div>
+        <div class="now-card">
+          <div class="lbl">Saving</div>
+          <div class="val">localStorage, guarded</div>
+          <div class="det">Saves the furthest stage unlocked, best scores and pages found. Every read and write is wrapped in try/catch so the game still works in a private window.</div>
+        </div>
+        <div class="now-card">
+          <div class="lbl">Input</div>
+          <div class="val">Keys, touch, gamepad</div>
+          <div class="det"><kbd>Space</kbd>/<kbd>↑</kbd>/<kbd>W</kbd> jump · <kbd>↓</kbd>/<kbd>S</kbd> slide · <kbd>Shift</kbd>/<kbd>X</kbd> drink a vial · <kbd>P</kbd>/<kbd>Esc</kbd> pause. Uses <code>event.code</code> and clears all keys when the window loses focus.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8. Phases -->
+  <h2 class="h5 fw-bold mt-4 mb-3">Build phases</h2>
+
+  <div class="card shadow-sm mb-3 phase">
+    <div class="card-body">
+      <h2 class="h6 fw-bold">Phase 1: Running Chintu (core engine) ✅ done 21 Nov 2026</h2>
+      <ul>
+        <li>Canvas setup, scaling, fixed-step loop, input handling, pause on hidden tab.</li>
+        <li>Tile map loader for text levels; camera that follows Chintu with some look-ahead.</li>
+        <li>Chintu drawn in code with run, jump and slide animations; auto-run; jump with coyote time and buffering.</li>
+        <li>One test stage made of ground, gaps and blocks; falling into a gap restarts the stage.</li>
+      </ul>
+      <div class="accept"><b>Done when:</b> Chintu runs through a test stage at 60 fps, and jumps feel tight and fair with both keyboard and touch.</div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mb-3 phase p2">
+    <div class="card-body">
+      <h2 class="h6 fw-bold">Phase 2: Hurdles, enemies and pickups</h2>
+      <ul>
+        <li>Hazards: potholes, carts, cows, low banners, rolling fruit, moving platforms.</li>
+        <li>Goons with stomp and side-hit rules; hearts, flashing safety time, checkpoint flags.</li>
+        <li>Laddoo coins, "?" blocks, formula pages, score and HUD.</li>
+        <li>World 1 (3 stages) and World 2 (3 stages) built as text maps.</li>
+      </ul>
+      <div class="accept"><b>Done when:</b> Worlds 1 and 2 can be played from start to finish, with a stage-clear screen and score.</div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mb-3 phase p3">
+    <div class="card-body">
+      <h2 class="h6 fw-bold">Phase 3: Dr. Andhera, invisibility and red light</h2>
+      <ul>
+        <li>Dr. Andhera portrait with 4 moods; worry meter in the HUD; short cut-scenes between stages (2–3 lines of text, which can be skipped).</li>
+        <li>Invisibility vial power-up with the shimmer effect and a countdown ring.</li>
+        <li>Red searchlights, sentries and red-lamp drones; the red-outline "revealed" effect; alarms and dropping cages.</li>
+        <li>World 3 (rooftops at night) built around these mechanics. "Never seen" bonus.</li>
+      </ul>
+      <div class="accept"><b>Done when:</b> A new player understands within one stage, without reading anything, that red light shows Chintu while he is invisible.</div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mb-3 phase p4">
+    <div class="card-body">
+      <h2 class="h6 fw-bold">Phase 4: The fortress and the boss</h2>
+      <ul>
+        <li>World 4: conveyors, laser tripwires and timed red alarms.</li>
+        <li>Boss fight in three rounds (4 lamps; the barrels get faster each round), the vault and the ending cut-scene, then a credits screen.</li>
+        <li>Title screen, stage select map with lock and unlock, and a results screen with stars.</li>
+      </ul>
+      <div class="accept"><b>Done when:</b> The whole game can be finished in about 20–25 minutes, and the ending plays.</div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mb-3 phase p5">
+    <div class="card-body">
+      <h2 class="h6 fw-bold">Phase 5: Sound, polish and phones</h2>
+      <ul>
+        <li>Web Audio sound effects and an optional chiptune loop; a mute button that is remembered.</li>
+        <li>Screen shake, dust puffs, coin sparkles and a falling formula-page animation.</li>
+        <li>Portrait phone layout with a control deck below the game and an always-visible Stop button; landscape layout with full-screen tap zones.</li>
+        <li>An "Easy" option with 5 hearts and slower speed, for younger players.</li>
+      </ul>
+      <div class="accept"><b>Done when:</b> The game is playable at 30+ fps on a phone, with no sound before the first tap and no stuck input.</div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mb-3 phase p6">
+    <div class="card-body">
+      <h2 class="h6 fw-bold">Phase 6: Portal and explainer</h2>
+      <ul>
+        <li>Add a Chintu card to <code>GAMES/index.html</code> next to Car Race.</li>
+        <li><code>info/HOW-CHINTU-WORKS.html</code>: how the levels, physics and red-light check work, and what Claude Code built.</li>
+      </ul>
+      <div class="accept"><b>Done when:</b> The game opens from the portal, and the explainer links back to both the game and the portal.</div>
+    </div>
+  </div>
+
+  <!-- 9. Scope -->
+  <div class="card shadow-sm step-card mb-3 mt-4">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">8</span>Scope at a glance</div>
+      <div class="table-responsive">
+        <table class="table table-sm plan mb-0">
+          <thead><tr><th>Feature</th><th>Priority</th><th>Phase</th></tr></thead>
+          <tbody>
+            <tr><td>Auto-run, jump, slide, stomp, hearts, checkpoints</td><td><span class="tag tag-must">MUST</span></td><td>1–2</td></tr>
+            <tr><td>Formula pages, coins, "?" blocks, score</td><td><span class="tag tag-must">MUST</span></td><td>2</td></tr>
+            <tr><td>Dr. Andhera worry meter and cut-scenes</td><td><span class="tag tag-must">MUST</span></td><td>3</td></tr>
+            <tr><td>Invisibility and red-light mechanic</td><td><span class="tag tag-must">MUST</span></td><td>3</td></tr>
+            <tr><td>Boss fight and ending</td><td><span class="tag tag-must">MUST</span></td><td>4</td></tr>
+            <tr><td>Bonus stages unlocked by finding all pages</td><td><span class="tag tag-nice">NICE</span></td><td>4</td></tr>
+            <tr><td>Chiptune music loop</td><td><span class="tag tag-nice">NICE</span></td><td>5</td></tr>
+            <tr><td>Gamepad support</td><td><span class="tag tag-nice">NICE</span></td><td>5</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 10. Testing -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">9</span>Test checklist</div>
+      <div class="row">
+        <div class="col-md-6">
+          <ul class="mb-0">
+            <li>Opens from <code>file:///</code> in Chrome, Edge and Firefox with no console errors.</li>
+            <li>No getting stuck in walls or falling through floors, including at high speed and on moving platforms.</li>
+            <li>A stomp always counts as a stomp when Chintu is falling onto a goon, never as a hit.</li>
+            <li>Inside red light, invisibility never protects Chintu; outside it, it always does.</li>
+          </ul>
+        </div>
+        <div class="col-md-6">
+          <ul class="mb-0">
+            <li>Every stage can be finished without the double jump, except where the stage design says otherwise.</li>
+            <li>Switching tabs pauses the game; there are no stuck keys afterwards.</li>
+            <li>The game still works in a private window (localStorage blocked).</li>
+            <li>Rotating a phone keeps the canvas sharp, and the controls never cover the play area.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 11. Decisions -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">10</span>Decisions (agreed 21 Nov 2026)</div>
+      <ul>
+        <li><strong>Art style: drawn in code.</strong> Chintu and Dr. Andhera are original cartoon characters drawn with canvas shapes, and the game uses no image files. Chintu is based on the colours in the reference picture. The picture itself is a watermarked stock image, so it is not used.</li>
+        <li><strong>Villain: renamed to Dr. Andhera</strong> ("darkness"; working name, easy to change). He has his own new look and lines. The invisibility formula and the red-light weakness stay as the heart of the story.</li>
+        <li><strong>Version 1 scope: Phases 1–3.</strong> Worlds 1–3 (village, bazaar, rooftops) with the worry meter, the invisibility vial and red light. The fortress, boss and ending (Phase 4), polish (Phase 5) and the portal card (Phase 6) follow.</li>
+        <li><strong>Language: English with Hindi flavour.</strong> Cut-scenes and the villain's lines are in English, with short Hindi exclamations for fun (for example, "Arre!" or "Bas karo!").</li>
+        <li><strong>Genre, not a copy.</strong> The game uses the familiar jump-and-run mechanics (blocks, stomping, flags), but has its own characters, world, tiles and sounds. No characters, level layouts, music or artwork from any existing game or film are used.</li>
+      </ul>
+    </div>
+  </div>
+
+</main>
+
+<footer class="text-white py-4 mt-5">
+  <div class="container text-center small">AI Games Portal · Chintu plan · <a href="CAR-RACE-PLAN.html">🏎️ Car Race plan</a> · <a href="../index.html">🏠 Games Home</a></div>
+</footer>
+
+</body>
+</html>
