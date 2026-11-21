@@ -47,6 +47,11 @@
   @media (max-width:576px){
     .topnav{ flex-direction:column; text-align:center; gap:.4rem; padding:.75rem 1rem; }
   }
+  /* Phones: the header scrolls away instead of sticking, so it never covers the top of the game */
+  @media (max-width:700px){
+    .topnav{ position:static; }
+    .game-wrap{ scroll-margin-top:6px; }
+  }
 
   main{ max-width:1240px; margin:0 auto; padding:1.25rem 16px 0; }
 
@@ -219,6 +224,50 @@
   @media (max-width:700px){ .driver{ width:86%; top:3.3rem; padding:.25rem .4rem; } .d-tip, .d-hint{ display:none; } .d-say{ font-size:.75rem; } .d-keys span{ font-size:.55rem; } }
   @media (max-height:500px){ .driver{ top:2.9rem; padding:.2rem .4rem; } .d-tip, .d-hint{ display:none; } .d-say{ font-size:.75rem; } }
 
+  /* ---- Phones ----
+     1) Menus (title, results, pause, scores): on small screens the menu is not squeezed into the game picture;
+        the game area grows to fit the menu and the page scrolls normally. */
+  @media (max-width:700px), (max-height:500px){
+    .game-wrap.menu{ aspect-ratio:auto; height:auto; min-height:300px; }
+    .game-wrap.menu #game{ position:absolute; inset:0; width:100%; height:100%; }
+    .game-wrap.menu .overlay{ position:relative; inset:auto; min-height:300px; padding:10px 8px; }
+    .game-wrap.menu .panel{ max-height:none; overflow:visible; }
+    .game-wrap.menu .hud, .game-wrap.menu .standings, .game-wrap.menu .driver{ display:none; }
+    .game-wrap.menu:fullscreen{ height:100vh; overflow-y:auto; }
+  }
+  /* 2) Portrait phones: a tall game area = the race picture on top + a control deck underneath,
+        so the touch buttons (or the hired driver's box) never cover the road. */
+  @media (max-width:700px) and (orientation:portrait){ .game-wrap{ --ar:9/14; } }
+  .game-wrap.tall #game{ height:calc(100% - 190px); }
+  .game-wrap.tall .touch{ --b:clamp(54px, 15vw, 76px); }
+  .game-wrap.tall .tb.mini{ top:auto; bottom:calc(var(--b) + 24px); }
+  .game-wrap.tall .tb.pause{ left:50%; transform:translateX(-115%); }
+  .game-wrap.tall .tb.tilt{ right:auto; left:50%; transform:translateX(15%); }
+  .game-wrap.tall .driver{ top:auto; bottom:52px; width:94%; }
+  /* ⏹ Stop button (touch devices, during a race) */
+  .stop-btn{
+    position:absolute; left:50%; bottom:10px; transform:translateX(-50%); z-index:5;
+    background:rgba(185,28,28,.88); color:#fff; border:2px solid #fff; border-radius:2rem;
+    font:800 .85rem/1 system-ui, Arial; padding:.45rem .95rem; touch-action:manipulation;
+    box-shadow:0 .2rem .6rem rgba(0,0,0,.35);
+  }
+  .stop-btn[hidden]{ display:none; }
+  .stop-btn:active{ background:#7f1d1d; }
+  .touch .tb.pause{ display:none; } /* ⏹ Stop does the pausing on touch screens */
+  .game-wrap.tall{ --b:clamp(54px, 15vw, 76px); }
+  /* upright phone with the control deck: Stop sits in the middle row beside Tilt, clear of the driving buttons */
+  .game-wrap.tall.touching .stop-btn{ bottom:calc(var(--b) + 24px); transform:translateX(-112%); }
+  .game-wrap.tall.touching .tb.tilt{ transform:translateX(12%); }
+  .game-wrap.tall .driver .d-tip{ display:block; }
+  .deck-help{ display:none; }
+  .phone-help{ background:#fff8e1; border:2px solid var(--nav-yellow); border-radius:.5rem; padding:.4rem .6rem; color:#273449; }
+  .phone-help[hidden]{ display:none; }
+  .game-wrap.tall .deck-help{
+    display:block; position:absolute; left:0; right:0; bottom:calc(2 * var(--b, 60px) + 40px); text-align:center;
+    color:#cbd5e1; font-size:.72rem; font-weight:700; pointer-events:none; padding:0 8px;
+  }
+  .game-wrap.tall .deck-help[hidden]{ display:none; }
+
   /* Short screens (phones held sideways): the nav stops sticking so the game can use the full height */
   @media (max-height:500px){
     .topnav{ position:static; }
@@ -333,6 +382,8 @@
     <div class="countdown" id="countdown" hidden></div>
     <div class="banner" id="banner" hidden></div>
     <div class="rec-dot" id="recDot" hidden>● REC <span id="recTime">0:00</span></div>
+    <!-- Phones/tablets: always-visible way out of a race (also while the hired driver drives) -->
+    <button class="stop-btn" id="stopBtn" hidden aria-label="Stop the race">⏹ Stop</button>
 
     <!-- Hired driver coaching box: which controls the driver is using, what it is doing and why -->
     <div class="driver" id="driverBox" hidden aria-live="polite">
@@ -352,6 +403,7 @@
       <button class="tb nitro" data-k="nitro" aria-label="Nitro">⚡</button>
       <button class="tb mini pause" id="touchPause" aria-label="Pause">⏸</button>
       <button class="tb mini tilt" id="tiltBtn" aria-pressed="false">📱 Tilt</button>
+      <div class="deck-help" id="deckHelp">Hold <b>GAS</b> to go · <b>◀ ▶</b> steer · <b>BRAKE</b> to slow · <b>⚡</b> nitro</div>
     </div>
 
     <div class="overlay" id="titleOverlay">
@@ -370,7 +422,10 @@
         <button class="btn-go" id="startBtn">▶ Start</button>
         <button class="btn-go alt" id="boardBtn">🏆 Top scores</button>
         <p class="small" id="titleBest"></p>
-        <p class="small"><kbd>←</kbd> <kbd>→</kbd> steer · <kbd>↑</kbd> faster · <kbd>↓</kbd> brake · <kbd>Space</kbd> nitro · <kbd>P</kbd> pause · <kbd>M</kbd> sound</p>
+        <p class="small" id="hintKeys"><kbd>←</kbd> <kbd>→</kbd> steer · <kbd>↑</kbd> faster · <kbd>↓</kbd> brake · <kbd>Space</kbd> nitro · <kbd>P</kbd> pause · <kbd>M</kbd> sound</p>
+        <p class="small phone-help" id="hintTouch" hidden>📱 <strong>Phone controls:</strong> hold <strong>GAS</strong> to go, <strong>◀ ▶</strong> to steer,
+          <strong>BRAKE</strong> to slow down, <strong>⚡</strong> for nitro and <strong>⏹ Stop</strong> to pause or leave the race.
+          Prefer tilting? Tap <strong>📱 Tilt</strong> during the race and lean the phone left or right to steer.</p>
         <p class="small">Grab 🪙 coins for points, ⚡ cans to refill nitro and 🔧 spanners to repair crash damage. Phones: on-screen buttons or tilt. Gamepads work too.</p>
       </div>
     </div>
@@ -378,10 +433,10 @@
     <div class="overlay clickable" id="pauseOverlay" hidden>
       <div class="panel">
         <h2>⏸ Paused</h2>
-        <p>Press <kbd>P</kbd> or <kbd>Esc</kbd>, or click, to carry on.</p>
+        <p id="pauseText">Press <kbd>P</kbd> or <kbd>Esc</kbd>, or click, to carry on.</p>
         <button class="btn-go" id="resumeBtn">▶ Resume</button>
         <button class="btn-go alt" id="restartBtn">↺ Restart race</button>
-        <button class="btn-go alt" id="quitBtn">⚙️ Menu</button>
+        <button class="btn-go alt" id="quitBtn">⏹ Stop race</button>
       </div>
     </div>
 
@@ -419,7 +474,12 @@
     <button class="tbtn" id="recBtn" aria-pressed="false" title="Record the game as a video you can download">⏺ Record video</button>
     <a class="tbtn dl" id="dlLink" hidden>⬇ Download video</a>
   </div>
-  <p class="keys">
+  <p class="keys phone-help" id="keysTouch" hidden>
+    <strong>📱 Playing on a phone:</strong> hold <kbd>GAS</kbd> to accelerate · <kbd>◀</kbd> <kbd>▶</kbd> steer · <kbd>BRAKE</kbd> slow down ·
+    <kbd>⚡</kbd> nitro · <kbd>⏹ Stop</kbd> pause or leave the race · <kbd>📱 Tilt</kbd> steer by leaning the phone.
+    <br>Holding the phone upright gives you a control deck under the road; turning it sideways gives a wider view. ⛶ Full screen helps too.
+  </p>
+  <p class="keys" id="keysDesk">
     Steer <kbd>←</kbd> <kbd>→</kbd> or <kbd>A</kbd> <kbd>D</kbd> · Faster <kbd>↑</kbd> or <kbd>W</kbd> · Brake <kbd>↓</kbd> or <kbd>S</kbd> ·
     Nitro <kbd>Space</kbd> or <kbd>Shift</kbd> · Pause <kbd>P</kbd> / <kbd>Esc</kbd> · Restart <kbd>R</kbd> · Full screen <kbd>F</kbd> · Sound <kbd>M</kbd> · Hired driver <kbd>H</kbd>
     <br>Gamepad: stick or d-pad steers · A / right trigger gas · B / left trigger brake · X / right bumper nitro · Start pause
@@ -1698,14 +1758,20 @@
     playerZ = cameraHeight * cameraDepth;
   }
 
+  let isTall = false;
   function resize(){
-    const r = wrap.getBoundingClientRect();
+    // A game area much taller than wide (portrait phone) becomes picture-on-top + control deck below
+    const wr = wrap.getBoundingClientRect();
+    isTall = !wrap.classList.contains('menu') && wr.height > wr.width * 1.15;
+    wrap.classList.toggle('tall', isTall);
+    const r = canvas.getBoundingClientRect();
     const dpr = Math.min(window.devicePixelRatio || 1, 2) * quality;
     let w = Math.round(r.width * dpr), h = Math.round(r.height * dpr);
     if (w > CONFIG.maxPixelWidth){ h = Math.round(h * CONFIG.maxPixelWidth / w); w = CONFIG.maxPixelWidth; }
     if (w < 2 || h < 2) return;
     if (canvas.width !== w || canvas.height !== h){ canvas.width = w; canvas.height = h; }
-    width = w; height = h; resolution = height / 480;
+    width = w; height = h;
+    resolution = Math.min(height, width) / 480; // HUD and effects scale with the SHORTER side, so a tall screen doesn't get giant dials
     ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
   }
 
@@ -2259,10 +2325,13 @@
      9. RENDER: background, road (near to far), sprites (far to near), effects, HUD
      ===================================================================== */
   function drawLayer(img, rotation, offsetY){
-    const dw = width * 2; // the layer is twice the screen width and wraps
-    const dx = Math.floor(-rotation * dw);
-    ctx.drawImage(img, dx, offsetY, dw + 1, height);
-    if (dx + dw < width) ctx.drawImage(img, dx + dw - 1, offsetY, dw + 1, height);
+    // Keep the picture's proportions (no stretched clouds on tall screens) and line its horizon up with the road's.
+    // The layer wraps round, so it is repeated as often as needed to fill the width.
+    const dh = Math.max(height, width * 2 * LAYER_H / LAYER_W), dw = dh * LAYER_W / LAYER_H;
+    const y = height / 2 - dh * (HORIZON / LAYER_H) + offsetY;
+    let dx = Math.floor(-rotation * dw);
+    ctx.drawImage(img, dx, y, dw + 1, dh);
+    while (dx + dw < width){ dx += dw - 1; ctx.drawImage(img, dx, y, dw + 1, dh); }
   }
 
   function polygon(x1, y1, x2, y2, x3, y3, x4, y4, color){
@@ -2504,7 +2573,7 @@
     drawPopups();
     ctx.restore();
 
-    if (state !== 'title'){ drawGauge(); if (!touchShown) drawLapRing(); }
+    if (state !== 'title'){ drawGauge(); if (!touchShown || isTall) drawLapRing(); }
   }
 
   // ---- Night: darken the scene, then add every light with additive blending
@@ -2578,8 +2647,9 @@
   function drawGauge(){
     // bottom left normally; with touch buttons on screen it moves to the top middle, out of the thumbs' way
     const res = resolution, r = 40 * res;
-    const cx = touchShown ? width / 2 - 45 * res : 12 * res + r + 6 * res;
-    const cy = touchShown ? 10 * res + r : height - 12 * res - r - 2 * res;
+    const top = touchShown && !isTall; // (in the tall phone layout the buttons sit below the picture, so the dial stays put)
+    const cx = top ? width / 2 - 45 * res : 12 * res + r + 6 * res;
+    const cy = top ? 10 * res + r : height - 12 * res - r - 2 * res;
     const kmh = speed / maxSpeed * CONFIG.kmhAtTopSpeed, maxK = CONFIG.kmhAtTopSpeed * CONFIG.nitroBoost;
     const a0 = Math.PI * 0.75, a1 = Math.PI * 2.25, f = Util.limit(kmh / maxK, 0, 1);
     ctx.save();
@@ -2747,6 +2817,8 @@
 
   function showOverlay(id){
     ['titleOverlay', 'pauseOverlay', 'resultsOverlay', 'boardOverlay'].forEach(o => { $(o).hidden = o !== id; });
+    wrap.classList.toggle('menu', !!id); // phones: the game area grows to fit the menu (see CSS)
+    resize();
   }
 
   function startRace(){ // title -> countdown
@@ -2759,11 +2831,14 @@
     if (isTouch && !demo && !document.fullscreenElement) toggleFullscreen(); // phones: race full screen (ignored where not supported)
     if (prefs.record && !demo) Recorder.start(true);                     // "Record video" ticked: film this race
     if (driverOn()) showBanner('🧑‍✈️ YOUR DRIVER IS AT THE WHEEL · WATCH THE BOX', 2600);
+    else if (isTouch && !demo) showBanner('👆 Hold GAS to go · ◀ ▶ to steer', 2800);
   }
   function raceAgain(){ startRace(); }
   function goToTitle(){
     stopAfterRaceSounds();
     if (Recorder.auto) Recorder.stop();
+    // Leaving a race: drop out of full screen so you are back in the normal browser (address bar, tabs, close button)
+    if (document.fullscreenElement){ try { document.exitFullscreen().catch(() => {}); } catch(e){} }
     setupRace();
     state = 'title'; countdownShown = 'x'; updateCountdown();
     $('pauseBtn').textContent = '⏸ Pause';
@@ -2941,7 +3016,10 @@
   $('startBtn').addEventListener('click', startRace);
   $('resumeBtn').addEventListener('click', e => { e.stopPropagation(); resume(); });
   $('restartBtn').addEventListener('click', e => { e.stopPropagation(); raceAgain(); });
-  $('quitBtn').addEventListener('click', e => { e.stopPropagation(); goToTitle(); });
+  $('quitBtn').addEventListener('click', e => { // Stop race: back to the menu, out of full screen, page scrolled to the top (browser bar visible)
+    e.stopPropagation(); goToTitle();
+    if (isTouch) setTimeout(() => window.scrollTo({ top:0, behavior:'smooth' }), 150);
+  });
   $('pauseOverlay').addEventListener('click', resume);
   $('againBtn').addEventListener('click', raceAgain);
   $('menuBtn').addEventListener('click', goToTitle);
@@ -3011,9 +3089,12 @@
     btn.addEventListener('contextmenu', e => e.preventDefault());
   });
   $('touchPause').addEventListener('click', () => { if (driving()) pause(); });
+  $('stopBtn').addEventListener('click', () => { if (driving()) pause(); }); // pause screen offers Resume / Restart / Stop race
   function updateTouchUI(){
     const show = isTouch && (state === 'countdown' || state === 'racing') && !driverOn(); // no buttons needed while the driver drives
-    if (show !== touchShown){ touchShown = show; $('touchUI').hidden = !show; if (!show) clearKeys(); }
+    if (show !== touchShown){ touchShown = show; $('touchUI').hidden = !show; wrap.classList.toggle('touching', show); if (!show) clearKeys(); }
+    const stop = isTouch && (state === 'countdown' || state === 'racing'); // the Stop button stays, driver or not
+    if ($('stopBtn').hidden === stop) $('stopBtn').hidden = !stop;
   }
 
   // Tilt steering: lean the phone left or right (iPhones ask for permission first)
@@ -3172,13 +3253,19 @@
       return w;
     };
     const warnOf = k => hudEls[k].parentElement.classList.contains('warn');
+    const narrow = width < 600 * res; // portrait phone: only the 4 most useful boxes fit
     let x = pad;
     x += box(x, c.posLbl, (c.pos || '') + (c.posOf || ''), false, hudEls.pos.parentElement.parentElement.classList.contains('warn')) + gap;
     x += box(x, c.lapLbl, c.lap) + gap;
-    box(x, 'Coins', c.coins || '0');
+    if (!narrow) box(x, 'Coins', c.coins || '0');
     let xr = width - pad;
-    xr -= box(xr, c.bestLbl, c.best, true, warnOf('best')) + gap;
-    xr -= box(xr, c.lapTLbl, c.lapT, true, warnOf('lapT')) + gap;
+    if (narrow){
+      const second = (prefs.mode === 'endless' || shortBoxKey() === 'lapT') ? 'lapT' : 'best';
+      xr -= box(xr, c[second + 'Lbl'], c[second], true, warnOf(second)) + gap;
+    } else {
+      xr -= box(xr, c.bestLbl, c.best, true, warnOf('best')) + gap;
+      xr -= box(xr, c.lapTLbl, c.lapT, true, warnOf('lapT')) + gap;
+    }
     box(xr, c.raceLbl, c.race, true, warnOf('race'));
 
     if (prefs.mode === 'gp' && width > 720){ // standings
@@ -3209,14 +3296,19 @@
       ctx.fillStyle = go ? '#fff' : '#ffd60a'; ctx.fillText(ban.textContent, width / 2, height * 0.24 + res);
     }
     if (driverShown){ // the hired driver's coaching box
-      const w = Math.min(width * 0.62, 440 * res), h = 66 * res, bx = width / 2 - w / 2, by = pad + bh + 8 * res;
+      const w = Math.min(width * (narrow ? 0.94 : 0.62), 440 * res), h = 66 * res, bx = width / 2 - w / 2, by = pad + bh + 8 * res;
       ctx.fillStyle = 'rgba(4,38,77,.86)'; rr(bx, by, w, h, 8 * res); ctx.fill();
       ctx.strokeStyle = '#ffd60a'; ctx.lineWidth = 1.5 * res; ctx.stroke();
       ctx.font = '800 ' + Math.round(8 * res) + 'px system-ui, Arial'; ctx.fillStyle = '#ffd60a';
       ctx.fillText('🧑‍✈️ YOUR HIRED DRIVER', width / 2, by + 9 * res);
       const chips = [['left', '◀ LEFT'], ['slower', '▼ BRAKE'], ['faster', '▲ GAS'], ['nitro', '⚡ NITRO'], ['right', 'RIGHT ▶']];
-      ctx.font = '800 ' + Math.round(7 * res) + 'px system-ui, Arial';
-      const cw = chips.map(ch => ctx.measureText(ch[1]).width + 10 * res), total = cw.reduce((a, b) => a + b, 0) + gap * (chips.length - 1);
+      let chipFont = 7, cw, total;
+      do { // shrink the buttons until the row fits inside the box
+        ctx.font = '800 ' + Math.max(5, Math.round(chipFont * res)) + 'px system-ui, Arial';
+        cw = chips.map(ch => ctx.measureText(ch[1]).width + 8 * res);
+        total = cw.reduce((a, b) => a + b, 0) + gap * (chips.length - 1);
+        chipFont -= 0.5;
+      } while (total > w - 8 * res && chipFont > 4);
       let cx = width / 2 - total / 2;
       chips.forEach((ch, i) => {
         const on = keys[ch[0]];
@@ -3312,10 +3404,14 @@
   buildBackground();
   buildTrack();
   resize();
-  if (window.ResizeObserver) new ResizeObserver(resize).observe(wrap);
+  if (window.ResizeObserver){ const ro = new ResizeObserver(resize); ro.observe(wrap); ro.observe(canvas); }
   else window.addEventListener('resize', resize);
   applyMute();
   applyHelper();
+  // Phones and tablets: show the touch-control instructions (and hide keyboard ones on phone-like screens)
+  const phoneLike = /[?&]touch\b/.test(location.search) || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+  if (isTouch){ $('hintTouch').hidden = false; $('keysTouch').hidden = false; }
+  if (phoneLike){ $('hintKeys').hidden = true; $('keysDesk').hidden = true; $('pauseText').textContent = 'Tap ▶ Resume to carry on, or ⏹ Stop race to leave.'; }
   goToTitle();
   if (demo) startRace();
   requestAnimationFrame(frame);
