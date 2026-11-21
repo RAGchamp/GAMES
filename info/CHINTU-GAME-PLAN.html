@@ -125,7 +125,7 @@
   </div>
 
   <h1 class="h3 fw-bold mb-1">🏃 Chintu: Development Plan</h1>
-  <p class="text-muted mb-3">Plan date: 20 Nov 2026 · Decisions agreed 21 Nov 2026 · Status: <strong>Phase 1 done (<a href="../GAME-2-Chintu/chintu.html">play the test run</a>) · Phase 2 next</strong></p>
+  <p class="text-muted mb-3">Plan date: 20 Nov 2026 · Decisions agreed 21 Nov 2026 · Status: <strong>Phases 1 and 2 done (<a href="../GAME-2-Chintu/chintu.html">play Worlds 1 and 2</a>) · Phase 3 next</strong></p>
 
   <div class="prompt mb-4">
     <strong>Goal:</strong> Build <code class="text-warning">GAME-2-Chintu/chintu.html</code>, a side-scrolling platform runner in the classic jump-and-run style. Chintu keeps running to the right, jumping and sliding past hurdles, stomping henchmen and collecting pages of a secret formula. The villain <strong>Dr. Andhera</strong> watches from his lair and gets more and more worried as Chintu gets closer, sending harder obstacles. The twist: the formula makes people <strong>invisible</strong>, but anyone invisible can still be seen <strong>under red light</strong>.
@@ -190,7 +190,7 @@
             <li><strong>Player-controlled running</strong> (changed 21 Nov 2026 after phone testing; it was auto-run). Chintu stands still until RUN (<kbd>→</kbd>/<kbd>D</kbd>) is held, and BACK (<kbd>←</kbd>/<kbd>A</kbd>) walks him back. Phones have BACK, RUN and JUMP buttons, with no SLIDE button. Low roofs can be crossed by jumping on top; keyboard players can still slide under with <kbd>↓</kbd>.</li>
             <li><strong>Jump physics in the classic platformer style.</strong> Hold to jump higher, a short "coyote time" after running off a ledge, and a jump buffer so that pressing just before landing still counts.</li>
             <li><strong>Double jump</strong> is unlocked in World 2.</li>
-            <li><strong>Slide</strong> under low banners, washing lines and laser beams.</li>
+            <li><strong>Slide</strong> (keyboard only, <kbd>↓</kbd>): an extra move. No stage needs it, because phones have no SLIDE button.</li>
             <li><strong>Stomp</strong> goons by landing on top of them. Running into them from the side costs a heart.</li>
             <li><strong>Bump blocks from below</strong> with a "?" on them to release laddoo coins or power-ups.</li>
           </ul>
@@ -240,7 +240,7 @@
           <thead><tr><th>World</th><th>Setting</th><th>New hurdles</th><th>Dr. Andhera</th></tr></thead>
           <tbody>
             <tr><td><strong>1</strong> · 3 stages</td><td>Village lanes: mud houses, a well, fields, a sunny sky</td><td>Potholes, carts, sleeping cows (jump over them), "?" blocks, simple gaps, slow goons</td><td>😏 Calm. Laughs it off.</td></tr>
-            <tr><td><strong>2</strong> · 3 stages</td><td>City bazaar: fruit stalls, awnings, rickshaws, washing lines</td><td>Low banners (slide), rolling fruit, moving awnings used as platforms, faster goons. Double jump unlocked.</td><td>😠 Annoyed. Sends henchmen.</td></tr>
+            <tr><td><strong>2</strong> · 3 stages</td><td>City bazaar: fruit stalls, awnings, rickshaws, washing lines</td><td>Rolling coconuts, bouncy awnings, flying carpets over wide gaps, faster goons. Double jump unlocked.</td><td>😠 Annoyed. Sends henchmen.</td></tr>
             <tr><td><strong>3</strong> · 3 stages</td><td>Rooftops at night: water tanks, neon signs, dish antennas</td><td><strong>Red searchlights</strong> and sentries, drones with red lamps, crumbling ledges, wide gaps</td><td>😰 Worried and sweating. Orders more lights.</td></tr>
             <tr><td><strong>4</strong> · 2 stages + boss</td><td>Dr. Andhera's island fortress: docks, conveyor belts, a laser hall</td><td>Laser tripwires (slide), conveyors, timed red alarms, cages that drop</td><td>😡 Furious. Comes out in person.</td></tr>
             <tr><td><strong>Boss</strong></td><td>The formula vault</td><td colspan="2">Dr. Andhera stands on a control deck with <strong>4 big red lamps</strong>. Chintu drinks a vial, runs under the lamps and jumps on the switches to break them one by one while dodging the barrels Dr. Andhera throws. Once the last lamp is broken, Dr. Andhera can no longer see him. Chintu reaches the vault, turns the key and locks the formula away. Ending cut-scene: Dr. Andhera's last angry rant as the fortress lights go out.</td></tr>
@@ -336,12 +336,13 @@
 
   <div class="card shadow-sm mb-3 phase p2">
     <div class="card-body">
-      <h2 class="h6 fw-bold">Phase 2: Hurdles, enemies and pickups</h2>
+      <h2 class="h6 fw-bold">Phase 2: Hurdles, enemies and pickups ✅ done 21 Nov 2026</h2>
       <ul>
-        <li>Hazards: potholes, carts, cows, low banners, rolling fruit, moving platforms.</li>
+        <li>Hazards: potholes, carts, sleeping cows, rolling coconuts (from coconut stalls), bouncy market awnings and flying carpets as the moving platforms. <em>Changed:</em> low banners that need a slide were dropped, because phones have no SLIDE button.</li>
         <li>Goons with stomp and side-hit rules; hearts, flashing safety time, checkpoint flags.</li>
         <li>Laddoo coins, "?" blocks, formula pages, score and HUD.</li>
-        <li>World 1 (3 stages) and World 2 (3 stages) built as text maps.</li>
+        <li>World 1 (3 stages) and World 2 (3 stages) built as text maps, put together from named level pieces.</li>
+        <li><em>Also built:</em> 3 lives (a laddoo bonus every 100), stage picker with saved progress and best scores, time and heart bonuses, game-over screen, and blocks that hold a heart or a formula page.</li>
       </ul>
       <div class="accept"><b>Done when:</b> Worlds 1 and 2 can be played from start to finish, with a stage-clear screen and score.</div>
     </div>
