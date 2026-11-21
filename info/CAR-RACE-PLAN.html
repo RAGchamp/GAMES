@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Car Race Plan</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+  :root{
+    --biz-blue:#0d6efd;
+    --biz-blue-dark:#084298;
+    --biz-yellow:#ffc107;
+    --biz-red:#dc3545;
+    --biz-green:#198754;
+    --biz-purple:#6f42c1;
+    --nav-blue:#04264d;
+    --nav-yellow:#ffd60a;
+  }
+  body{ background:#f7f8fa; margin:0; }
+
+  .topnav{
+    position:sticky; top:0; z-index:1030;
+    background:var(--nav-blue); color:var(--nav-yellow);
+    padding:.9rem 1.5rem; display:flex; justify-content:space-between; align-items:center;
+    box-shadow:0 .15rem .5rem rgba(0,0,0,.25);
+  }
+  .topnav .brand{ display:inline-flex; align-items:center; text-decoration:none; }
+  .topnav .brand-logo{ height:44px; width:auto; display:block; }
+  .topnav .tagline{
+    font-weight:600; font-size:1.05rem; color:var(--nav-yellow);
+    letter-spacing:.15em; word-spacing:.6em; font-style:italic;
+  }
+  @media (max-width:576px){
+    .topnav{ flex-direction:column; text-align:center; gap:.4rem; padding:.75rem 1rem; }
+  }
+
+  .step-num{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:1.9rem; height:1.9rem; border-radius:50%;
+    background:var(--biz-yellow); color:#2b2b2b; font-weight:800; font-size:.95rem; margin-right:.55rem; flex:none;
+  }
+  .step-title{ display:flex; align-items:center; font-weight:700; font-size:1.1rem; margin-bottom:.75rem; }
+  .step-card{ border:2px solid #c9d3e3; border-radius:.6rem; }
+  .ctrl-label{ font-size:.75rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#6c757d; margin-bottom:.25rem; display:block; }
+  .stat-pill{ background:#eef3fb; border-radius:2rem; padding:.2rem .7rem; font-size:.8rem; font-weight:600; display:inline-block; margin:.15rem .2rem .15rem 0; }
+
+  .prompt{
+    background:linear-gradient(120deg,var(--biz-blue-dark),var(--biz-blue)); color:#fff;
+    border-radius:.6rem; padding:.9rem 1.1rem; font-size:1.02rem;
+  }
+
+  .about-box{ background:#fde2ec; border:2px solid #f5a3c0; border-radius:.6rem; padding:.9rem 1.1rem; }
+  .about-box h2{ font-size:1.05rem; font-weight:700; color:#8a1f4a; margin-bottom:.4rem; }
+  .about-box p{ font-size:.92rem; color:#3b2a31; }
+
+  .now-box{ display:flex; gap:.75rem; flex-wrap:wrap; }
+  .now-card{ flex:1 1 220px; background:#fff; border:2px solid #dde3ec; border-radius:.6rem; padding:.7rem .9rem; }
+  .now-card.now{ border-color:#c79100; background:#fff8e1; }
+  .now-card .lbl{ font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#6c757d; }
+  .now-card .val{ font-size:1.15rem; font-weight:800; line-height:1.25; margin:.15rem 0 .25rem; }
+  .now-card .det{ font-size:.86rem; color:#5a6475; }
+
+  .phase{ border-left:5px solid var(--biz-blue); }
+  .phase.p2{ border-left-color:var(--biz-green); }
+  .phase.p3{ border-left-color:var(--biz-purple); }
+  .phase.p4{ border-left-color:#c79100; }
+  .phase.p5{ border-left-color:var(--biz-red); }
+  .phase ul{ margin-bottom:.4rem; }
+  .accept{ background:#eefaf3; border:1px solid #bfe3cf; border-radius:.45rem; padding:.5rem .75rem; font-size:.88rem; }
+  .accept b{ color:var(--biz-green); }
+
+  table.plan th{ background:#eef3fb; font-size:.8rem; text-transform:uppercase; letter-spacing:.04em; }
+  table.plan td, table.plan th{ font-size:.9rem; vertical-align:top; }
+  .tag-new{ background:var(--biz-green); color:#fff; border-radius:.3rem; padding:0 .35rem; font-size:.7rem; font-weight:700; }
+  .tag-fix{ background:var(--biz-red); color:#fff; border-radius:.3rem; padding:0 .35rem; font-size:.7rem; font-weight:700; }
+  .tag-keep{ background:#6c757d; color:#fff; border-radius:.3rem; padding:0 .35rem; font-size:.7rem; font-weight:700; }
+
+  pre.tree{ background:#0f1b2d; color:#d7e3f4; border-radius:.5rem; padding:.9rem 1rem; font-size:.85rem; margin:0; }
+  pre.tree .c{ color:#ffd60a; }
+
+  .mock{ border:2px dashed #c9d3e3; border-radius:.6rem; background:#fff; padding:.75rem; }
+  .mock .mnav{ background:var(--nav-blue); color:var(--nav-yellow); border-radius:.35rem; padding:.35rem .6rem; font-size:.8rem; font-weight:700; }
+  .mock .mpink{ background:#fde2ec; border:1px solid #f5a3c0; border-radius:.35rem; padding:.35rem .6rem; font-size:.78rem; color:#8a1f4a; margin:.5rem 0; }
+  .mock .mcard{ border:2px solid #c9d3e3; border-radius:.45rem; padding:.5rem; font-size:.8rem; text-align:center; background:#f9fbfe; height:100%; }
+  .mock .mcard.live{ border-color:#c79100; background:#fff8e1; }
+  .mock .mfoot{ background:var(--nav-blue); color:#fff; border-radius:.35rem; padding:.3rem .6rem; font-size:.75rem; text-align:center; margin-top:.5rem; }
+
+  footer{ background:var(--nav-blue); }
+  footer a{ color:#fff; }
+  kbd{ background:#04264d; }
+</style>
+</head>
+<body>
+
+<!-- STICKY TOP NAV -->
+<div class="topnav">
+  <a class="brand" href="../index.html"><img class="brand-logo" src="../logo.svg" alt="RAG Champ"></a>
+  <div class="tagline">AI Games Portal</div>
+</div>
+
+<main class="container my-4">
+
+  <!-- How AI plays a part (pink box) -->
+  <div class="about-box mb-4">
+    <h2>What is this plan and how does AI play a part?</h2>
+    <p class="mb-0">This page is the build plan for <strong>Game 1: Car Race</strong>, the first game in the RAG Champ Games portal. The portal shows how an AI coding agent (Claude Code) can take a small open-source HTML/JavaScript example, read and understand it, fix its bugs and turn it into a richer game, using nothing but one HTML file and plain JavaScript. No frameworks, no build step, no server. <strong>PLEASE NOTE: players don't need any AI to play the games.</strong> The AI is used only to write the code.</p>
+  </div>
+
+  <h1 class="h3 fw-bold mb-1">🏎️ Car Race: Development Plan</h1>
+  <p class="text-muted mb-3">Plan date: 20 Nov 2026 · Status: <strong>Phases 1–4 and extras done · portal done · explainer page next</strong> · Coast Highway shortened by 30% so a 3-lap race takes about 4–5 minutes</p>
+
+  <div class="prompt mb-4">
+    <strong>Goal:</strong> Build <code class="text-warning">GAME1-CAR-RACE/car-race.html</code>, a pseudo-3D arcade racer that keeps the smooth road engine of the original example, but adds a real race (rivals, laps, positions), nitro, pickups, crashes, day/night themes, sound effects, touch controls and a start / results screen. Then build <code class="text-warning">GAMES/index.html</code>, the portal that showcases it.
+  </div>
+
+  <!-- 1. Deliverables -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">1</span>Deliverables and folder layout</div>
+      <div class="row g-3">
+        <div class="col-lg-6">
+<pre class="tree">C:\Daya\RAGchamp\GAMES\
+├── index.html            <span class="c">← games portal (Phase 5)</span>
+├── logo.svg              <span class="c">← copied from MUSIC (done)</span>
+├── GAME1-CAR-RACE\
+│   └── car-race.html     <span class="c">← the game, one self-contained file</span>
+└── info\
+    ├── CAR-RACE-PLAN.html     <span class="c">← this page</span>
+    └── HOW-CAR-RACE-WORKS.html <span class="c">← "Learn more" page (Phase 5)</span></pre>
+        </div>
+        <div class="col-lg-6">
+          <ul class="mb-2">
+            <li><strong>One file per game.</strong> HTML, CSS and JavaScript all inline. Opens with a double-click (<code>file:///</code>), with no server needed.</li>
+            <li><strong>No image files.</strong> The original needs two PNG sprite sheets. We draw cars, trees, signs and sky with the Canvas API instead. This removes a "stuck on Loading…" failure and keeps the file portable.</li>
+            <li><strong>No external scripts</strong> in the game itself. Only the portal and info pages use Bootstrap from the CDN, to match the Music site.</li>
+            <li><strong>Same look as the Music site:</strong> navy sticky top nav with the logo, pink "how AI plays a part" box, yellow numbered step cards and a navy footer.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Starting point -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">2</span>Starting point: what the original example does</div>
+      <p class="mb-2">Source: <a href="https://flathtml.github.io/800Examples/234-car-race.html" target="_blank" rel="noopener">234-car-race.html</a> (<a href="https://flathtml.github.io/800Examples/234-car-race.txt" target="_blank" rel="noopener">source</a>). It is "Javascript Racer v4 (final)", an open-source pseudo-3D racer in the style of classic arcade road games. It is a <strong>driving demo</strong>, not yet a game.</p>
+      <div class="now-box mb-3">
+        <div class="now-card">
+          <div class="lbl">Rendering</div>
+          <div class="val">Canvas 2D, pseudo-3D</div>
+          <div class="det">Road segments projected as trapezoids, with rumble strips, lane lines, fog and 3 parallax layers (sky, hills, trees). Draws 300 segments ahead.</div>
+        </div>
+        <div class="now-card">
+          <div class="lbl">Game loop</div>
+          <div class="val">Fixed 1/60 s step</div>
+          <div class="det">An accumulator runs <code>update(step)</code>, then <code>render()</code> once per animation frame. This is solid and worth keeping.</div>
+        </div>
+        <div class="now-card">
+          <div class="lbl">Traffic</div>
+          <div class="val">200 cars, simple AI</div>
+          <div class="det">Each car has a constant speed (3,000 to 9,000) and steers around slower cars and the player 20 segments ahead.</div>
+        </div>
+        <div class="now-card">
+          <div class="lbl">Goal / scoring</div>
+          <div class="val">Lap times only</div>
+          <div class="det">No score, no opponents to beat, no game over, no restart. The fastest lap is saved in localStorage.</div>
+        </div>
+      </div>
+      <span class="ctrl-label">Key tuning values (kept as defaults)</span>
+      <span class="stat-pill">roadWidth 2000</span><span class="stat-pill">segmentLength 200</span><span class="stat-pill">lanes 3</span><span class="stat-pill">FOV 100</span><span class="stat-pill">cameraHeight 1000</span><span class="stat-pill">drawDistance 300</span><span class="stat-pill">centrifugal 0.3</span><span class="stat-pill">maxSpeed 12000</span><span class="stat-pill">accel = max/5</span><span class="stat-pill">off-road limit = max/4</span>
+      <p class="small text-muted mt-2 mb-0">Road builder helpers we will reuse: <code>addRoad, addStraight, addHill, addCurve, addSCurves, addBumps, addLowRollingHills, addDownhillToEnd</code>. Helpers: <code>Util.project, Util.overlap, easeIn/Out, exponentialFog</code>.</p>
+    </div>
+  </div>
+
+  <!-- 3. Fixes -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">3</span>Problems in the original we will fix</div>
+      <div class="table-responsive">
+        <table class="table table-sm plan mb-0">
+          <thead><tr><th>#</th><th>Problem</th><th>Fix</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>Needs 2 PNG sprite sheets; if one fails to load the game stays on "Loading…" forever</td><td>Draw everything procedurally on canvas. No assets to load.</td></tr>
+            <tr><td>2</td><td>Keys use deprecated <code>keyCode</code>; a missed key-up (e.g. tab switch) leaves the car steering</td><td>Use <code>event.code</code>, clear all keys on window <code>blur</code>, auto-pause when the tab is hidden.</td></tr>
+            <tr><td>3</td><td>Undeclared <code>index</code> variable in <code>updateCars</code> (accidental global)</td><td>Declare locally; run the whole script in <code>'use strict'</code>.</td></tr>
+            <tr><td>4</td><td><code>offRoadDecel</code> declared twice; dead code; duplicate <code>id="fps"</code></td><td>Remove dead code and the Stats FPS widget (optional debug toggle instead).</td></tr>
+            <tr><td>5</td><td>Music autoplays without a user gesture (blocked by browsers, unhandled promise)</td><td>Start all audio from the "Start race" click using the Web Audio API.</td></tr>
+            <tr><td>6</td><td>Traffic ignores lanes; the lanes setting only changes the painted lines</td><td>Rivals and traffic pick lanes and change lanes on purpose.</td></tr>
+            <tr><td>7</td><td>Speed shown as <code>5 × round(speed/500)</code>, not a real unit</td><td>Show a scaled km/h value (0 to 300) on an arc speedometer.</td></tr>
+            <tr><td>8</td><td>First lap is not recorded; lap time stored as a string</td><td>Start the clock at "GO!", store numbers, show lap splits.</td></tr>
+            <tr><td>9</td><td>Old Google Analytics snippet and developer tuning panel</td><td>Remove analytics. Hide the tuning sliders behind a "Settings" drawer.</td></tr>
+            <tr><td>10</td><td>Fixed 640×480 canvas, no phone support</td><td>Responsive canvas (keeps 4:3 or 16:9), on-screen touch pedals and tilt steering.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Features -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">4</span>What makes it "more interesting": the feature list</div>
+      <div class="table-responsive">
+        <table class="table table-sm plan mb-0">
+          <thead><tr><th style="width:9rem">Area</th><th>Feature</th><th style="width:6rem">Priority</th></tr></thead>
+          <tbody>
+            <tr><td><span class="tag-keep">KEEP</span> Engine</td><td>Pseudo-3D road, hills, curves, fog, parallax, fixed-step loop, centrifugal drift on curves, off-road slowdown.</td><td>Must</td></tr>
+            <tr><td><span class="tag-new">NEW</span> Game modes</td><td><strong>Grand Prix:</strong> 3 laps against 7 named rival cars; finish position 1st to 8th.<br><strong>Time Attack:</strong> a countdown clock; passing each checkpoint adds seconds; run out and it's over.<br><strong>Endless Traffic:</strong> dodge ever-faster traffic; score = distance + near-misses.</td><td>Must (GP), Should (others)</td></tr>
+            <tr><td><span class="tag-new">NEW</span> Rivals AI</td><td>Rivals have a skill rating (top speed, cornering, aggression). They follow a racing line, overtake, block and slow on tight curves. Live position shown as "P3 / 8".</td><td>Must</td></tr>
+            <tr><td><span class="tag-new">NEW</span> Nitro</td><td>Press <kbd>Space</kbd> or <kbd>Shift</kbd> for a 2-second boost to 125% top speed. A nitro bar refills with pickups and clean driving. Speed lines and wider FOV during boost.</td><td>Must</td></tr>
+            <tr><td><span class="tag-new">NEW</span> Pickups</td><td>Coins (score), nitro cans (refill) and repair spanners, placed in lanes along the track.</td><td>Should</td></tr>
+            <tr><td><span class="tag-new">NEW</span> Crashes and damage</td><td>Hitting traffic or roadside objects: screen shake, spin-out, speed loss and damage. 3 hearts in Endless mode; game over at 0.</td><td>Must</td></tr>
+            <tr><td><span class="tag-new">NEW</span> Tracks and themes</td><td>3 tracks built with the road helpers: <em>Coast Highway</em> (sunny, palms), <em>Desert Canyon</em> (sunset, rocks, big hills), <em>Neon City</em> (night, street lamps, headlights).</td><td>Must (1 track), Should (3)</td></tr>
+            <tr><td><span class="tag-new">NEW</span> Weather</td><td>Optional rain: streaks, thicker fog and less grip.</td><td>Could</td></tr>
+            <tr><td><span class="tag-new">NEW</span> Sound (Web Audio)</td><td>Engine hum whose pitch follows speed and gear, tyre screech on hard curves, crash thud, coin chime, nitro whoosh, countdown beeps. One mute button, saved.</td><td>Must</td></tr>
+            <tr><td><span class="tag-new">NEW</span> Screens</td><td>Title screen (mode, track, car colour, difficulty), 3-2-1-GO countdown, pause (<kbd>P</kbd> / <kbd>Esc</kbd>), results screen (position, best lap, coins, "Race again").</td><td>Must</td></tr>
+            <tr><td><span class="tag-new">NEW</span> HUD</td><td>Arc speedometer, lap X/3, position, current / best lap, nitro bar, mini-map of track progress showing all cars as dots.</td><td>Must</td></tr>
+            <tr><td><span class="tag-new">NEW</span> Leaderboard</td><td>Top 5 local scores and best lap per track, kept in <code>localStorage</code> (wrapped in try/catch), with initials entry.</td><td>Should</td></tr>
+            <tr><td><span class="tag-new">NEW</span> Controls</td><td>Keyboard (arrows / WASD), touch (left/right halves + on-screen gas, brake, nitro), optional phone tilt, gamepad.</td><td>Must (keys + touch), Could (tilt, gamepad)</td></tr>
+            <tr><td><span class="tag-new">NEW</span> Difficulty</td><td>Easy / Normal / Hard changes rival speed, traffic density and Time Attack bonus seconds.</td><td>Should</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. Architecture -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">5</span>Code structure inside car-race.html</div>
+      <p class="mb-2">One file, organised into clearly commented sections so readers can follow how the AI built it:</p>
+      <div class="row g-2">
+        <div class="col-md-6">
+          <ol class="mb-0">
+            <li><strong>CONFIG</strong>: all tuning constants in one object.</li>
+            <li><strong>UTIL</strong>: maths, easing, projection, overlap (from the original).</li>
+            <li><strong>INPUT</strong>: keyboard, touch, gamepad → one <code>controls</code> object.</li>
+            <li><strong>AUDIO</strong>: Web Audio context, engine oscillator, synthesised effects.</li>
+            <li><strong>TRACKS</strong>: road builder plus 3 track recipes and themes (colours, scenery list).</li>
+            <li><strong>SPRITES</strong>: procedural drawing functions (car, truck, palm, cactus, rock, lamp, sign, coin), cached to off-screen canvases once at start.</li>
+          </ol>
+        </div>
+        <div class="col-md-6">
+          <ol class="mb-0" start="7">
+            <li><strong>ENTITIES</strong>: player, rivals, traffic, pickups.</li>
+            <li><strong>PHYSICS</strong>: speed, steering, centrifugal force, off-road, collisions, nitro, damage.</li>
+            <li><strong>RACE</strong>: laps, checkpoints, positions, timers and the mode rules.</li>
+            <li><strong>RENDER</strong>: background, road, sprites back-to-front, effects (shake, speed lines, rain).</li>
+            <li><strong>HUD and SCREENS</strong>: canvas HUD; HTML overlays for title, pause and results.</li>
+            <li><strong>STATE MACHINE</strong>: <code>title → countdown → racing ⇄ paused → results</code>.</li>
+          </ol>
+        </div>
+      </div>
+      <p class="small text-muted mt-2 mb-0">Performance target: steady 60 fps on a mid-range laptop and phone. Sprites are drawn once to off-screen canvases and then blitted. The canvas renders at device pixel ratio, capped at 2.</p>
+    </div>
+  </div>
+
+  <!-- 6. Phases -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">6</span>Build phases</div>
+
+      <div class="card phase mb-3"><div class="card-body">
+        <h2 class="h6 fw-bold">Phase 1: Port and clean up the engine <span class="badge bg-success ms-1">✅ Done 20 Nov 2026</span> <a class="small ms-1" href="../GAME1-CAR-RACE/car-race.html">Play it →</a></h2>
+        <ul>
+          <li>Rewrite the original engine into the section layout above, in strict mode, with the fixes from Step 3.</li>
+          <li>Replace sprite sheets with procedural drawings: player car (rear view, 3 steer poses), 4 traffic types, trees, rocks, signs, sky gradient, hills.</li>
+          <li>Responsive canvas, keyboard input with blur handling, pause.</li>
+        </ul>
+        <div class="accept"><b>Done when:</b> the file opens from <code>file:///</code> with no console errors, you can drive a full lap at 60 fps, and no image or network request is made.</div>
+      </div></div>
+
+      <div class="card phase p2 mb-3"><div class="card-body">
+        <h2 class="h6 fw-bold">Phase 2: Make it a race <span class="badge bg-success ms-1">✅ Done 20 Nov 2026</span> <a class="small ms-1" href="../GAME1-CAR-RACE/car-race.html">Play it →</a></h2>
+        <ul>
+          <li>Title screen, 3-2-1-GO countdown, lap counter, results screen, "Race again".</li>
+          <li>Seven rivals with skill ratings and lane-aware AI; live positions; finishing order.</li>
+          <li>Crash handling (spin-out, shake, speed loss); nitro with bar.</li>
+          <li>HUD: speedometer, position, laps, lap times, nitro, mini-map.</li>
+        </ul>
+        <div class="accept"><b>Done when:</b> a 3-lap Grand Prix can be won or lost, the position updates correctly when overtaking, and results show the right order.</div>
+      </div></div>
+
+      <div class="card phase p3 mb-3"><div class="card-body">
+        <h2 class="h6 fw-bold">Phase 3: Sound, pickups and polish <span class="badge bg-success ms-1">✅ Done 20 Nov 2026</span> <a class="small ms-1" href="../GAME1-CAR-RACE/car-race.html">Play it →</a></h2>
+        <ul>
+          <li>Web Audio engine and effects, mute toggle.</li>
+          <li>Coins, nitro cans and repairs; score.</li>
+          <li>Speed lines, headlights at night, tyre smoke on drifts. <em>(Headlights move to Phase 4 with the Neon City night track. Phase 3 also added crash damage that lowers top speed, repaired by 🔧 spanners, and a score: position bonus + coins.)</em></li>
+        </ul>
+        <div class="accept"><b>Done when:</b> sound starts only after the first click, never errors, and mute is remembered between visits.</div>
+      </div></div>
+
+      <div class="card phase p4 mb-3"><div class="card-body">
+        <h2 class="h6 fw-bold">Phase 4: More content and devices <span class="badge bg-success ms-1">✅ Done 20 Nov 2026</span> <a class="small ms-1" href="../GAME1-CAR-RACE/car-race.html">Play it →</a></h2>
+        <ul>
+          <li>Desert Canyon and Neon City tracks; optional rain.</li>
+          <li>Time Attack and Endless Traffic modes; difficulty levels.</li>
+          <li>Touch pedals, optional tilt and gamepad; local leaderboard. <em>(Also: night headlights, tail-light and street-lamp glows on Neon City; tapping Start goes full screen on phones where the browser allows it.)</em></li>
+        </ul>
+        <div class="accept"><b>Done when:</b> every mode and track plays end to end on a laptop and on a phone in portrait and landscape.</div>
+      </div></div>
+
+      <div class="card phase p4 mb-3" style="border-left-color:#0d9488"><div class="card-body">
+        <h2 class="h6 fw-bold">Extras (requested after Phase 4) <span class="badge bg-success ms-1">✅ Done 20 Nov 2026</span></h2>
+        <ul>
+          <li><strong>🧑‍✈️ Hire a driver:</strong> a computer driver races your car while a coaching box at the top shows which controls it is pressing, what it is doing and why, plus a driving tip. Press <kbd>H</kbd> to take over or hand back. Driver-assisted races are not added to the top 5.</li>
+          <li><strong>🎥 Record video:</strong> records the game picture and sound with the browser's MediaRecorder and offers a <em>Download video</em> button (.webm in Chrome, Edge and Firefox). Tick it on the title screen to film each race automatically, or use the toolbar button at any time. The HUD is drawn into the video.</li>
+          <li><strong>Race length:</strong> <em>Short</em> stops exactly 3 minutes after GO (in the Grand Prix the order at that moment is the result); <em>Long</em> is the full 3 laps (no limit in Time Attack and Endless). Short and Long keep separate top-5 lists.</li>
+        </ul>
+      </div></div>
+
+      <div class="card phase p5 mb-0"><div class="card-body">
+        <h2 class="h6 fw-bold">Phase 5: Games portal and explainer <span class="badge bg-warning text-dark ms-1">Portal ✅ done 20 Nov 2026 · explainer next</span> <a class="small ms-1" href="../index.html">Open the portal →</a></h2>
+        <ul>
+          <li><code>GAMES/index.html</code>: same nav, pink box, cards and footer as the Music site (see mock-up below).</li>
+          <li><code>info/HOW-CAR-RACE-WORKS.html</code>: how the pseudo-3D road works (with a diagram) and what the AI changed compared with the original.</li>
+          <li>No links from the Music site or Site Map yet (decided). Add them once the portal is ready.</li>
+        </ul>
+        <div class="accept"><b>Done when:</b> the portal opens the game, every link works, and the page reads well at phone width.</div>
+      </div></div>
+    </div>
+  </div>
+
+  <!-- 7. Portal mock -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">7</span>Portal (index.html) layout</div>
+      <div class="mock">
+        <div class="mnav d-flex justify-content-between"><span>RAG Champ logo</span><span><em>AI Games Portal</em></span></div>
+        <div class="mpink"><strong>How these games were made and how AI plays a part?</strong> Each game is one HTML file written with Claude Code… <u>Learn more →</u></div>
+        <div class="row g-2">
+          <div class="col-6 col-md-3"><div class="mcard live">🏎️<br><strong>Car Race</strong><br>Grand Prix · Time Attack · Endless<br><span class="badge bg-warning text-dark mt-1">▶ Play</span></div></div>
+          <div class="col-6 col-md-3"><div class="mcard">🎮<br><strong>Game 2</strong><br><span class="text-muted">Coming soon</span></div></div>
+          <div class="col-6 col-md-3"><div class="mcard">🎮<br><strong>Game 3</strong><br><span class="text-muted">Coming soon</span></div></div>
+          <div class="col-6 col-md-3"><div class="mcard">🎮<br><strong>Game 4</strong><br><span class="text-muted">Coming soon</span></div></div>
+        </div>
+        <div class="mfoot">AI Games Portal · 📋 Plans · 🎵 Music site · ✉️ Contact Us · 🏠 Home</div>
+      </div>
+      <p class="small text-muted mt-2 mb-0">Each card shows an animated canvas preview or a screenshot, the controls and a "Plan" link to this kind of info page. Games are listed from one small JavaScript array, so adding Game 2 is a one-line change.</p>
+    </div>
+  </div>
+
+  <!-- 8. Controls -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">8</span>Controls</div>
+      <div class="table-responsive">
+        <table class="table table-sm plan mb-0">
+          <thead><tr><th>Action</th><th>Keyboard</th><th>Touch</th></tr></thead>
+          <tbody>
+            <tr><td>Steer</td><td><kbd>←</kbd> <kbd>→</kbd> or <kbd>A</kbd> <kbd>D</kbd></td><td>Hold left / right side of the screen (or tilt)</td></tr>
+            <tr><td>Accelerate</td><td><kbd>↑</kbd> or <kbd>W</kbd></td><td>Gas pedal (bottom right)</td></tr>
+            <tr><td>Brake</td><td><kbd>↓</kbd> or <kbd>S</kbd></td><td>Brake pedal (bottom left)</td></tr>
+            <tr><td>Nitro</td><td><kbd>Space</kbd> or <kbd>Shift</kbd></td><td>⚡ button</td></tr>
+            <tr><td>Pause</td><td><kbd>P</kbd> or <kbd>Esc</kbd></td><td>⏸ button</td></tr>
+            <tr><td>Mute</td><td><kbd>M</kbd></td><td>🔊 button</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 9. Testing -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">9</span>Test checklist</div>
+      <div class="row">
+        <div class="col-md-6">
+          <ul class="mb-0">
+            <li>Opens from <code>file:///</code> in Chrome, Edge and Firefox; no console errors.</li>
+            <li>60 fps on a laptop; playable (30+ fps) on a phone.</li>
+            <li>Switching tabs pauses the game; no stuck keys afterwards.</li>
+            <li>Lap counting is right on every lap, including the first.</li>
+          </ul>
+        </div>
+        <div class="col-md-6">
+          <ul class="mb-0">
+            <li>Positions are correct when lapping or being lapped.</li>
+            <li>Game still works in a private window (localStorage blocked).</li>
+            <li>Resizing or rotating the phone keeps the canvas sharp and centred.</li>
+            <li>Mute works and is remembered; no sound before the first click.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 10. Decisions -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">10</span>Decisions (agreed 20 Nov 2026) and credits</div>
+      <ul>
+        <li><strong>Art style: drawn in code.</strong> Cars, scenery and sky are procedural canvas drawings, with no image files.</li>
+        <li><strong>Version 1 scope: up to Phase 3.</strong> A Grand Prix on one track with nitro, crashes, pickups and sound. Phases 4 and 5 follow.</li>
+        <li><strong>Music: sound effects only.</strong> Engine, screech, crash, coin and nitro sounds are synthesised with Web Audio. No background music.</li>
+        <li><strong>Portal links: none for now.</strong> The Games portal stays standalone and is not linked from the Music site or Site Map until it is ready.</li>
+        <li><strong>Credits:</strong> the road engine is based on the open-source "Javascript Racer" by Jake Gordon (MIT licence), as republished in the flathtml 800 Examples collection. The game file and the info page will keep that credit and licence notice.</li>
+      </ul>
+    </div>
+  </div>
+
+</main>
+
+<footer class="text-white py-4 mt-5">
+  <div class="container text-center small">AI Games Portal · Car Race plan · <a href="../GAME1-CAR-RACE/car-race.html">🏎️ Car Race</a> · <a href="../index.html">🏠 Games Home</a></div>
+</footer>
+
+</body>
+</html>

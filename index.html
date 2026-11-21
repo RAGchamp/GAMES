@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Games Portal</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+  :root{
+    --biz-blue:#0d6efd;
+    --biz-blue-dark:#084298;
+    --biz-yellow:#ffc107;
+    --biz-red:#dc3545;
+    --biz-green:#198754;
+    --biz-purple:#6f42c1;
+    --nav-blue:#04264d;
+    --nav-yellow:#ffd60a;
+  }
+  body{ background:#f7f8fa; margin:0; }
+
+  /* Sticky top nav: same as the Music site */
+  .topnav{
+    position:sticky; top:0; z-index:1030;
+    background:var(--nav-blue); color:var(--nav-yellow);
+    padding:.9rem 1.5rem; display:flex; justify-content:space-between; align-items:center;
+    box-shadow:0 .15rem .5rem rgba(0,0,0,.25);
+  }
+  .topnav .brand{ display:inline-flex; align-items:center; text-decoration:none; }
+  .topnav .brand-logo{ height:44px; width:auto; display:block; }
+  .topnav .tagline{
+    font-weight:600; font-size:1.05rem; color:var(--nav-yellow);
+    letter-spacing:.15em; word-spacing:.6em; font-style:italic;
+  }
+  @media (max-width:576px){
+    .topnav{ flex-direction:column; text-align:center; gap:.4rem; padding:.75rem 1rem; }
+  }
+
+  /* Pink "how AI plays a part" box */
+  .about-box{ background:#fde2ec; border:2px solid #f5a3c0; border-radius:.6rem; padding:.9rem 1.1rem; }
+  .about-box h2{ font-size:1.05rem; font-weight:700; color:#8a1f4a; margin-bottom:.4rem; }
+  .about-box p{ font-size:.92rem; color:#3b2a31; }
+  .about-box a{ color:#b0185a; font-weight:700; }
+
+  .step-num{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:1.9rem; height:1.9rem; border-radius:50%;
+    background:var(--biz-yellow); color:#2b2b2b; font-weight:800; font-size:.95rem; margin-right:.55rem; flex:none;
+  }
+  .step-title{ display:flex; align-items:center; font-weight:700; font-size:1.1rem; margin-bottom:.6rem; }
+  .step-card{ border:2px solid #c9d3e3; border-radius:.6rem; }
+
+  /* Featured game */
+  .feature{ border:3px solid #c79100; border-radius:.8rem; background:#fff8e1; overflow:hidden; }
+  .preview{
+    position:relative; aspect-ratio:16/9; background:#0b1b33; border-radius:.6rem; overflow:hidden;
+    border:3px solid var(--nav-blue); box-shadow:0 .4rem 1rem rgba(4,38,77,.25);
+  }
+  .preview iframe{ position:absolute; inset:0; width:100%; height:100%; border:0; pointer-events:none; }
+  .preview .live{
+    position:absolute; left:.6rem; bottom:.6rem; background:rgba(4,38,77,.85); color:var(--nav-yellow);
+    font-size:.72rem; font-weight:800; letter-spacing:.06em; padding:.2rem .6rem; border-radius:2rem;
+  }
+  .preview .live::before{ content:'●'; color:#ef4444; margin-right:.35rem; }
+  .preview a.cover{ position:absolute; inset:0; z-index:2; }
+  .preview .poster{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:.4rem;
+    color:#fff; background:linear-gradient(160deg,#1e6fd9,#0b1b33); font-weight:800; text-align:center; padding:1rem;
+  }
+  .preview .poster .big{ font-size:3rem; line-height:1; }
+  .btn-play{
+    background:var(--nav-blue); color:var(--nav-yellow); border:3px solid var(--nav-yellow); border-radius:2rem;
+    font-weight:800; font-size:1.15rem; padding:.55rem 1.8rem;
+  }
+  .btn-play:hover{ background:#0a3a73; color:var(--nav-yellow); }
+  .btn-soft{ border:2px solid var(--nav-blue); color:var(--nav-blue); border-radius:2rem; font-weight:700; }
+  .btn-soft:hover{ background:var(--nav-blue); color:#fff; }
+  .chip{
+    display:inline-flex; align-items:center; gap:.3rem; background:#fff; border:2px solid #dde3ec; border-radius:2rem;
+    padding:.18rem .65rem; font-size:.8rem; font-weight:700; margin:.15rem .2rem .15rem 0; color:#273449;
+  }
+  .stat{ background:#fff; border:2px solid #dde3ec; border-radius:.6rem; padding:.5rem .7rem; text-align:center; height:100%; }
+  .stat .val{ font-size:1.35rem; font-weight:800; color:var(--nav-blue); line-height:1.1; }
+  .stat .lbl{ font-size:.68rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#6c757d; }
+
+  /* Game cards */
+  .game-card{ border:2px solid #c9d3e3; border-radius:.7rem; background:#fff; height:100%; transition:transform .12s, box-shadow .12s; }
+  .game-card.live{ border-color:#c79100; background:#fff8e1; }
+  .game-card.live:hover{ transform:translateY(-3px); box-shadow:0 .5rem 1rem rgba(0,0,0,.12); }
+  .game-card .icon{ font-size:2.4rem; line-height:1; }
+  .game-card.soon{ opacity:.75; border-style:dashed; }
+  .badge-soon{ background:#e9ecef; color:#6c757d; }
+
+  .scores td, .scores th{ font-size:.85rem; }
+  .scores th{ background:#eef3fb; font-size:.72rem; text-transform:uppercase; letter-spacing:.04em; }
+
+  footer{ background:var(--nav-blue); }
+  footer a{ color:#fff; }
+</style>
+</head>
+<body>
+
+<!-- STICKY TOP NAV -->
+<div class="topnav">
+  <a class="brand" href="index.html"><img class="brand-logo" src="logo.svg" alt="RAG Champ"></a>
+  <div class="tagline">AI Games Portal</div>
+</div>
+
+<main class="container my-4">
+
+  <!-- How AI plays a part (pink box) -->
+  <div class="about-box mb-4">
+    <h2>How these games were made and how AI plays a part?</h2>
+    <p class="mb-1">Every game here is <strong>one HTML file with plain JavaScript</strong>: no frameworks, no image files, no sound files and no server. Claude Code, an AI coding agent, takes a small open-source example, reads and understands it, fixes its bugs and builds it into a full game in planned phases, testing each phase in a real browser as it goes. All the art is drawn with canvas code and all the sound is generated by the browser. <strong>PLEASE NOTE: You don't need any AI to play.</strong> The AI is used only to write the code.</p>
+    <a href="info/CAR-RACE-PLAN.html">Learn more: see the Car Race build plan →</a>
+  </div>
+
+  <h1 class="h3 fw-bold mb-1">🎮 AI Games</h1>
+  <p class="text-muted mb-4">Favourite game ideas, built with AI using just HTML and JavaScript. Click a game to play it in your browser.</p>
+
+  <!-- FEATURED: CAR RACE -->
+  <div class="feature p-3 p-md-4 mb-4">
+    <div class="row g-4 align-items-center">
+      <div class="col-lg-7">
+        <div class="preview" id="preview">
+          <!-- The live preview is the real game in its self-driving demo mode (silent, no input) -->
+          <a class="cover" href="GAME1-CAR-RACE/car-race.html" aria-label="Play Car Race"></a>
+          <div class="poster" id="poster"><div class="big">🏎️</div>Car Race<div class="small fw-normal">Loading the live preview…</div></div>
+          <span class="live">LIVE PREVIEW · SELF-DRIVING</span>
+        </div>
+      </div>
+      <div class="col-lg-5">
+        <div class="d-flex align-items-center gap-2 mb-1">
+          <span class="badge text-bg-warning">Game 1</span>
+          <span class="badge text-bg-success">Playable now</span>
+        </div>
+        <h2 class="h2 fw-bold mb-1">🏎️ Car Race</h2>
+        <p class="mb-2">A pseudo-3D arcade racer in the style of classic road racing games. Race 7 rivals over 3 laps, beat the clock, or survive endless traffic. Grab coins and nitro, and don't crash!</p>
+        <div class="mb-3">
+          <span class="chip">🌴🏜️🌃 3 tracks</span><span class="chip">🏁 Grand Prix</span><span class="chip">⏱ Time Attack</span>
+          <span class="chip">♾️ Endless</span><span class="chip">🌧 Rain</span><span class="chip">🌙 Night race</span>
+          <span class="chip">🧑‍✈️ Hire a driver</span><span class="chip">🎥 Record video</span><span class="chip">⏱ Short 3-min races</span>
+          <span class="chip">📱 Touch &amp; tilt</span><span class="chip">🎮 Gamepad</span><span class="chip">🏆 Top-5 scores</span>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+          <a class="btn btn-play" href="GAME1-CAR-RACE/car-race.html">▶ Play Car Race</a>
+          <a class="btn btn-soft" href="info/CAR-RACE-PLAN.html">📋 How it was built</a>
+        </div>
+        <p class="small text-muted mt-2 mb-0">Keyboard: arrows or WASD to drive, Space for nitro, H to hire a driver. Phones: on-screen buttons or tilt.</p>
+      </div>
+    </div>
+
+    <div class="row g-2 mt-3">
+      <div class="col-6 col-md-3"><div class="stat"><div class="val">1</div><div class="lbl">HTML file</div></div></div>
+      <div class="col-6 col-md-3"><div class="stat"><div class="val">0</div><div class="lbl">Image or sound files</div></div></div>
+      <div class="col-6 col-md-3"><div class="stat"><div class="val">~3,300</div><div class="lbl">Lines of code</div></div></div>
+      <div class="col-6 col-md-3"><div class="stat"><div class="val">4 + extras</div><div class="lbl">Build phases</div></div></div>
+    </div>
+
+    <div id="myScores" class="mt-3" hidden>
+      <div class="fw-bold mb-1">🏆 Your best Car Race scores (on this device)</div>
+      <div class="table-responsive">
+        <table class="table table-sm scores mb-0 bg-white"><thead><tr><th>Track</th><th>Mode</th><th>Top score</th><th>By</th><th>Details</th></tr></thead><tbody id="myScoresBody"></tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ALL GAMES -->
+  <div class="card shadow-sm step-card mb-4">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">🎮</span>All games</div>
+      <div class="row g-3" id="gamesGrid"></div>
+      <p class="small text-muted mt-3 mb-0">New games are added to a small list at the bottom of this page, so each new game is a one-line change.</p>
+    </div>
+  </div>
+
+  <!-- HOW THE AI BUILT IT -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">🤖</span>How AI turned a 350-line demo into a full game</div>
+      <div class="row g-3">
+        <div class="col-md-6 col-lg-3">
+          <div class="d-flex"><span class="step-num">1</span><div><strong>Read the original</strong><br><span class="small text-muted">An open-source JavaScript racer: a smooth road engine, but no race, no score and no game over. The AI listed its 10 bugs and gaps.</span></div></div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+          <div class="d-flex"><span class="step-num">2</span><div><strong>Plan in phases</strong><br><span class="small text-muted">A written plan with goals, a feature list and a "done when" test for every phase, agreed before any code was written.</span></div></div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+          <div class="d-flex"><span class="step-num">3</span><div><strong>Build and redraw</strong><br><span class="small text-muted">The engine was rebuilt, every car and tree redrawn in code, and rivals, sound, pickups, tracks, modes, touch controls, a coaching driver and video recording added.</span></div></div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+          <div class="d-flex"><span class="step-num">4</span><div><strong>Test like a player</strong><br><span class="small text-muted">Each phase was played in a real browser by test scripts that clicked, steered and raced, took screenshots and checked for errors before moving on.</span></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<footer class="text-white py-4 mt-5">
+  <div class="container text-center small">
+    AI Games Portal · <a href="GAME1-CAR-RACE/car-race.html">🏎️ Car Race</a> · <a href="info/CAR-RACE-PLAN.html">📋 Car Race plan</a> · <a href="../MUSIC/index.html">🎵 RAG Champ Music</a> · <a href="index.html">🏠 Games Home</a>
+    <div class="mt-1" style="opacity:.75">Car Race's road engine is based on the open-source "Javascript Racer" by Jake Gordon. Rebuilt and extended with Claude Code.</div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+
+  /* ---- The games list: add a game by adding one line ---- */
+  const GAMES = [
+    { icon:'🏎️', name:'Car Race', url:'GAME1-CAR-RACE/car-race.html', plan:'info/CAR-RACE-PLAN.html',
+      blurb:'Pseudo-3D racing: 3 tracks, 3 modes, rain, night racing and a hired driver who teaches you.' },
+    { icon:'🎮', name:'Game 2', blurb:'Coming soon: the next favourite game, built the same way.' },
+    { icon:'🎮', name:'Game 3', blurb:'Coming soon.' },
+    { icon:'🎮', name:'Game 4', blurb:'Coming soon.' }
+  ];
+  $('gamesGrid').innerHTML = GAMES.map(g => {
+    const live = !!g.url;
+    return '<div class="col-sm-6 col-lg-3"><div class="game-card p-3 ' + (live ? 'live' : 'soon') + '">' +
+      '<div class="icon mb-2">' + g.icon + '</div>' +
+      '<h3 class="h6 fw-bold mb-1">' + esc(g.name) + ' ' + (live ? '<span class="badge text-bg-success">Play</span>' : '<span class="badge badge-soon">Coming soon</span>') + '</h3>' +
+      '<p class="small text-muted mb-2">' + esc(g.blurb) + '</p>' +
+      (live ? '<a class="btn btn-sm btn-play" href="' + g.url + '">▶ Play</a> ' +
+              (g.plan ? '<a class="btn btn-sm btn-soft" href="' + g.plan + '">Plan</a>' : '') : '') +
+      '</div></div>';
+  }).join('');
+
+  /* ---- Live preview: the game itself in its silent self-driving demo, touring all 3 tracks.
+         Loaded only when it scrolls into view, and stopped when it scrolls away (saves battery). ---- */
+  const preview = $('preview'), DEMO_URL = 'GAME1-CAR-RACE/car-race.html?demo&embed&laps=1';
+  let frame = null;
+  function startPreview(){
+    if (frame) return;
+    frame = document.createElement('iframe');
+    frame.title = 'Car Race live preview';
+    frame.setAttribute('tabindex', '-1');
+    frame.setAttribute('aria-hidden', 'true');
+    frame.addEventListener('load', () => { const p = $('poster'); if (p) p.hidden = true; });
+    frame.src = DEMO_URL;
+    preview.insertBefore(frame, preview.firstChild);
+  }
+  function stopPreview(){
+    if (!frame) return;
+    frame.remove(); frame = null;
+    const p = $('poster'); if (p) p.hidden = false;
+  }
+  const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduceMotion){
+    $('poster').querySelector('.small').textContent = 'Click to play';
+  } else if ('IntersectionObserver' in window){
+    new IntersectionObserver(entries => entries.forEach(e => e.isIntersecting ? startPreview() : stopPreview()), { threshold:0.15 }).observe(preview);
+  } else {
+    startPreview();
+  }
+
+  /* ---- Your best scores, read from the game's saved top-5 lists in this browser ---- */
+  try {
+    const TRACKS = { coast:'🌴 Coast Highway', desert:'🏜️ Desert Canyon', neon:'🌃 Neon City' };
+    const MODES = { gp:'🏁 Grand Prix', ta:'⏱ Time Attack', endless:'♾️ Endless' };
+    const rows = [];
+    for (let i = 0; i < localStorage.length; i++){
+      const key = localStorage.key(i), m = /^ragchamp\.carRace\.board\.(\w+)\.(\w+)(\.short)?$/.exec(key || '');
+      if (!m || !TRACKS[m[1]] || !MODES[m[2]]) continue;
+      const board = JSON.parse(localStorage.getItem(key) || '[]');
+      if (!Array.isArray(board) || !board.length || typeof board[0].score !== 'number') continue;
+      rows.push({ track:TRACKS[m[1]], mode:MODES[m[2]] + (m[3] ? ' · Short' : ''), top:board[0] });
+    }
+    if (rows.length){
+      rows.sort((a, b) => b.top.score - a.top.score);
+      $('myScoresBody').innerHTML = rows.map(r => '<tr><td>' + r.track + '</td><td>' + r.mode + '</td><td><strong>' + r.top.score.toLocaleString() +
+        '</strong></td><td>' + esc(r.top.name || '') + '</td><td class="text-muted">' + esc(r.top.detail || '') + '</td></tr>').join('');
+      $('myScores').hidden = false;
+    }
+  } catch(e){ /* storage blocked: just skip the scores */ }
+})();
+</script>
+</body>
+</html>
