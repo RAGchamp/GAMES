@@ -126,7 +126,8 @@
     user-select:none; -webkit-user-select:none; -webkit-touch-callout:none;
   }
   .tb span{ display:block; font-size:.78rem; letter-spacing:.12em; margin-top:.25rem; }
-  .tb.slide{ background:var(--biz-blue); }
+  .tb.back{ background:var(--biz-blue); flex-grow:.8; }
+  .tb.run{ background:#198754; }
   .tb.jump{ background:var(--chintu-orange); }
   .tb.mini{ flex:0 0 64px; background:#2d3e5c; font-size:1.3rem; }
   .tb.down{ filter:brightness(1.3); transform:scale(.97); }
@@ -148,15 +149,17 @@
       background:transparent; pointer-events:none; z-index:5;
     }
     body.touch:not(.playing) .deck{ display:none; }
+    body.touch{ --tb:clamp(58px, 21vh, 86px); }
     body.touch .tb{
       position:absolute; pointer-events:auto; flex:none;
-      width:clamp(64px, 22vh, 92px); height:clamp(64px, 22vh, 92px); border-radius:50%;
+      width:var(--tb); height:var(--tb); border-radius:50%;
       bottom:max(10px, env(safe-area-inset-bottom)); font-size:1.4rem; padding:0;
       background:rgba(4,38,77,.38); border:3px solid rgba(255,255,255,.75);
       box-shadow:0 2px 10px rgba(0,0,0,.3); backdrop-filter:blur(2px);
     }
     body.touch .tb span{ font-size:.62rem; letter-spacing:.08em; margin-top:.15rem; }
-    body.touch .tb.slide{ left:max(10px, env(safe-area-inset-left)); border-color:rgba(110,168,254,.95); }
+    body.touch .tb.back{ left:max(10px, env(safe-area-inset-left)); border-color:rgba(110,168,254,.95); }
+    body.touch .tb.run{ left:calc(max(10px, env(safe-area-inset-left)) + var(--tb) + 12px); border-color:rgba(117,214,160,.95); }
     body.touch .tb.jump{ right:max(10px, env(safe-area-inset-right)); border-color:rgba(255,160,120,.95); }
     body.touch .tb.down{ background:rgba(255,255,255,.35); transform:scale(.94); }
     body.touch .tb.mini{
@@ -210,8 +213,8 @@
           <h2>🏃 Chintu: Test Run</h2>
           <p>Chintu has the key to a secret formula, and <strong>Dr. Andhera</strong> wants it! First, practise running, jumping and sliding all the way to the finish gate.</p>
           <button class="btn-go" id="startBtn">▶ Start</button>
-          <p class="small" id="hintKeys"><kbd>Space</kbd> / <kbd>↑</kbd> / <kbd>W</kbd> jump (hold to go higher) · <kbd>↓</kbd> / <kbd>S</kbd> slide · <kbd>P</kbd> pause</p>
-          <p class="small" id="hintTouch" hidden>📱 Use the <strong>JUMP</strong> and <strong>SLIDE</strong> buttons under the game. Hold JUMP to go higher.</p>
+          <p class="small" id="hintKeys">Hold <kbd>→</kbd> / <kbd>D</kbd> to run · <kbd>←</kbd> / <kbd>A</kbd> to go back · <kbd>Space</kbd> / <kbd>↑</kbd> / <kbd>W</kbd> jump (hold to go higher) · <kbd>↓</kbd> slide · <kbd>P</kbd> pause</p>
+          <p class="small" id="hintTouch" hidden>📱 Hold <strong>RUN</strong> to run, <strong>BACK</strong> to go back, and tap <strong>JUMP</strong> to jump (hold it to go higher).</p>
           <p class="small" id="titleBest"></p>
         </div>
       </div>
@@ -239,7 +242,8 @@
     </div>
 
     <div class="deck" id="deck" hidden>
-      <button class="tb slide" id="btnSlide" aria-label="Slide">▼<span>SLIDE</span></button>
+      <button class="tb back" id="btnBack" aria-label="Go back">◀<span>BACK</span></button>
+      <button class="tb run" id="btnRun" aria-label="Run">▶<span>RUN</span></button>
       <button class="tb mini" id="btnPause" aria-label="Pause">⏸</button>
       <button class="tb jump" id="btnJump" aria-label="Jump">▲<span>JUMP</span></button>
     </div>
@@ -254,9 +258,10 @@
   <div class="help">
     <h2>How to play</h2>
     <ul>
-      <li><strong>Chintu runs by himself</strong> and gets a little faster as he goes. You only jump and slide.</li>
-      <li><strong>Jump:</strong> <kbd>Space</kbd>, <kbd>↑</kbd> or <kbd>W</kbd> (the JUMP button on phones). Hold it to jump higher, or tap it for a small hop.</li>
-      <li><strong>Slide:</strong> <kbd>↓</kbd> or <kbd>S</kbd> (the SLIDE button on phones) to get under low roofs. In the air, it makes Chintu drop faster.</li>
+      <li><strong>Run:</strong> hold <kbd>→</kbd> or <kbd>D</kbd> (the RUN button on phones). Let go and Chintu stops.</li>
+      <li><strong>Go back:</strong> hold <kbd>←</kbd> or <kbd>A</kbd> (the BACK button on phones).</li>
+      <li><strong>Jump:</strong> <kbd>Space</kbd>, <kbd>↑</kbd> or <kbd>W</kbd> (the JUMP button on phones). Hold it to jump higher, or tap it for a small hop. Run first to jump across gaps.</li>
+      <li><strong>Low roofs:</strong> jump up and run across the top. On a keyboard you can also slide under with <kbd>↓</kbd> or <kbd>S</kbd>.</li>
       <li>Bump the <strong>?</strong> blocks from below. In Phase 2 they will have laddoo coins inside.</li>
       <li>Falling into a gap starts the run again. Hearts and checkpoint flags come in Phase 2.</li>
     </ul>
@@ -283,7 +288,7 @@
   const TILE = 30, VIEW_H = 270, STEP = 1 / 60;
   const PHYS = {
     gravity: 1800, jumpV: 620, jumpCut: 0.45, maxFall: 900, fastFall: 1400,
-    runMin: 150, runMax: 230, coyote: 0.1, buffer: 0.12, slideMin: 0.45
+    runSpeed: 185, accel: 1100, friction: 1500, airAccel: 750, coyote: 0.1, buffer: 0.12, slideMin: 0.45
   };
   const PW = 16, STAND_H = 36, SLIDE_H = 18;
 
@@ -430,11 +435,11 @@
   ];
 
   const SIGNS = {
-    '1': isTouch ? ['Chintu runs by himself!', 'Tap JUMP to jump'] : ['Chintu runs by himself!', 'Jump: Space / ↑ / W'],
+    '1': isTouch ? ['Hold RUN to run', 'Tap JUMP to jump'] : ['Hold → to run, ← to go back', 'Jump: Space / ↑ / W'],
     '2': ['Jump under a ? block', 'to bump it'],
-    '3': ['Mind the gap!', 'Jump over it'],
+    '3': ['Mind the gap!', 'Run and jump over it'],
     '4': ['Big wall ahead!', 'HOLD jump to go higher'],
-    '5': isTouch ? ['Low roof!', 'Hold SLIDE'] : ['Low roof!', 'Slide: ↓ / S'],
+    '5': isTouch ? ['Low roof!', 'Jump up and run on top'] : ['Low roof! Jump on top', 'or slide under: ↓ / S'],
   };
 
   function buildRows(chunks) {
@@ -494,13 +499,13 @@
   let scale = 1, viewW = 480;
   const deaths = [], trail = [];   // debug only (?debug)
 
-  const keys = { jump: false, slide: false, jumpPressed: false };
+  const keys = { jump: false, slide: false, jumpPressed: false, left: false, right: false };
   const bot = { jump: false, slide: false, prevJump: false };
 
   function resetRun() {
     loadLevel();
     Object.assign(player, {
-      x: level.start.x, y: level.start.y, vx: 0, vy: 0, h: STAND_H,
+      x: level.start.x, y: level.start.y, vx: 0, vy: 0, h: STAND_H, facing: 1,
       onGround: false, coyoteT: 0, jumpBuf: 0, jumping: false,
       sliding: false, slideT: 0, runPhase: 0, landT: 0, blocked: false
     });
@@ -510,15 +515,10 @@
     snapCamera();
   }
 
-  function speedNow() {
-    const f = Math.max(0, Math.min(1, player.x / Math.max(1, level.goalX)));
-    return PHYS.runMin + (PHYS.runMax - PHYS.runMin) * f;
-  }
-
   // ---------- Computer player (attract screen and ?demo) ----------
   function botThink() {
     const p = player;
-    const v = speedNow();
+    const v = Math.max(120, p.vx);
     const feetRow = Math.floor((p.y + p.h - 1) / TILE);
     const cEdge = Math.floor((p.x + PW + 2) / TILE);
     const cAhead = Math.floor((p.x + PW + v * 0.1) / TILE);
@@ -555,8 +555,8 @@
 
     const auto = state === 'title' || DEMO;
     let input;
-    if (auto) { botThink(); input = { jump: bot.jump, slide: bot.slide, pressed: bot.jumpPressed }; }
-    else { input = { jump: keys.jump, slide: keys.slide, pressed: keys.jumpPressed }; keys.jumpPressed = false; }
+    if (auto) { botThink(); input = { jump: bot.jump, slide: bot.slide, pressed: bot.jumpPressed, left: false, right: true }; }
+    else { input = { jump: keys.jump, slide: keys.slide, pressed: keys.jumpPressed, left: keys.left, right: keys.right }; keys.jumpPressed = false; }
 
     if (state === 'play') runTime += dt;
     stepPlayer(dt, input);
@@ -607,15 +607,23 @@
     const g = (!p.onGround && input.slide && p.vy > -100) ? PHYS.fastFall : PHYS.gravity;
     p.vy = Math.min(PHYS.maxFall, p.vy + g * dt);
 
-    // Horizontal (auto-run)
-    p.vx = speedNow();
+    // Horizontal: runs only while RUN (→) or BACK (←) is held, then slows to a stop
+    const dir = (input.right ? 1 : 0) - (input.left ? 1 : 0);
+    const target = dir * PHYS.runSpeed;
+    const a = dir !== 0 ? (p.onGround ? PHYS.accel : PHYS.airAccel) : (p.onGround ? PHYS.friction : PHYS.airAccel * 0.4);
+    if (p.vx < target) p.vx = Math.min(target, p.vx + a * dt);
+    else if (p.vx > target) p.vx = Math.max(target, p.vx - a * dt);
+    if (dir) p.facing = dir;
     p.x += p.vx * dt;
     p.blocked = false;
     {
-      const c = Math.floor((p.x + PW - 0.001) / TILE);
       const r0 = Math.floor(p.y / TILE), r1 = Math.floor((p.y + p.h - 0.001) / TILE);
-      for (let r = r0; r <= r1; r++) {
-        if (isSolid(tileAt(c, r))) { p.x = c * TILE - PW; p.blocked = true; break; }
+      if (p.vx > 0) {
+        const c = Math.floor((p.x + PW - 0.001) / TILE);
+        for (let r = r0; r <= r1; r++) if (isSolid(tileAt(c, r))) { p.x = c * TILE - PW; p.vx = 0; p.blocked = true; break; }
+      } else if (p.vx < 0) {
+        const c = Math.floor(p.x / TILE);
+        for (let r = r0; r <= r1; r++) if (isSolid(tileAt(c, r))) { p.x = (c + 1) * TILE; p.vx = 0; p.blocked = true; break; }
       }
     }
 
@@ -644,7 +652,7 @@
       if (!wasGround) { p.landT = 0.12; puff(p.x + PW / 2, p.y + p.h, 6); }
     } else p.coyoteT = Math.max(0, p.coyoteT - dt);
     p.landT = Math.max(0, p.landT - dt);
-    if (p.onGround && !p.sliding) p.runPhase += p.vx * dt * 0.085;
+    if (p.onGround && !p.sliding) p.runPhase += Math.abs(p.vx) * dt * 0.085;
   }
 
   function canStand() {
@@ -664,15 +672,20 @@
     }
   }
 
+  // The camera looks ahead in the direction Chintu faces.
+  let lookAhead = 0.32;
   function updateCamera(dt) {
-    const tx = player.x - viewW * 0.28;
+    const want = player.facing < 0 ? 0.62 : 0.32;
+    lookAhead += (want - lookAhead) * Math.min(1, dt * 2.5);
+    const tx = player.x - viewW * lookAhead;
     const ty = player.y + player.h - VIEW_H * 0.72;
-    cam.x += (tx - cam.x) * Math.min(1, dt * 10);
+    cam.x += (tx - cam.x) * Math.min(1, dt * 8);
     cam.y += (ty - cam.y) * Math.min(1, dt * 4);
     clampCamera();
   }
   function snapCamera() {
-    cam.x = player.x - viewW * 0.28;
+    lookAhead = 0.32;
+    cam.x = player.x - viewW * lookAhead;
     cam.y = player.y + player.h - VIEW_H * 0.72;
     clampCamera();
   }
@@ -944,9 +957,10 @@
     ctx.fillStyle = front ? COL.skin : COL.skinDark; ctx.beginPath(); ctx.arc(hx, hy, 1.9, 0, Math.PI * 2); ctx.fill();
   }
 
-  function drawChintu(px, py, pose, t) {
+  function drawChintu(px, py, pose, t, facing) {
     ctx.save();
     ctx.translate(px, py);
+    if (facing < 0) ctx.scale(-1, 1);
     if (pose === 'slide') { ctx.translate(-2, -1); ctx.rotate(-1.2); }
     if (pose === 'land') ctx.scale(1.08, 0.9);
     ctx.scale(0.86, 0.86);
@@ -962,6 +976,8 @@
       legA = 1.0; kneeA = 1.5; legB = -0.45; kneeB = 0.6; armA = 1.7; elbA = 0.5; armB = -1.0; elbB = 0.4;
     } else if (pose === 'fall') {
       legA = 0.35; kneeA = 0.5; legB = -0.25; kneeB = 0.7; armA = 1.5; elbA = -0.4; armB = -2.2; elbB = -0.3;
+    } else if (pose === 'idle') {
+      bob = -Math.max(0, Math.sin(animT * 3)) * 0.6;   // gentle breathing
     } else if (pose === 'slide') {
       legA = 0.15; kneeA = 0.05; legB = -0.05; kneeB = 0.15; armA = 2.1; elbA = 0.3; armB = 0.9; elbB = -0.3;
     }
@@ -1035,8 +1051,9 @@
     if (p.sliding) pose = 'slide';
     else if (!p.onGround) pose = p.vy < 0 ? 'jump' : 'fall';
     else if (p.landT > 0) pose = 'land';
-    else pose = 'run';
-    drawChintu(fx, fy, pose, p.runPhase);
+    else if (Math.abs(p.vx) > 8) pose = 'run';
+    else pose = 'idle';
+    drawChintu(fx, fy, pose, p.runPhase, p.facing);
   }
 
   function groundBelow(x, y) {
@@ -1128,7 +1145,7 @@
     if (state !== 'pause') return;
     state = pausedFrom;
     showOverlay(null);
-    keys.jump = keys.slide = keys.jumpPressed = false;
+    clearKeys();
     updateStopBtn();
   }
   function finishRun() {
@@ -1146,9 +1163,13 @@
   // ---------- Input ----------
   const JUMP_KEYS = ['Space', 'ArrowUp', 'KeyW'];
   const SLIDE_KEYS = ['ArrowDown', 'KeyS'];
+  const RIGHT_KEYS = ['ArrowRight', 'KeyD'];
+  const LEFT_KEYS = ['ArrowLeft', 'KeyA'];
 
   window.addEventListener('keydown', e => {
     const inGame = state === 'play' || state === 'fall';
+    if (RIGHT_KEYS.includes(e.code)) { keys.right = true; if (inGame) e.preventDefault(); return; }
+    if (LEFT_KEYS.includes(e.code)) { keys.left = true; if (inGame) e.preventDefault(); return; }
     if (JUMP_KEYS.includes(e.code) || SLIDE_KEYS.includes(e.code)) {
       if (inGame) e.preventDefault();
       if (state === 'title' && (e.code === 'Space') && document.activeElement === document.body) { e.preventDefault(); startRun(); return; }
@@ -1165,8 +1186,11 @@
   window.addEventListener('keyup', e => {
     if (JUMP_KEYS.includes(e.code)) keys.jump = false;
     else if (SLIDE_KEYS.includes(e.code)) keys.slide = false;
+    else if (RIGHT_KEYS.includes(e.code)) keys.right = false;
+    else if (LEFT_KEYS.includes(e.code)) keys.left = false;
   });
-  window.addEventListener('blur', () => { keys.jump = keys.slide = keys.jumpPressed = false; });
+  function clearKeys() { keys.jump = keys.slide = keys.jumpPressed = keys.left = keys.right = false; }
+  window.addEventListener('blur', clearKeys);
   document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
 
   function holdButton(el, onDown, onUp) {
@@ -1182,7 +1206,8 @@
     el.addEventListener('contextmenu', e => e.preventDefault());
   }
   holdButton($('btnJump'), () => { keys.jump = true; keys.jumpPressed = true; }, () => { keys.jump = false; });
-  holdButton($('btnSlide'), () => { keys.slide = true; }, () => { keys.slide = false; });
+  holdButton($('btnRun'), () => { keys.right = true; }, () => { keys.right = false; });
+  holdButton($('btnBack'), () => { keys.left = true; }, () => { keys.left = false; });
   $('btnPause').addEventListener('click', () => { if (state === 'pause') resume(); else pause(); });
 
   $('startBtn').addEventListener('click', startRun);
