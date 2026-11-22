@@ -234,6 +234,30 @@
     .game-wrap.menu .panel{ max-height:none; overflow:visible; }
     .game-wrap.menu .hud, .game-wrap.menu .standings, .game-wrap.menu .driver{ display:none; }
     .game-wrap.menu:fullscreen{ height:100vh; overflow-y:auto; }
+    /* while a menu is open a finger can scroll it (during a race the game box takes every touch) */
+    .game-wrap.menu{ touch-action:pan-y; }
+  }
+  /* Phones held sideways: the results go side by side, standings on the left, the score, top 5 and buttons
+     on the right, with smaller text, so everything fits the short screen. */
+  @media (max-height:500px) and (orientation:landscape){
+    #resultsOverlay .panel{
+      max-width:900px; display:grid; grid-template-columns:minmax(0, 1.15fr) minmax(0, 1fr);
+      column-gap:1.1rem; align-items:start; align-content:start; padding:.45rem .8rem;
+    }
+    #resultsOverlay .panel > *{ grid-column:2; }
+    #resultsOverlay .panel > #resTitle, #resultsOverlay .panel > #resSub{ grid-column:1 / -1; }
+    #resultsOverlay #resTable{ grid-column:1; grid-row:3 / span 7; margin-top:0; }
+    #resultsOverlay .panel:has(#resTable[hidden]) > *{ grid-column:1 / -1; }   /* Time Attack and Endless: no table */
+    #resultsOverlay .panel h2{ font-size:1.05rem; margin-bottom:.1rem; }
+    #resultsOverlay .panel p{ font-size:.74rem; margin:.1rem 0 .3rem; }
+    #resultsOverlay .panel p.score{ font-size:.85rem; margin-top:0; }
+    #resultsOverlay .panel .small{ font-size:.68rem; margin-top:.2rem; }
+    #resultsOverlay table.res{ font-size:.7rem; }
+    #resultsOverlay table.res th{ font-size:.55rem; padding:.1rem .3rem; }
+    #resultsOverlay table.res td{ padding:.08rem .3rem; }
+    #resultsOverlay .board-h{ margin-top:.2rem; font-size:.78rem; }
+    #resultsOverlay .enter{ margin:.3rem 0; padding:.3rem; font-size:.8rem; }
+    #resultsOverlay .btn-go{ font-size:.82rem; padding:.3rem .95rem; margin:.25rem .15rem 0; }
   }
   /* 2) Portrait phones: a tall game area = the race picture on top + a control deck underneath,
         so the touch buttons (or the hired driver's box) never cover the road. */
@@ -450,8 +474,10 @@
         <p class="small" id="resNote"></p>
         <div id="resBoard"></div>
         <p id="resVideo"></p>
-        <button class="btn-go" id="againBtn">↺ Race again</button>
-        <button class="btn-go alt" id="menuBtn">⚙️ Menu</button>
+        <div class="res-btns">
+          <button class="btn-go" id="againBtn">↺ Race again</button>
+          <button class="btn-go alt" id="menuBtn">⚙️ Menu</button>
+        </div>
       </div>
     </div>
 
