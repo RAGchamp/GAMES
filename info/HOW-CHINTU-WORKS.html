@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How Chintu Works</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<!--
+  How Chintu works: the "Learn more" page for Game 2 (Phase 6 of the plan).
+  Explains how the levels, the physics and the red-light check work, and what Claude Code built.
+  The three small demos on this page use the same rules and numbers as GAME-2-Chintu/chintu.html.
+-->
+<style>
+  :root{
+    --biz-blue:#0d6efd;
+    --biz-blue-dark:#084298;
+    --biz-yellow:#ffc107;
+    --biz-red:#dc3545;
+    --biz-green:#198754;
+    --biz-purple:#6f42c1;
+    --nav-blue:#04264d;
+    --nav-yellow:#ffd60a;
+  }
+  body{ background:#f7f8fa; margin:0; }
+  .topnav{
+    position:sticky; top:0; z-index:1030;
+    background:var(--nav-blue); color:var(--nav-yellow);
+    padding:.9rem 1.5rem; display:flex; justify-content:space-between; align-items:center;
+    box-shadow:0 .15rem .5rem rgba(0,0,0,.25);
+  }
+  .topnav .brand{ display:inline-flex; align-items:center; text-decoration:none; }
+  .topnav .brand-logo{ height:44px; width:auto; display:block; }
+  .topnav .tagline{ font-weight:600; font-size:1.05rem; color:var(--nav-yellow); letter-spacing:.15em; word-spacing:.6em; font-style:italic; }
+  @media (max-width:576px){ .topnav{ flex-direction:column; text-align:center; gap:.4rem; padding:.75rem 1rem; } }
+
+  .step-num{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:1.9rem; height:1.9rem; border-radius:50%;
+    background:var(--biz-yellow); color:#2b2b2b; font-weight:800; font-size:.95rem; margin-right:.55rem; flex:none;
+  }
+  .step-title{ display:flex; align-items:center; font-weight:700; font-size:1.1rem; margin-bottom:.75rem; }
+  .step-card{ border:2px solid #c9d3e3; border-radius:.6rem; }
+  .ctrl-label{ font-size:.75rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#6c757d; margin-bottom:.25rem; display:block; }
+  .stat-pill{ background:#eef3fb; border-radius:2rem; padding:.2rem .7rem; font-size:.8rem; font-weight:600; display:inline-block; margin:.15rem .2rem .15rem 0; }
+  .prompt{ background:linear-gradient(120deg,var(--biz-blue-dark),var(--biz-blue)); color:#fff; border-radius:.6rem; padding:.9rem 1.1rem; font-size:1.02rem; }
+  .about-box{ background:#fde2ec; border:2px solid #f5a3c0; border-radius:.6rem; padding:.9rem 1.1rem; }
+  .about-box h2{ font-size:1.05rem; font-weight:700; color:#8a1f4a; margin-bottom:.4rem; }
+  .about-box p{ font-size:.92rem; color:#3b2a31; }
+  .facts{ display:flex; flex-wrap:wrap; gap:.6rem; }
+  .fact{ flex:1 1 140px; background:#fff; border:2px solid #dde3ec; border-radius:.6rem; padding:.5rem .75rem; }
+  .fact .val{ font-size:1.35rem; font-weight:800; line-height:1.15; color:var(--nav-blue); }
+  .fact .lbl{ font-size:.75rem; color:#5a6475; }
+  pre.code{ background:#0f1b2d; color:#d7e3f4; border-radius:.5rem; padding:.7rem .9rem; font-size:.8rem; margin:0; white-space:pre-wrap; }
+  pre.code .c{ color:#8fa7c7; } pre.code .k{ color:#ffd60a; }
+  table.ref th{ background:#eef3fb; font-size:.78rem; text-transform:uppercase; letter-spacing:.04em; }
+  table.ref td, table.ref th{ font-size:.88rem; vertical-align:top; }
+  .demo{ background:#fff; border:2px dashed #9ec5fe; border-radius:.6rem; padding:.75rem .9rem; }
+  .demo h3{ font-size:.95rem; font-weight:800; color:var(--biz-blue-dark); margin:0 0 .4rem; }
+  .demo canvas{ width:100%; display:block; border-radius:.45rem; background:#bfe6ff; touch-action:none; }
+  textarea.level{ font-family:Consolas,Monaco,monospace; font-size:.8rem; line-height:1.25; background:#0f1b2d; color:#d7e3f4; border:0; border-radius:.45rem; white-space:pre; overflow-x:auto; }
+  .read{ font-size:.9rem; font-weight:700; }
+  .flow{ display:flex; flex-wrap:wrap; align-items:stretch; gap:.4rem; }
+  .flow .box{ flex:1 1 150px; background:#eef3fb; border:2px solid #c9d3e3; border-radius:.5rem; padding:.45rem .6rem; font-size:.84rem; }
+  .flow .box b{ display:block; color:var(--nav-blue); }
+  .flow .arrow{ align-self:center; font-weight:800; color:#6c757d; }
+  @media (max-width:700px){ .flow .arrow{ display:none; } }
+  .timeline td:first-child{ white-space:nowrap; }
+  .tag{ border-radius:.3rem; padding:0 .35rem; font-size:.7rem; font-weight:700; color:#fff; background:#6c757d; }
+  .tag.chg{ background:var(--biz-red); }
+  .status{ border-radius:.4rem; padding:.3rem .6rem; font-weight:800; font-size:.9rem; display:inline-block; }
+  .status.seen{ background:#fdecee; color:#b02a37; border:2px solid #f1aeb5; }
+  .status.hidden{ background:#e7f6ff; color:#05506e; border:2px solid #9eeaf9; }
+  kbd{ background:#04264d; }
+  footer{ background:var(--nav-blue); }
+  footer a{ color:#fff; }
+</style>
+</head>
+<body>
+
+<!-- STICKY TOP NAV -->
+<div class="topnav">
+  <a class="brand" href="../index.html"><img class="brand-logo" src="../logo.svg" alt="RAG Champ"></a>
+  <div class="tagline">AI Games Portal</div>
+</div>
+
+<main class="container my-4">
+
+  <div class="about-box mb-4">
+    <h2>What is this page and how does AI play a part?</h2>
+    <p class="mb-0">This page explains how <strong>Game 2: Chintu</strong> works inside: how the levels are written, how jumping feels right, how the game knows when red light can see an invisible boy, and what Claude Code (an AI coding agent) built, phase by phase. The whole game was written by Claude Code from a short story idea and two character pictures, and tested on a computer and on a phone by a person. <strong>Players don't need any AI to play.</strong> The small demos on this page use the same rules and numbers as the game, so you can try them yourself.</p>
+  </div>
+
+  <h1 class="h3 fw-bold mb-1">🏃 How Chintu Works</h1>
+  <p class="text-muted mb-3"><a href="../GAME-2-Chintu/chintu.html">▶ Play Chintu</a> · <a href="CHINTU-GAME-PLAN.html">📋 The development plan</a> · <a href="../GAME-2-Chintu/sounds/sound-effects.html">🔊 All the sound effects</a> · <a href="../index.html">🏠 Games Home</a></p>
+
+  <div class="facts mb-4">
+    <div class="fact"><div class="val">1 file</div><div class="lbl"><code>chintu.html</code>: HTML, CSS and JavaScript together</div></div>
+    <div class="fact"><div class="val">3,989</div><div class="lbl">lines of code, about 168 functions</div></div>
+    <div class="fact"><div class="val">0</div><div class="lbl">image files: everything is drawn with code</div></div>
+    <div class="fact"><div class="val">11 + 1</div><div class="lbl">stages in 4 worlds, plus the boss in the vault</div></div>
+    <div class="fact"><div class="val">65</div><div class="lbl">level pieces, written as text</div></div>
+    <div class="fact"><div class="val">31 + 6</div><div class="lbl">sound effects and music loops, made by code (plus 1 ship-horn recording)</div></div>
+  </div>
+
+  <!-- 1. One file and the game loop -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">1</span>One file and the game loop</div>
+      <p>Chintu is a single web page. There is no game engine, no framework and no server: it opens with a double-click. The picture is drawn on a <b>canvas</b>, a rectangle the code can paint on. 60 times a second the game moves everything a tiny step and then paints a new picture.</p>
+      <div class="flow mb-3">
+        <div class="box"><b>1 · Read the controls</b>Keyboard, touch buttons or a gamepad: RUN, BACK, JUMP.</div>
+        <div class="arrow">→</div>
+        <div class="box"><b>2 · Update (1/60 s steps)</b>Move Chintu, goons, coconuts, carpets, barrels; check hits, lights and pickups.</div>
+        <div class="arrow">→</div>
+        <div class="box"><b>3 · Draw</b>Sky, parallax town, tiles, characters, light beams, then the HUD on top.</div>
+        <div class="arrow">→</div>
+        <div class="box"><b>4 · Music</b>Plan the next notes of the music loop, a fraction of a second ahead.</div>
+      </div>
+      <div class="row g-3">
+        <div class="col-lg-6">
+          <p class="small mb-2">The update always moves time forward in exact steps of 1/60 of a second, even if the screen is slower or faster. That way a jump is the same height on a fast computer and on a slow phone. If a frame takes longer, the game simply does two or three steps before drawing.</p>
+          <p class="small mb-0">The game is drawn 270 "game pixels" tall (and 480 wide on a 16:9 screen), then scaled up to fit the screen. Phones get at most 3 screen pixels per game pixel, and if a device runs slower than 45 frames a second the game first switches off glow effects, then draws with fewer pixels.</p>
+        </div>
+        <div class="col-lg-6">
+          <span class="ctrl-label">The heart of the main loop (from chintu.html)</span>
+<pre class="code"><span class="c">// time since the last frame, never more than 0.25 s</span>
+acc += dt;
+<span class="k">while</span> (acc &gt;= STEP) {     <span class="c">// STEP = 1/60 s</span>
+  update(STEP);            <span class="c">// move everything one step</span>
+  acc -= STEP;
+}
+render();                  <span class="c">// draw the new picture</span>
+snd.music(wantedMusic());  <span class="c">// keep the music going</span></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Levels as text -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">2</span>Levels are written as text</div>
+      <p>Every stage is made of small <b>pieces</b>, and every piece is 11 rows of text characters. Each character is one tile, 30 game pixels square: <code>=</code> is ground, <code>?</code> is a block to bump, <code>g</code> is a goon, and so on. A stage is just a list of piece names joined end to end, so a new stage needs no new code.</p>
+      <div class="row g-3 mb-3">
+        <div class="col-lg-6">
+          <span class="ctrl-label">A stage (from chintu.html)</span>
+<pre class="code">{ id: <span class="k">'1-1'</span>, world: 1, name: <span class="k">'Village Lanes'</span>, par: 75, worry: [0, 8],
+  pieces: [<span class="k">'start1'</span>, <span class="k">'coins'</span>, <span class="k">'blocks'</span>, <span class="k">'goonHint'</span>, <span class="k">'pothole'</span>,
+           <span class="k">'cow'</span>, <span class="k">'gapHint'</span>, <span class="k">'stepsPage'</span>, <span class="k">'checkpoint'</span>, ...] }</pre>
+          <p class="small mt-2 mb-0"><code>par</code> is the target time in seconds (the third star) and <code>worry</code> says how worried Dr. Andhera gets from the start to the end of the stage.</p>
+        </div>
+        <div class="col-lg-6">
+          <span class="ctrl-label">A piece (rows not given are sky, rows 9 and 10 are ground)</span>
+<pre class="code">goons2: C(24, {
+  5: <span class="k">'.........oo.............'</span>,   <span class="c">// two laddoos</span>
+  6: <span class="k">'........####............'</span>,   <span class="c">// a brick ledge</span>
+  8: <span class="k">'.......g.......g........'</span>,   <span class="c">// two goons</span>
+})</pre>
+          <p class="small mt-2 mb-0">When a stage loads, the game reads the text row by row: tiles such as ground and blocks stay in the map, and characters such as goons, laddoos and lights are taken out and turned into moving objects.</p>
+        </div>
+      </div>
+
+      <div class="demo mb-3">
+        <h3>🧪 Try it: edit the level text and see it drawn</h3>
+        <div class="row g-3">
+          <div class="col-lg-5">
+            <textarea class="form-control level" id="lvText" rows="11" spellcheck="false" aria-label="Level text"></textarea>
+            <div class="small mt-1" id="lvMsg"></div>
+            <button type="button" class="btn btn-sm btn-outline-secondary mt-1" id="lvReset">↺ Reset</button>
+          </div>
+          <div class="col-lg-7"><canvas id="lvCanvas" width="960" height="330" aria-label="The level drawn from the text"></canvas></div>
+        </div>
+      </div>
+
+      <span class="ctrl-label">What the characters mean</span>
+      <table class="table table-sm table-bordered ref mb-0">
+        <thead><tr><th>Characters</th><th>Tiles and objects</th></tr></thead>
+        <tbody>
+          <tr><td><code>.</code> <code>=</code> <code>#</code> <code>-</code></td><td>Empty sky · ground · brick · plank you can jump up through</td></tr>
+          <tr><td><code>?</code> <code>*</code> <code>P</code></td><td>Blocks to bump from below: a laddoo, a heart, or a formula page</td></tr>
+          <tr><td><code>o</code> <code>p</code> <code>v</code></td><td>Laddoo · formula page · invisibility vial</td></tr>
+          <tr><td><code>S</code> <code>E</code> <code>F</code></td><td>Start · finish gate · checkpoint flag</td></tr>
+          <tr><td><code>g</code> <code>G</code> <code>s</code> <code>D&gt;&gt;&gt;</code></td><td>Goon · fast goon · sentry with a red torch · drone that flies over the <code>&gt;</code> marks</td></tr>
+          <tr><td><code>CC</code> <code>KK</code> <code>R</code> <code>A</code> <code>M&gt;&gt;&gt;</code></td><td>Sleeping cow · cart · coconut stall · bouncy awning · flying carpet</td></tr>
+          <tr><td><code>L</code> <code>X</code> <code>T</code></td><td>White searchlight · red searchlight · timed red alarm lamp</td></tr>
+          <tr><td><code>z</code> <code>Z</code> <code>{</code> <code>}</code> <code>x</code></td><td>Red tripwire · laser gate · conveyor belt pushing left or right · crate</td></tr>
+          <tr><td><code>l</code> <code>B</code> <code>H</code> <code>Y</code></td><td>The vault: Dr. Andhera's red lamp · its switch · Dr. Andhera · a vial that comes back</td></tr>
+          <tr><td><code>1</code>–<code>9</code> and symbols</td><td>Signposts with tips, such as "Mind the gap!"</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 3. Physics -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">3</span>Running and jumping (the physics)</div>
+      <p>Chintu has a speed across (<code>vx</code>) and a speed up and down (<code>vy</code>). Every step, <b>gravity</b> adds to <code>vy</code>, which pulls him down faster and faster, and both speeds move him a little. A jump simply sets <code>vy</code> to a big upward number.</p>
+      <div class="row g-3 mb-3">
+        <div class="col-lg-6">
+          <table class="table table-sm table-bordered ref mb-2">
+            <thead><tr><th>Setting</th><th>Value</th><th>What it does</th></tr></thead>
+            <tbody>
+              <tr><td>gravity</td><td>1800</td><td>Pulls down, in game pixels per second, per second</td></tr>
+              <tr><td>jump speed</td><td>620</td><td>Upward speed at the start of a jump</td></tr>
+              <tr><td>double jump</td><td>560</td><td>A second, smaller jump in the air (World 2 onwards)</td></tr>
+              <tr><td>let go early</td><td>× 0.45</td><td>Releasing JUMP while rising cuts the speed: a short hop</td></tr>
+              <tr><td>run speed</td><td>185</td><td>Top speed while RUN is held</td></tr>
+              <tr><td>coyote time</td><td>0.1 s</td><td>You can still jump just after running off an edge</td></tr>
+              <tr><td>jump buffer</td><td>0.12 s</td><td>A press just before landing still counts</td></tr>
+            </tbody>
+          </table>
+          <p class="small mb-0">The highest jump is about <i>speed² ÷ (2 × gravity)</i> = 620² ÷ 3600 ≈ 107 game pixels. Because the game moves in 1/60-second steps it comes out a little lower, <b>about 102 game pixels (3.4 tiles)</b>, so a wall 3 tiles high needs a held jump. Coyote time and the jump buffer are small kindnesses that make the controls feel fair: without them, presses that are a few hundredths of a second early or late would be lost.</p>
+        </div>
+        <div class="col-lg-6">
+          <span class="ctrl-label">Jumping (from chintu.html)</span>
+<pre class="code mb-2"><span class="c">// pressed recently, and on the ground (or just off an edge)?</span>
+<span class="k">if</span> (p.jumpBuf &gt; 0 &amp;&amp; p.coyoteT &gt; 0) p.vy = -PHYS.jumpV;
+<span class="c">// let go while still rising: a shorter jump</span>
+<span class="k">if</span> (p.jumping &amp;&amp; !input.jump &amp;&amp; p.vy &lt; 0) p.vy *= PHYS.jumpCut;
+<span class="c">// gravity, with a top falling speed</span>
+p.vy = Math.min(PHYS.maxFall, p.vy + PHYS.gravity * dt);</pre>
+          <p class="small mb-0"><b>Bumping into things:</b> the game moves Chintu across first and pushes him out of any solid tile he entered, then moves him up or down and does the same. Planks and awnings only hold him if his feet were above them a moment ago, so he can jump up through them. <b>Stomping</b> counts when he is falling and his feet were above the goon's head a moment ago; touching a goon any other way costs a heart.</p>
+        </div>
+      </div>
+
+      <div class="demo">
+        <h3>🧪 Try it: change gravity and jump speed</h3>
+        <div class="row g-3 align-items-center">
+          <div class="col-md-4">
+            <label class="ctrl-label" for="grav">Gravity: <span id="gravV">1800</span></label>
+            <input type="range" class="form-range" id="grav" min="800" max="3200" step="50" value="1800">
+            <label class="ctrl-label" for="jv">Jump speed: <span id="jvV">620</span></label>
+            <input type="range" class="form-range" id="jv" min="300" max="1000" step="10" value="620">
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="jReset">↺ The game's values</button>
+            <div class="read mt-2" id="jRead"></div>
+          </div>
+          <div class="col-md-8"><canvas id="jCanvas" width="960" height="330" aria-label="Jump arcs"></canvas>
+            <div class="small text-muted mt-1">Solid: JUMP held · dashed: JUMP tapped (let go after 0.08 s) · dotted: held, with a double jump at the top. Chintu runs at 185 to the right. Squares are tiles.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Red light -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">4</span>The red-light check</div>
+      <p>The heart of the story: the formula makes Chintu <b>invisible</b>, but <b>red light still shows him</b>. Every searchlight, drone lamp, sentry torch and alarm lamp is a <b>beam</b>: a cone with a starting point, a direction, a width and a length. Every step the game asks one question for three points on Chintu (his head, his middle and his feet): <i>is this point inside a beam?</i></p>
+      <div class="row g-3 mb-3">
+        <div class="col-lg-6">
+          <span class="ctrl-label">Is a point inside a cone? (from chintu.html)</span>
+<pre class="code">function inBeam(b, px, py) {
+  const dx = px - b.x, dy = py - b.y;
+  const d = Math.hypot(dx, dy);       <span class="c">// how far from the lamp</span>
+  if (d &gt; b.len || d &lt; 2) return false;
+  const a = Math.atan2(dy, dx);       <span class="c">// which direction</span>
+  <span class="c">// is that direction within half the cone's width of the beam's direction?</span>
+  return Math.abs(Math.atan2(Math.sin(a - b.ang),
+                             Math.cos(a - b.ang))) &lt; b.half;
+}</pre>
+        </div>
+        <div class="col-lg-6">
+          <span class="ctrl-label">The rule</span>
+<pre class="code mb-2">seen = inRed || (inWhite &amp;&amp; !invisible);
+revealed = invisible &amp;&amp; inRed;   <span class="c">// draw the red glow</span></pre>
+          <ul class="small mb-0">
+            <li><b>White light</b> sees a normal Chintu, but not an invisible one.</li>
+            <li><b>Red light</b> sees him either way, and draws him as a glowing red outline.</li>
+            <li>Being <b>seen</b> sets off an alarm, and a cage drops where he stands (at most once every 3 seconds).</li>
+            <li>The <code>atan2(sin, cos)</code> trick turns any angle difference into the range −180° to 180°, so a beam pointing right (0°) and a point just below it (−5° or 355°) are correctly 5° apart.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="demo">
+        <h3>🧪 Try it: drag Chintu into the lights</h3>
+        <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
+          <button type="button" class="btn btn-sm btn-primary" id="rInvis">👻 Drink the vial (invisible)</button>
+          <div class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" id="rSwing" checked><label class="form-check-label small" for="rSwing">Lights swing</label></div>
+          <span class="status hidden" id="rStatus">Hidden</span>
+        </div>
+        <canvas id="rCanvas" width="960" height="330" aria-label="Drag Chintu into the searchlights"></canvas>
+        <div class="small text-muted mt-1">Drag (or tap) to move Chintu. The three dots are the points the game checks. Left: a white searchlight. Right: a red one.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. Worry meter and boss -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">5</span>Dr. Andhera's worry meter and the boss</div>
+      <div class="row g-3">
+        <div class="col-lg-6">
+          <p class="small">The worry meter in the HUD is a number from 0 to 100. Each stage has a start and end value, and the meter moves between them as Chintu gets closer to the finish. Pages make Dr. Andhera more worried; hits and alarms calm him down a little:</p>
+<pre class="code mb-2">worry = start + (end − start) × progress
+        + pages × 2 − hits × 2 − alarms × 3</pre>
+          <p class="small mb-0">Below 25 he is 😏 calm, then 😠 annoyed, 😰 worried and, from 75, 😡 furious. His face in the HUD and in the control-room scenes is drawn with code in four moods, and a ship horn sounds when his mood goes up.</p>
+        </div>
+        <div class="col-lg-6">
+          <p class="small">In the vault, the same light rule decides whether <b>Dr. Andhera can see Chintu</b>:</p>
+<pre class="code mb-2">heSees = !lightsOut &amp;&amp; (!invisible || inRedLamp);</pre>
+          <p class="small mb-0">When he can see Chintu he aims each barrel: he works out how long a barrel takes to fall to the floor (<i>t = (−vy + √(vy² + 2·g·drop)) ÷ g</i>) and throws it just fast enough sideways to land where Chintu is. When he can't, he throws blindly and less often. Each switch Chintu jumps on breaks one lamp; with fewer lamps the dark gaps grow, and in the 3 rounds the barrels get faster. With all 4 lamps broken, he can't see at all.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. Drawing and sound -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">6</span>Drawing and sound, all with code</div>
+      <div class="row g-3">
+        <div class="col-lg-6">
+          <p class="small"><b>Pictures.</b> There are no image files. Chintu is a set of shapes: a head, a body and four limbs, each limb a thick line at an angle. Running is the legs' angles swinging with a sine wave; jumping, falling, sliding, getting hurt and the victory hop are different sets of angles. Goons, the sleeping cow, Dr. Andhera, the vault and every tile are drawn the same way.</p>
+          <p class="small mb-0"><b>Depth.</b> The background is drawn in layers (sky, far town, near houses) that move slower than the ground as the camera follows Chintu. This is called <i>parallax</i>, and it makes a flat picture feel deep. Light beams are drawn with "lighter" blending, so overlapping beams glow brighter.</p>
+        </div>
+        <div class="col-lg-6">
+          <p class="small"><b>Sound.</b> Every sound effect and every music loop is made while the game runs, with the browser's Web Audio: a wave of a chosen shape, a pitch that may slide, and a volume that fades. Nothing plays until the first tap or key press. The one recording is a ship horn that warns when danger is coming.</p>
+          <p class="small mb-0">Each of the 31 sound effects and 6 music loops, with its code and a Play button, is on the <a href="../GAME-2-Chintu/sounds/sound-effects.html">🔊 sound effects page</a>, along with future sounds made from recordings for characters in later versions.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. What Claude Code built -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">7</span>What Claude Code built</div>
+      <p class="small">Claude Code wrote the plan and all of the code. A person decided what the game should be, played each version on a computer and a phone, and asked for changes. <span class="tag chg">changed</span> marks changes that came from that testing.</p>
+      <table class="table table-sm table-bordered ref timeline mb-3">
+        <thead><tr><th>When</th><th>What was built</th></tr></thead>
+        <tbody>
+          <tr><td>20 Nov 2026</td><td><b>The plan:</b> story, characters, worlds, the red-light idea and 6 build phases. The villain got his own new design and name, Dr. Andhera.</td></tr>
+          <tr><td>21 Nov 2026</td><td><b>Phase 1, the running engine:</b> canvas scaling, the fixed-step loop, text levels, the camera, Chintu drawn in code, coyote time and jump buffer, and a practice run. The Chintu card was added to the portal.</td></tr>
+          <tr><td>21 Nov 2026</td><td><span class="tag chg">changed</span> After phone testing, Chintu runs only while RUN is held (it used to run by himself), with BACK, RUN and JUMP buttons, and round thumb buttons for phones held sideways. There is no SLIDE button, so no stage needs sliding.</td></tr>
+          <tr><td>21 Nov 2026</td><td><b>Phase 2, hurdles, enemies and pickups:</b> goons, coconuts, cows, carts, awnings, flying carpets, laddoos, blocks, formula pages, hearts, lives and checkpoints. Worlds 1 and 2.</td></tr>
+          <tr><td>21 Nov 2026</td><td><b>Phase 3, Dr. Andhera and red light:</b> his worry meter and control-room scenes, the invisibility vial, white and red searchlights, drones and sentries, alarms and cages. World 3.</td></tr>
+          <tr><td>21 Nov 2026</td><td><b>Phase 4, the fortress and the boss:</b> conveyor belts, tripwires (jumped over, not slid under), laser gates, timed alarm lamps, the vault fight, the ending, credits, the title screen, the stage map and stars. World 4.</td></tr>
+          <tr><td>21 Nov 2026</td><td><b>Phase 5, sound and polish:</b> sound effects, music, Easy mode, gamepad support, flying formula pages and automatic quality for slower phones. <span class="tag chg">changed</span> A ship-horn recording was added for danger warnings, and a sound effects reference page.</td></tr>
+          <tr><td>22 Nov 2026</td><td><span class="tag chg">changed</span> After phone testing, the results and menus were made compact for phones held sideways, where the buttons had been cut off.</td></tr>
+          <tr><td>22 Nov 2026</td><td><b>Phase 6, this page,</b> and links to it from the portal and the game.</td></tr>
+        </tbody>
+      </table>
+      <span class="ctrl-label">How it was checked</span>
+      <ul class="small mb-0">
+        <li><b>A computer player.</b> The game has a built-in bot (open the game with <code>?demo</code>) that runs, jumps gaps and goons, and waits for laser gates. After each change it played every stage in a test browser to prove each one can still be finished.</li>
+        <li><b>Automatic browser tests</b> started stages, jumped on the boss switches, opened every menu, checked that no sound plays before the first tap, measured frames per second on a slowed-down phone screen, and looked for any error.</li>
+        <li><b>Screenshots</b> of every new screen were checked by eye, which found things such as lamps hidden behind the score display.</li>
+        <li><b>People</b> played it on a real phone, which found the things a computer can't feel: auto-run was hard to control, and the buttons were cut off when the phone was held sideways.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="text-center my-4">
+    <a class="btn btn-lg fw-bold text-white px-4" style="background:#e8572a;border-radius:2rem" href="../GAME-2-Chintu/chintu.html">▶ Play Chintu</a>
+    <a class="btn btn-lg fw-bold px-4 ms-2" style="border:2px solid #04264d;color:#04264d;border-radius:2rem" href="../index.html">🏠 Games Home</a>
+  </div>
+
+</main>
+
+<footer class="text-white py-4 mt-5">
+  <div class="container text-center small">AI Games Portal · How Chintu works · <a href="../GAME-2-Chintu/chintu.html">🏃 Play Chintu</a> · <a href="CHINTU-GAME-PLAN.html">📋 Chintu plan</a> · <a href="../GAME-2-Chintu/sounds/sound-effects.html">🔊 Sound effects</a> · <a href="../index.html">🏠 Games Home</a></div>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const TILE = 30, ROWS = 11;
+
+  /* ---------- Demo 1: text level ---------- */
+  const DEMO_LEVEL = [
+    '', '', '..................p', '.................----', '......o.o', '.....#?#?#', '',
+    '...........oo.............###', '..S...g.......CC..X..v.z..###.E',
+    '============..======{{{{========', '============..======{{{{========'
+  ].map(r => r.padEnd(32, '.'));
+  const lv = $('lvCanvas'), lc = lv.getContext('2d');
+  function drawLevel() {
+    const rows = $('lvText').value.replace(/\r/g, '').split('\n');
+    while (rows.length && rows[rows.length - 1] === '') rows.pop();
+    const w = Math.max(...rows.map(r => r.length), 1);
+    let msg = '';
+    if (rows.length !== ROWS) msg = 'A piece has ' + ROWS + ' rows; this one has ' + rows.length + '.';
+    else if (rows.some(r => r.length !== w)) msg = 'All rows should be the same width (' + w + '). Short rows are filled with sky here.';
+    $('lvMsg').textContent = msg || '✓ ' + ROWS + ' rows × ' + w + ' tiles';
+    $('lvMsg').className = 'small mt-1 ' + (msg ? 'text-danger' : 'text-success');
+    const s = Math.min(lv.width / w, lv.height / ROWS), ox = (lv.width - w * s) / 2;
+    const sky = lc.createLinearGradient(0, 0, 0, lv.height); sky.addColorStop(0, '#5fb8f5'); sky.addColorStop(1, '#e8f7ff');
+    lc.fillStyle = sky; lc.fillRect(0, 0, lv.width, lv.height);
+    lc.strokeStyle = 'rgba(0,0,0,.06)';
+    for (let c = 0; c <= w; c++) { lc.beginPath(); lc.moveTo(ox + c * s, 0); lc.lineTo(ox + c * s, ROWS * s); lc.stroke(); }
+    for (let r = 0; r < Math.min(rows.length, ROWS); r++) {
+      for (let c = 0; c < w; c++) drawTile(rows[r][c] || '.', ox + c * s, r * s, s, rows, r, c);
+    }
+  }
+  function circle(x, y, r, col) { lc.fillStyle = col; lc.beginPath(); lc.arc(x, y, r, 0, Math.PI * 2); lc.fill(); }
+  function drawTile(ch, x, y, s, rows, r, c) {
+    const cx = x + s / 2, cy = y + s / 2, above = r > 0 ? (rows[r - 1][c] || '.') : '.';
+    switch (ch) {
+      case '.': return;
+      case '=': lc.fillStyle = '#a8693a'; lc.fillRect(x, y, s + .5, s + .5); if (above !== '=') { lc.fillStyle = '#5fb347'; lc.fillRect(x, y, s + .5, s * .25); } return;
+      case '#': lc.fillStyle = '#c8643b'; lc.fillRect(x, y, s, s); lc.strokeStyle = '#8a3f22'; lc.strokeRect(x + .5, y + .5, s - 1, s - 1); lc.beginPath(); lc.moveTo(x, cy); lc.lineTo(x + s, cy); lc.stroke(); return;
+      case '?': case '*': case 'P':
+        lc.fillStyle = '#f2b632'; lc.fillRect(x + 1, y + 1, s - 2, s - 2); lc.strokeStyle = '#a8701a'; lc.strokeRect(x + 1.5, y + 1.5, s - 3, s - 3);
+        lc.fillStyle = '#fff'; lc.font = '900 ' + (s * .6) + 'px system-ui'; lc.textAlign = 'center'; lc.textBaseline = 'middle'; lc.fillText(ch === '*' ? '♥' : ch === 'P' ? '📜' : '?', cx, cy + 1); return;
+      case '-': lc.fillStyle = '#a5713f'; lc.fillRect(x, y, s + .5, s * .3); return;
+      case 'A': for (let i = 0; i < 3; i++) { lc.fillStyle = i % 2 ? '#fff1d6' : '#d63031'; lc.fillRect(x + i * s / 3, y, s / 3 + .5, s * .3); } return;
+      case 'x': lc.fillStyle = '#9c6b3f'; lc.fillRect(x + 1, y + 1, s - 2, s - 2); lc.strokeStyle = '#5b3a1e'; lc.lineWidth = 2; lc.strokeRect(x + 2, y + 2, s - 4, s - 4); lc.beginPath(); lc.moveTo(x + 3, y + s - 3); lc.lineTo(x + s - 3, y + 3); lc.stroke(); lc.lineWidth = 1; return;
+      case '{': case '}':
+        lc.fillStyle = above === ch ? '#4a4f5e' : '#2a2d36'; lc.fillRect(x, y, s + .5, s + .5);
+        if (above !== ch) { lc.fillStyle = '#f2c14e'; lc.font = '900 ' + (s * .45) + 'px system-ui'; lc.textAlign = 'center'; lc.textBaseline = 'middle'; lc.fillText(ch === '}' ? '›' : '‹', cx, y + s * .2); }
+        return;
+      case 'o': circle(cx, cy, s * .2, '#f39c34'); return;
+      case 'p': lc.fillStyle = 'rgba(255,240,140,.55)'; lc.beginPath(); lc.arc(cx, cy, s * .42, 0, Math.PI * 2); lc.fill(); lc.fillStyle = '#f6e7c1'; lc.fillRect(cx - s * .2, cy - s * .27, s * .4, s * .54); return;
+      case 'v': circle(cx, cy, s * .38, 'rgba(90,210,255,.35)'); lc.fillStyle = '#29b6f6'; lc.fillRect(cx - s * .15, cy - s * .12, s * .3, s * .32); lc.fillStyle = '#a87b4f'; lc.fillRect(cx - s * .08, cy - s * .3, s * .16, s * .14); return;
+      case 'S': person(cx, y + s, s, '#f7c531', '#e8572a'); return;
+      case 'g': case 'G': case 's': person(cx, y + s, s, ch === 'G' ? '#3a1416' : '#1d1d26', '#111', true); return;
+      case 'C': if ((rows[r][c - 1] || '') !== 'C') { lc.fillStyle = '#fbf7ee'; lc.beginPath(); lc.ellipse(x + s, y + s * .65, s * .9, s * .35, 0, 0, Math.PI * 2); lc.fill(); lc.strokeStyle = '#3b2a1a'; lc.stroke(); } return;
+      case 'K': if ((rows[r][c - 1] || '') !== 'K') { lc.fillStyle = '#9c6b3f'; lc.fillRect(x, y + s * .3, s * 2, s * .4); circle(x + s * .5, y + s * .8, s * .2, '#3b2a1a'); circle(x + s * 1.5, y + s * .8, s * .2, '#3b2a1a'); } return;
+      case 'E': lc.fillStyle = '#7a4b25'; lc.fillRect(cx - 2, y - s * 2, 4, s * 3); lc.fillStyle = '#198754'; lc.beginPath(); lc.moveTo(cx + 2, y - s * 2); lc.lineTo(cx + s * .8, y - s * 1.75); lc.lineTo(cx + 2, y - s * 1.5); lc.fill(); return;
+      case 'F': lc.fillStyle = '#ddd'; lc.fillRect(cx - 1, y - s, 2, s * 2); lc.fillStyle = '#e8572a'; lc.beginPath(); lc.moveTo(cx + 1, y - s); lc.lineTo(cx + s * .6, y - s * .8); lc.lineTo(cx + 1, y - s * .6); lc.fill(); return;
+      case 'X': case 'L': case 'T': {
+        const red = ch !== 'L', top = y - s * 3;
+        lc.fillStyle = '#2b3042'; lc.fillRect(cx - 1.5, top, 3, s * 4);
+        lc.fillStyle = red ? 'rgba(255,45,45,.3)' : 'rgba(255,240,170,.45)';
+        lc.beginPath(); lc.moveTo(cx, top); lc.lineTo(cx - s * 1.4, y + s); lc.lineTo(cx + s * 1.4, y + s); lc.closePath(); lc.fill();
+        circle(cx, top, s * .22, red ? '#ff3030' : '#fff4b8'); return;
+      }
+      case 'z': lc.strokeStyle = '#ff3030'; lc.lineWidth = 2; lc.beginPath(); lc.moveTo(x + 2, y + s * .6); lc.lineTo(x + s - 2, y + s * .6); lc.stroke(); lc.lineWidth = 1; return;
+      case 'Z': lc.fillStyle = 'rgba(255,40,40,.75)'; lc.fillRect(cx - 2, y - s * 4, 4, s * 5); return;
+      case 'W': lc.fillStyle = '#3a3f55'; lc.fillRect(x, y, s, s); return;
+      case 'R': lc.fillStyle = '#0a8f5a'; lc.fillRect(x, y + s * .2, s, s * .2); circle(cx, y + s * .7, s * .22, '#6b4423'); return;
+      default:
+        if (ch === 'M' || ch === 'D' || ch === '>') { lc.fillStyle = ch === 'M' ? '#b3202a' : ch === 'D' ? '#2b2f3a' : 'rgba(0,0,0,.08)'; lc.fillRect(x, cy - s * .12, s, s * .24); return; }
+        lc.fillStyle = '#f3dcae'; lc.fillRect(x + s * .1, y + s * .1, s * .8, s * .55); lc.fillStyle = '#7a4b25'; lc.fillRect(cx - 1, y + s * .65, 2, s * .35);
+        lc.fillStyle = '#3b2314'; lc.font = '700 ' + (s * .4) + 'px system-ui'; lc.textAlign = 'center'; lc.textBaseline = 'middle'; lc.fillText(ch, cx, y + s * .38);
+    }
+  }
+  function person(cx, base, s, body, legs, goggles) {
+    lc.fillStyle = legs; lc.fillRect(cx - s * .18, base - s * .45, s * .14, s * .45); lc.fillRect(cx + s * .04, base - s * .45, s * .14, s * .45);
+    lc.fillStyle = body; lc.fillRect(cx - s * .25, base - s * .95, s * .5, s * .55);
+    circle(cx, base - s * 1.15, s * .24, goggles ? '#c98f5f' : '#f3bf8c');
+    if (goggles) circle(cx - s * .08, base - s * 1.15, s * .08, '#ff3b3b'); else { lc.fillStyle = '#3a2416'; lc.beginPath(); lc.arc(cx, base - s * 1.2, s * .25, Math.PI, 0); lc.fill(); }
+  }
+  $('lvText').value = DEMO_LEVEL.join('\n');
+  $('lvText').addEventListener('input', drawLevel);
+  $('lvReset').addEventListener('click', () => { $('lvText').value = DEMO_LEVEL.join('\n'); drawLevel(); });
+  drawLevel();
+
+  /* ---------- Demo 2: jump arcs (same rules as the game) ---------- */
+  const jc = $('jCanvas'), jx = jc.getContext('2d');
+  const RUN = 185, CUT = 0.45, DBL = 560, MAXFALL = 900, STEP = 1 / 60;
+  function arc(g, v, mode) {
+    // mode: 'hold' | 'tap' | 'double'
+    let x = 0, y = 0, vy = -v, t = 0, jumping = true, used = false;
+    const pts = [[0, 0]];
+    while (t < 3) {
+      t += STEP;
+      if (mode === 'tap' && jumping && t > 0.08 && vy < 0) { vy *= CUT; jumping = false; }
+      if (mode === 'double' && !used && vy >= 0) { vy = -DBL; used = true; }
+      vy = Math.min(MAXFALL, vy + g * STEP);
+      x += RUN * STEP; y += vy * STEP;
+      if (y >= 0) { pts.push([x, 0]); break; }
+      pts.push([x, y]);
+    }
+    return { pts, top: -Math.min(...pts.map(p => p[1])), time: t };
+  }
+  function drawJump() {
+    const g = +$('grav').value, v = +$('jv').value;
+    $('gravV').textContent = g; $('jvV').textContent = v;
+    const hold = arc(g, v, 'hold'), tap = arc(g, v, 'tap'), dbl = arc(g, v, 'double');
+    // fit the double jump in view
+    const worldW = Math.max(300, dbl.pts[dbl.pts.length - 1][0] + 40), worldH = Math.max(150, dbl.top + 40);
+    const s = Math.min((jc.width - 40) / worldW, (jc.height - 40) / worldH), gy = jc.height - 20, gx = 20;
+    jx.fillStyle = '#bfe6ff'; jx.fillRect(0, 0, jc.width, jc.height);
+    jx.strokeStyle = 'rgba(4,38,77,.1)';
+    for (let tx = 0; tx * TILE * s < jc.width; tx++) { jx.beginPath(); jx.moveTo(gx + tx * TILE * s, 0); jx.lineTo(gx + tx * TILE * s, gy); jx.stroke(); }
+    for (let ty = 0; ty * TILE * s < gy; ty++) { jx.beginPath(); jx.moveTo(0, gy - ty * TILE * s); jx.lineTo(jc.width, gy - ty * TILE * s); jx.stroke(); }
+    jx.fillStyle = '#5fb347'; jx.fillRect(0, gy, jc.width, 4); jx.fillStyle = '#a8693a'; jx.fillRect(0, gy + 4, jc.width, 20);
+    jx.fillStyle = 'rgba(4,38,77,.55)'; jx.font = '700 13px system-ui'; jx.textAlign = 'right';
+    for (let ty = 1; ty * TILE * s < gy - 10; ty++) jx.fillText(ty + ' tile' + (ty > 1 ? 's' : ''), jc.width - 6, gy - ty * TILE * s - 3);
+    const line = (a, col, dash) => {
+      jx.strokeStyle = col; jx.lineWidth = 3; jx.setLineDash(dash);
+      jx.beginPath(); a.pts.forEach(([x, y], i) => { const px = gx + x * s, py = gy + y * s; if (i) jx.lineTo(px, py); else jx.moveTo(px, py); }); jx.stroke();
+      jx.setLineDash([]);
+    };
+    line(dbl, '#6f42c1', [2, 6]); line(tap, '#198754', [10, 7]); line(hold, '#e8572a', []);
+    // Chintu at the start
+    jx.fillStyle = '#e8572a'; jx.fillRect(gx - 5, gy - 36 * s, 10, 18 * s); jx.fillStyle = '#f7c531'; jx.fillRect(gx - 6, gy - 30 * s, 12, 13 * s);
+    const tiles = n => (n / TILE).toFixed(1);
+    $('jRead').innerHTML = 'Held: <span style="color:#e8572a">' + Math.round(hold.top) + ' px (' + tiles(hold.top) + ' tiles)</span>, ' + hold.time.toFixed(2) + ' s in the air<br>' +
+      'Tapped: <span style="color:#198754">' + Math.round(tap.top) + ' px (' + tiles(tap.top) + ' tiles)</span><br>' +
+      'Double: <span style="color:#6f42c1">' + Math.round(dbl.top) + ' px (' + tiles(dbl.top) + ' tiles)</span>';
+  }
+  ['grav', 'jv'].forEach(id => $(id).addEventListener('input', drawJump));
+  $('jReset').addEventListener('click', () => { $('grav').value = 1800; $('jv').value = 620; drawJump(); });
+  drawJump();
+
+  /* ---------- Demo 3: the red-light check (same inBeam and rule as the game) ---------- */
+  const rc = $('rCanvas'), rx = rc.getContext('2d');
+  const SC = rc.height / 165, FLOOR = 150;                 // a 165 game-pixel-tall slice of a rooftop
+  const W = rc.width / SC;
+  const lamps = [{ x: W * 0.28, y: FLOOR - 120, red: false, phase: 0 }, { x: W * 0.72, y: FLOOR - 120, red: true, phase: 2 }];
+  const chintu = { x: W * 0.5 - 8, y: FLOOR - 36, w: 16, h: 36 };
+  let invisible = false, swing = true, t0 = performance.now(), frozenT = 0;
+  function inBeam(b, px, py) {
+    const dx = px - b.x, dy = py - b.y, d = Math.hypot(dx, dy);
+    if (d > b.len || d < 2) return false;
+    const a = Math.atan2(dy, dx);
+    return Math.abs(Math.atan2(Math.sin(a - b.ang), Math.cos(a - b.ang))) < b.half;
+  }
+  function frameRed(now) {
+    const t = swing ? (now - t0) / 1000 : frozenT;
+    if (swing) frozenT = t;
+    const beams = lamps.map(L => ({ x: L.x, y: L.y, ang: Math.PI / 2 + 0.6 * Math.sin(t * 0.8 + L.phase), half: 0.2, len: 185, red: L.red }));
+    const cx = chintu.x + chintu.w / 2;
+    const pts = [[cx, chintu.y + 4], [cx, chintu.y + chintu.h / 2], [cx, chintu.y + chintu.h - 3]];
+    let inRed = false, inWhite = false;
+    const hitPt = pts.map(([px, py]) => beams.map(b => inBeam(b, px, py) ? (b.red ? 'r' : 'w') : '').join(''));
+    for (const h of hitPt) { if (h.includes('r')) inRed = true; if (h.includes('w')) inWhite = true; }
+    const seen = inRed || (inWhite && !invisible), revealed = invisible && inRed;
+    // draw
+    rx.setTransform(1, 0, 0, 1, 0, 0);
+    const sky = rx.createLinearGradient(0, 0, 0, rc.height); sky.addColorStop(0, '#070d24'); sky.addColorStop(1, '#2a3566');
+    rx.fillStyle = sky; rx.fillRect(0, 0, rc.width, rc.height);
+    rx.setTransform(SC, 0, 0, SC, 0, 0);
+    rx.fillStyle = '#4b5269'; rx.fillRect(0, FLOOR, W, 30); rx.fillStyle = '#8a92a8'; rx.fillRect(0, FLOOR, W, 5);
+    rx.save(); rx.globalCompositeOperation = 'lighter';
+    for (const b of beams) {
+      const col = b.red ? '255,45,45' : '255,240,170';
+      const g = rx.createRadialGradient(b.x, b.y, 2, b.x, b.y, b.len);
+      g.addColorStop(0, 'rgba(' + col + ',' + (b.red ? .5 : .42) + ')'); g.addColorStop(.8, 'rgba(' + col + ',.12)'); g.addColorStop(1, 'rgba(' + col + ',0)');
+      rx.fillStyle = g; rx.beginPath(); rx.moveTo(b.x, b.y); rx.arc(b.x, b.y, b.len, b.ang - b.half, b.ang + b.half); rx.closePath(); rx.fill();
+    }
+    rx.restore();
+    for (const b of beams) {
+      rx.fillStyle = '#2b3042'; rx.fillRect(b.x - 2, b.y, 4, FLOOR - b.y);
+      rx.fillStyle = b.red ? '#ff3030' : '#fff4b8'; rx.beginPath(); rx.arc(b.x, b.y, 5, 0, Math.PI * 2); rx.fill();
+    }
+    // Chintu: normal, a faint shimmer when invisible, a red glow when red light shows him
+    rx.save();
+    rx.globalAlpha = invisible && !revealed ? 0.25 : 1;
+    if (revealed) { rx.shadowColor = '#ff1e1e'; rx.shadowBlur = 14; }
+    const x = chintu.x, y = chintu.y;
+    rx.fillStyle = '#e8572a'; rx.fillRect(x + 2, y + 20, 5, 16); rx.fillRect(x + 9, y + 20, 5, 16);
+    rx.fillStyle = '#f7c531'; rx.fillRect(x + 1, y + 10, 14, 12);
+    rx.fillStyle = '#f3bf8c'; rx.beginPath(); rx.arc(x + 8, y + 6, 6, 0, Math.PI * 2); rx.fill();
+    rx.fillStyle = '#3a2416'; rx.beginPath(); rx.arc(x + 8, y + 5, 6, Math.PI, 0); rx.fill();
+    rx.restore();
+    pts.forEach(([px, py], i) => {
+      const h = hitPt[i];
+      rx.fillStyle = h.includes('r') ? '#ff3b3b' : h.includes('w') ? '#ffe066' : '#7fe3ff';
+      rx.strokeStyle = '#04264d'; rx.lineWidth = 1;
+      rx.beginPath(); rx.arc(px, py, 2.8, 0, Math.PI * 2); rx.fill(); rx.stroke();
+    });
+    const st = $('rStatus');
+    st.className = 'status ' + (seen ? 'seen' : 'hidden');
+    st.textContent = seen
+      ? (inRed ? (invisible ? '🚨 Seen! Red light shows the invisible' : '🚨 Seen by red light') : '🚨 Seen by the white light')
+      : (invisible && inWhite ? '👻 Hidden: white light can\'t see the invisible' : invisible ? '👻 Invisible and out of the red light' : '🙂 Not in any light');
+    requestAnimationFrame(frameRed);
+  }
+  function moveTo(e) {
+    const r = rc.getBoundingClientRect();
+    const gx = (e.clientX - r.left) / r.width * W, gy = (e.clientY - r.top) / r.height * (rc.height / SC);
+    chintu.x = Math.max(0, Math.min(W - chintu.w, gx - chintu.w / 2));
+    chintu.y = Math.max(5, Math.min(FLOOR - chintu.h, gy - chintu.h / 2));
+  }
+  let dragging = false;
+  rc.addEventListener('pointerdown', e => { dragging = true; try { rc.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ } moveTo(e); });
+  rc.addEventListener('pointermove', e => { if (dragging) moveTo(e); });
+  ['pointerup', 'pointercancel'].forEach(ev => rc.addEventListener(ev, () => { dragging = false; }));
+  $('rInvis').addEventListener('click', () => {
+    invisible = !invisible;
+    $('rInvis').textContent = invisible ? '🙂 Become visible again' : '👻 Drink the vial (invisible)';
+  });
+  $('rSwing').addEventListener('change', () => { swing = $('rSwing').checked; if (swing) t0 = performance.now() - frozenT * 1000; });
+  requestAnimationFrame(frameRed);
+})();
+</script>
+</body>
+</html>

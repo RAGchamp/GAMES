@@ -213,7 +213,7 @@
   const GAMES = [
     { icon:'🏎️', name:'Car Race', url:'GAME1-CAR-RACE/car-race.html', plan:'info/CAR-RACE-PLAN.html',
       blurb:'Pseudo-3D racing: 3 tracks, 3 modes, rain, night racing and a hired driver who teaches you.' },
-    { icon:'🏃', name:'Chintu', url:'GAME-2-Chintu/chintu.html', plan:'info/CHINTU-GAME-PLAN.html',
+    { icon:'🏃', name:'Chintu', url:'GAME-2-Chintu/chintu.html', plan:'info/CHINTU-GAME-PLAN.html', learn:'info/HOW-CHINTU-WORKS.html',
       blurb:'Jump-and-run: stomp goons, find the formula pages and turn invisible, but red light still sees you! 4 worlds, 11 stages and a final showdown.' },
     { icon:'🎮', name:'Game 3', blurb:'Coming soon.' },
     { icon:'🎮', name:'Game 4', blurb:'Coming soon.' }
@@ -225,7 +225,8 @@
       '<h3 class="h6 fw-bold mb-1">' + esc(g.name) + ' ' + (live ? '<span class="badge text-bg-success">Play</span>' : '<span class="badge badge-soon">Coming soon</span>') + '</h3>' +
       '<p class="small text-muted mb-2">' + esc(g.blurb) + '</p>' +
       (live ? '<a class="btn btn-sm btn-play" href="' + g.url + '">▶ Play</a> ' +
-              (g.plan ? '<a class="btn btn-sm btn-soft" href="' + g.plan + '">Plan</a>' : '') : '') +
+              (g.plan ? '<a class="btn btn-sm btn-soft" href="' + g.plan + '">Plan</a> ' : '') +
+              (g.learn ? '<a class="btn btn-sm btn-soft" href="' + g.learn + '">How it works</a>' : '') : '') +
       '</div></div>';
   }).join('');
 
