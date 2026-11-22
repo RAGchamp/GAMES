@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Javelin Game Plan</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+  :root{
+    --biz-blue:#0d6efd;
+    --biz-blue-dark:#084298;
+    --biz-yellow:#ffc107;
+    --biz-red:#dc3545;
+    --biz-green:#198754;
+    --biz-purple:#6f42c1;
+    --nav-blue:#04264d;
+    --nav-yellow:#ffd60a;
+    --rocky-blue:#1f6fd1;
+    --rocky-hair:#a0612b;
+  }
+  body{ background:#f7f8fa; margin:0; }
+
+  .topnav{
+    position:sticky; top:0; z-index:1030;
+    background:var(--nav-blue); color:var(--nav-yellow);
+    padding:.9rem 1.5rem; display:flex; justify-content:space-between; align-items:center;
+    box-shadow:0 .15rem .5rem rgba(0,0,0,.25);
+  }
+  .topnav .brand{ display:inline-flex; align-items:center; text-decoration:none; }
+  .topnav .brand-logo{ height:44px; width:auto; display:block; }
+  .topnav .tagline{
+    font-weight:600; font-size:1.05rem; color:var(--nav-yellow);
+    letter-spacing:.15em; word-spacing:.6em; font-style:italic;
+  }
+  @media (max-width:576px){
+    .topnav{ flex-direction:column; text-align:center; gap:.4rem; padding:.75rem 1rem; }
+  }
+
+  .step-num{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:1.9rem; height:1.9rem; border-radius:50%;
+    background:var(--biz-yellow); color:#2b2b2b; font-weight:800; font-size:.95rem; margin-right:.55rem; flex:none;
+  }
+  .step-title{ display:flex; align-items:center; font-weight:700; font-size:1.1rem; margin-bottom:.75rem; }
+  .step-card{ border:2px solid #c9d3e3; border-radius:.6rem; }
+  .ctrl-label{ font-size:.75rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#6c757d; margin-bottom:.25rem; display:block; }
+  .stat-pill{ background:#eef3fb; border-radius:2rem; padding:.2rem .7rem; font-size:.8rem; font-weight:600; display:inline-block; margin:.15rem .2rem .15rem 0; }
+
+  .prompt{
+    background:linear-gradient(120deg,var(--biz-blue-dark),var(--biz-blue)); color:#fff;
+    border-radius:.6rem; padding:.9rem 1.1rem; font-size:1.02rem;
+  }
+
+  .about-box{ background:#fde2ec; border:2px solid #f5a3c0; border-radius:.6rem; padding:.9rem 1.1rem; }
+  .about-box h2{ font-size:1.05rem; font-weight:700; color:#8a1f4a; margin-bottom:.4rem; }
+  .about-box p{ font-size:.92rem; color:#3b2a31; }
+
+  .now-box{ display:flex; gap:.75rem; flex-wrap:wrap; }
+  .now-card{ flex:1 1 220px; background:#fff; border:2px solid #dde3ec; border-radius:.6rem; padding:.7rem .9rem; }
+  .now-card.now{ border-color:#c79100; background:#fff8e1; }
+  .now-card.bad{ border-color:#b02a37; background:#fdeef0; }
+  .now-card .lbl{ font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#6c757d; }
+  .now-card .val{ font-size:1.15rem; font-weight:800; line-height:1.25; margin:.15rem 0 .25rem; }
+  .now-card .det{ font-size:.86rem; color:#5a6475; }
+
+  .phase{ border-left:5px solid var(--biz-blue); }
+  .phase.p2{ border-left-color:var(--biz-green); }
+  .phase.p3{ border-left-color:var(--biz-purple); }
+  .phase.p4{ border-left-color:#c79100; }
+  .phase.p5{ border-left-color:var(--biz-red); }
+  .phase.p6{ border-left-color:#0aa2c0; }
+  .phase ul{ margin-bottom:.4rem; }
+  .accept{ background:#eefaf3; border:1px solid #bfe3cf; border-radius:.45rem; padding:.5rem .75rem; font-size:.88rem; }
+  .accept b{ color:var(--biz-green); }
+
+  table.plan th{ background:#eef3fb; font-size:.8rem; text-transform:uppercase; letter-spacing:.04em; }
+  table.plan td, table.plan th{ font-size:.9rem; vertical-align:top; }
+
+  pre.tree{ background:#0f1b2d; color:#d7e3f4; border-radius:.5rem; padding:.9rem 1rem; font-size:.85rem; margin:0; overflow-x:auto; }
+  pre.tree .c{ color:#ffd60a; }
+
+  /* Game screen mock */
+  .screen{ position:relative; border-radius:.6rem; overflow:hidden; border:3px solid #1b2a44;
+           background:linear-gradient(#7fc8f8 0%, #cdeeff 70%, #6fb83f 70%, #5a9a33 100%); height:250px; }
+  .screen .hud{ position:absolute; top:6px; left:8px; right:8px; display:flex; justify-content:space-between; gap:.4rem;
+                font:700 .72rem/1.2 system-ui,sans-serif; color:#fff; text-shadow:0 1px 2px #000; flex-wrap:wrap; }
+  .screen .meter{ background:rgba(0,0,0,.45); border-radius:1rem; padding:.15rem .55rem; }
+  .screen .sprite{ position:absolute; font-size:2rem; line-height:1; }
+  .screen .arc{ position:absolute; left:0; top:0; width:100%; height:100%; }
+  .screen .crate{ position:absolute; background:#c98a43; border:2px solid #6e4416; border-radius:2px; }
+  .screen .stone{ position:absolute; background:#9aa3ad; border:2px solid #555d66; border-radius:2px; }
+  .screen .glass{ position:absolute; background:rgba(190,235,255,.7); border:2px solid #5aa9d6; border-radius:2px; }
+  .screen .sliders{ position:absolute; left:8px; bottom:8px; background:rgba(4,38,77,.85); color:#fff; border-radius:.5rem;
+                    padding:.35rem .6rem; font:700 .7rem/1.3 system-ui,sans-serif; width:190px; }
+  .screen .sliders .row1{ display:flex; align-items:center; gap:.4rem; }
+  .screen .sliders .trk{ flex:1; height:6px; background:#33507a; border-radius:3px; position:relative; }
+  .screen .sliders .trk i{ position:absolute; top:-4px; width:14px; height:14px; border-radius:50%; background:var(--nav-yellow); }
+  .screen .throw{ position:absolute; right:10px; bottom:10px; background:var(--biz-red); color:#fff; font:800 .8rem system-ui,sans-serif;
+                  padding:.45rem .9rem; border-radius:2rem; box-shadow:0 2px 0 #7a1620; }
+
+  .tag{ border-radius:.3rem; padding:0 .35rem; font-size:.7rem; font-weight:700; color:#fff; }
+  .tag-must{ background:var(--biz-green); } .tag-nice{ background:#6c757d; } .tag-open{ background:var(--biz-red); }
+
+  .rocky-swatch{ display:inline-block; width:.9rem; height:.9rem; border-radius:.2rem; vertical-align:-2px; border:1px solid rgba(0,0,0,.25); margin-right:.25rem; }
+
+  footer{ background:var(--nav-blue); }
+  footer a{ color:#fff; }
+  kbd{ background:#04264d; }
+</style>
+</head>
+<body>
+
+<!-- STICKY TOP NAV -->
+<div class="topnav">
+  <a class="brand" href="../index.html"><img class="brand-logo" src="../logo.svg" alt="RAG Champ"></a>
+  <div class="tagline">AI Games Portal</div>
+</div>
+
+<main class="container my-4">
+
+  <!-- How AI plays a part (pink box) -->
+  <div class="about-box mb-4">
+    <h2>What is this plan and how does AI play a part?</h2>
+    <p class="mb-0">This page is the build plan for <strong>Game 3: Javelin</strong>, the third game in the RAG Champ Games portal. Like Car Race and Chintu, it will be written by an AI coding agent (Claude Code) as one HTML file with plain JavaScript and the Canvas API. There are no frameworks, no build step and no server. The game is built from a short idea and one character picture of Rocky. <strong>PLEASE NOTE: players don't need any AI to play the game.</strong> The AI is used only to write the code.</p>
+  </div>
+
+  <h1 class="h3 fw-bold mb-1">🎯 Javelin: Development Plan</h1>
+  <p class="text-muted mb-3">Plan date: 22 Nov 2026 · Decisions agreed 22 Nov 2026 · Status: <strong>Phases 1–5 done 22 Nov 2026 (<a href="../GAME-3-Javelin/javelin.html">play Javelin</a>); Phase 6 explainer to do</strong></p>
+
+  <div class="prompt mb-4">
+    <strong>Goal:</strong> Build <code class="text-warning">GAME-3-Javelin/javelin.html</code>, a physics launch-and-topple puzzle game. The player sets two sliders, <strong>Angle</strong> and <strong>Pace</strong>, and presses THROW. <strong>Rocky</strong> runs up and throws his javelin, which flies along a real arc and lands where the physics takes it. Each level has towers of crates, glass and stone with targets on them (bullseye boards, balloons and trophy cups), and Rocky has only a few javelins to knock them all down.
+  </div>
+
+  <!-- 1. Story -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">1</span>The story</div>
+      <div class="row g-3">
+        <div class="col-lg-7">
+          <p>Rocky is the star javelin thrower of his town's sports club, and he wants to win the <strong>Golden Javelin Trophy</strong> at the big Sports Day.</p>
+          <p>His coach has a famous training method: the <strong>Target Challenge</strong>. On every ground she builds wobbly towers from crates, planks, glass panes and stone blocks, and puts targets on them. Rocky can't climb the towers, but he can throw. Every good throw knocks targets down, and each cleared ground moves him one step closer to Sports Day.</p>
+          <p class="mb-0">The last stage is the <strong>Championship Tower</strong>: the tallest tower of all, with the Golden Trophy on top.</p>
+        </div>
+        <div class="col-lg-5">
+          <span class="ctrl-label">Targets only, by design (agreed 22 Nov 2026)</span>
+          <ul class="small mb-0">
+            <li>There are no villains or characters to hit, only targets. The javelin never hurts anyone.</li>
+            <li>The javelin sticks into wood, boards and ground and bounces off stone and metal, which keeps it a sport.</li>
+            <li>A <strong>Practice field</strong> lets players just throw for distance, as in the real sport.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Characters -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">2</span>Characters (drawn in code from the reference picture)</div>
+      <div class="now-box mb-3">
+        <div class="now-card now">
+          <div class="lbl">Hero</div>
+          <div class="val">🏃 Rocky</div>
+          <div class="det">A sporty, determined boy with <span class="rocky-swatch" style="background:#a0612b"></span><strong>swept-up light-brown hair</strong>, big blue eyes and a focused look. He wears a <span class="rocky-swatch" style="background:#1f6fd1"></span><strong>blue athletics vest</strong>, <strong>dark-blue shorts with a white side stripe</strong>, white wristband and <strong>blue-and-white running shoes</strong>. His javelin has a <strong>wooden grip</strong> and a silver tip. Animations: idle bounce, run-up (6 frames, faster with more pace), crossover step, throw, follow-through, cheer and a disappointed head-shake.</div>
+        </div>
+        <div class="now-card bad">
+          <div class="lbl">Targets</div>
+          <div class="val">🎯 Boards, balloons, cups</div>
+          <div class="det"><strong>Bullseye boards</strong>: the javelin sticks in; a hit nearer the centre scores more. <strong>Steel-rim boards</strong>: need two hits, or knock them off their tower. <strong>Balloons</strong>: pop when touched, some float and drift in the wind. <strong>Trophy cups</strong>: cleared when they fall to the ground. <strong>Bells</strong>: ring when hit, for bonus points.</div>
+        </div>
+        <div class="now-card">
+          <div class="lbl">Building pieces</div>
+          <div class="val">Wood, glass, stone</div>
+          <div class="det"><strong>Wood</strong> (crates, planks): the javelin sticks in and breaks it after a strong hit. <strong>Glass</strong>: shatters easily. <strong>Stone</strong>: heavy, the javelin bounces off unless it is the Heavy javelin.</div>
+        </div>
+      </div>
+      <p class="small text-muted mb-0">Rocky will be an <strong>original cartoon drawing made with canvas shapes</strong>, matching the colours and features of the reference picture. The picture itself is not copied into the game, because it looks like a stock sticker image. The coach appears only as a small portrait with a speech bubble in the cut-scenes.</p>
+    </div>
+  </div>
+
+  <!-- 3. Core gameplay -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">3</span>How it plays</div>
+      <div class="row g-3">
+        <div class="col-lg-6">
+          <ul class="mb-2">
+            <li><strong>Angle slider:</strong> 5° to 85°. Rocky's arm and the javelin in his hand tilt live as the slider moves.</li>
+            <li><strong>Pace slider:</strong> how fast Rocky runs up, from a jog to a sprint. Pace sets the release speed of the javelin, so it decides how far it flies. A pace bar fills from green to red.</li>
+            <li><strong>THROW button:</strong> Rocky runs from the start mark to the throwing line, plants his foot and throws. The camera follows the javelin and comes back when everything stops moving.</li>
+            <li><strong>Aim guide:</strong> a dotted line shows the start of the flight path (the first 25%). On Easy it shows half the path. It never shows where the javelin will land, so finding the right throw is the puzzle.</li>
+            <li><strong>Last-throw ghost:</strong> a faint line shows where the previous javelin went, so players can make small changes, the way you learn in the real sport.</li>
+          </ul>
+        </div>
+        <div class="col-lg-6">
+          <ul class="mb-2">
+            <li><strong>Limited javelins:</strong> usually 3 to 5 per level, shown as a rack beside Rocky.</li>
+            <li><strong>Level cleared</strong> when every target is done: boards hit, balloons popped, trophy cups on the ground.</li>
+            <li><strong>Stars:</strong> 1 star for clearing; 2 stars for clearing with a javelin left over; 3 stars for 2 or more left, or for a score above the level's target.</li>
+            <li><strong>Score:</strong> points for each broken block and each target (more for a bullseye centre), bells rung, and a big bonus for every javelin not used.</li>
+            <li><strong>Wind</strong> (from World 2): a windsock and an arrow show the wind's strength and direction, and the wind pushes the javelin sideways in flight.</li>
+            <li><strong>Javelin types</strong> (unlocked one per world): <em>Standard</em>; <em>Heavy</em> (iron tip, breaks stone, drops faster); <em>Feather</em> (light, flies far, pushed a lot by wind); <em>Triple</em> (splits into three when you tap during flight).</li>
+          </ul>
+        </div>
+      </div>
+      <span class="ctrl-label">Starting tuning values (to be adjusted while playtesting)</span>
+      <span class="stat-pill">view 960 × 540, scaled to fit</span><span class="stat-pill">1 m = 16 px</span><span class="stat-pill">angle 5°–85°, step 1°</span><span class="stat-pill">release speed 12 → 32 m/s</span><span class="stat-pill">gravity 9.8 m/s²</span><span class="stat-pill">wind 0 → ±6 m/s</span><span class="stat-pill">run-up 1.2 → 0.7 s</span><span class="stat-pill">level settles in &lt; 6 s</span>
+    </div>
+  </div>
+
+  <!-- 4. Screen mock -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">4</span>What the screen looks like</div>
+      <div class="screen mb-2" role="img" aria-label="Mock of the game screen: Rocky on the left with a dotted aim line, a tower of crates, glass and stone on the right with a trophy cup and a bullseye board on it, sliders at the bottom left and a Throw button at the bottom right">
+        <div class="hud">
+          <span class="meter">🎯 1-4 · Score 12 450</span>
+          <span class="meter">🌬️ Wind → 2 m/s</span>
+          <span class="meter">Javelins: | | |</span>
+        </div>
+        <svg class="arc" viewBox="0 0 600 250" preserveAspectRatio="none" aria-hidden="true">
+          <path d="M70 150 Q 130 60 190 70" fill="none" stroke="#fff" stroke-width="3" stroke-dasharray="4 7" stroke-linecap="round"/>
+          <path d="M70 150 Q 260 -10 430 130" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="2" stroke-dasharray="2 6"/>
+        </svg>
+        <div class="sprite" style="left:6%; top:52%;">🏃</div>
+        <!-- tower -->
+        <div class="crate" style="left:66%; top:58%; width:30px; height:30px;"></div>
+        <div class="crate" style="left:calc(66% + 34px); top:58%; width:30px; height:30px;"></div>
+        <div class="glass" style="left:66%; top:calc(58% - 10px); width:64px; height:9px;"></div>
+        <div class="stone" style="left:calc(66% + 10px); top:calc(58% - 42px); width:40px; height:32px;"></div>
+        <div class="sprite" style="left:calc(66% + 16px); top:calc(58% - 74px); font-size:1.6rem;">🏆</div>
+        <div class="crate" style="left:84%; top:52%; width:30px; height:45px;"></div>
+        <div class="sprite" style="left:calc(84% + 2px); top:calc(52% - 30px); font-size:1.5rem;">🎯</div>
+        <div class="sprite" style="left:79%; top:14%; font-size:1.4rem;">🎈</div>
+        <div class="sliders">
+          <div class="row1">Angle <span class="trk"><i style="left:45%"></i></span> 38°</div>
+          <div class="row1 mt-1">Pace&nbsp; <span class="trk"><i style="left:70%"></i></span> 70%</div>
+        </div>
+        <div class="throw">THROW</div>
+      </div>
+      <p class="small text-muted mb-0">This is only a layout sketch. In the game, all of this is drawn on a canvas with no emoji or image files. The bright dotted line is the aim guide; the faint line is the ghost of the last throw. On portrait phones the scene sits on top and the two sliders and a big THROW button sit in a control deck below it, as in Car Race and Chintu.</p>
+    </div>
+  </div>
+
+  <!-- 5. Worlds -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">5</span>Worlds and levels</div>
+      <div class="table-responsive">
+        <table class="table table-sm plan mb-0">
+          <thead><tr><th>World</th><th>Setting</th><th>New ideas</th><th>New javelin</th></tr></thead>
+          <tbody>
+            <tr><td><strong>0</strong> · Practice</td><td>The club's training field with distance lines and a sector</td><td>Throw for distance only. Shows the distance in metres and a personal best. Teaches that a medium angle goes furthest.</td><td>Standard</td></tr>
+            <tr><td><strong>1</strong> · 8 levels</td><td>School sports ground on a sunny morning</td><td>Wooden crates and planks, bullseye boards, balloons, no wind. Short, simple towers close to Rocky.</td><td>Standard</td></tr>
+            <tr><td><strong>2</strong> · 8 levels</td><td>City stadium with stands, flags and a big screen</td><td><strong>Wind</strong>, glass panes, towers further away, steel-rim boards, drifting balloons.</td><td>Heavy</td></tr>
+            <tr><td><strong>3</strong> · 8 levels</td><td>Hilltop training camp with pine trees and a stream</td><td>Stone blocks, towers on high ledges and down in dips, gusts that change between throws, see-saw planks, bells.</td><td>Feather</td></tr>
+            <tr><td><strong>4</strong> · 6 levels + final</td><td>Stadium at night under floodlights</td><td>Everything mixed, moving targets on rails, swinging boards.</td><td>Triple</td></tr>
+            <tr><td><strong>Final</strong></td><td>The Championship Tower</td><td colspan="2">A tall tower in three layers (wood, glass, stone), each with its own targets. When a layer is cleared, the next layer's targets light up. Clear the top layer to bring down the Golden Javelin Trophy. Ending: Sports Day, Rocky on the podium with the trophy and a cheering crowd.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="small text-muted mt-2 mb-0">Levels are written as short data lists (for example <code>{t:'crate', x:40, y:0, w:2, h:2}</code>, <code>{t:'board', x:41, y:2}</code>), with the distance in metres from Rocky. This makes them easy to read and change, and new levels can be added without new code. A small level editor in the explainer page (Phase 6) can print this data.</p>
+    </div>
+  </div>
+
+  <!-- 6. Deliverables -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">6</span>Deliverables and folder layout</div>
+      <div class="row g-3">
+        <div class="col-lg-6">
+<pre class="tree">C:\Daya\RAGchamp\GAMES\
+├── index.html                <span class="c">← portal: "Game 3" card becomes Javelin</span>
+├── GAME1-CAR-RACE\
+├── GAME-2-Chintu\
+├── GAME-3-Javelin\
+│   └── javelin.html          <span class="c">← the game, one self-contained file</span>
+└── info\
+    ├── JAVELIN-GAME-PLAN.html <span class="c">← this page</span>
+    └── HOW-JAVELIN-WORKS.html <span class="c">← "How it works" page (Phase 6)</span></pre>
+        </div>
+        <div class="col-lg-6">
+          <ul class="mb-2">
+            <li><strong>One file.</strong> HTML, CSS and JavaScript all inline. It opens with a double-click (<code>file:///</code>), with no server needed.</li>
+            <li><strong>No image or audio files.</strong> Rocky, the targets, blocks and backgrounds are drawn with the Canvas API. Sounds (footsteps, whoosh, thunk into wood, glass smash, stone clonk, balloon pop, bell ding, crowd cheer) are made with Web Audio.</li>
+            <li><strong>No external scripts</strong> in the game. The Matter.js physics library (MIT licence) is pasted into the file with its licence notice, so it still works offline.</li>
+            <li><strong>Same look as the portal:</strong> navy sticky top nav with the logo, a pink "how AI plays a part" box, yellow numbered step cards and a navy footer.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. Tech design -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">7</span>Technical design</div>
+      <div class="now-box">
+        <div class="now-card">
+          <div class="lbl">Game loop</div>
+          <div class="val">Fixed 1/60 s step</div>
+          <div class="det">The same accumulator pattern as Car Race and Chintu: <code>update(dt)</code> runs at a fixed rate and <code>render()</code> runs once per frame. The game pauses when the tab is hidden.</div>
+        </div>
+        <div class="now-card">
+          <div class="lbl">The throw</div>
+          <div class="val">Sliders → velocity</div>
+          <div class="det">Release speed <code>v = vMin + pace × (vMax − vMin)</code>. Starting velocity <code>vx = v·cos(angle)</code>, <code>vy = v·sin(angle)</code>. Each step: <code>vy −= g·dt</code>, wind and a little air drag change <code>vx</code>. The javelin is drawn pointing along its velocity, so it noses over like a real one.</div>
+        </div>
+        <div class="now-card">
+          <div class="lbl">Landing</div>
+          <div class="val">Tip-first sticks</div>
+          <div class="det">The tip is tested against the ground and blocks. Tip-first into ground or wood: it sticks and wobbles. Flat or into stone: it bounces and slides. On contact it passes its momentum to the block, which can push or break it.</div>
+        </div>
+        <div class="now-card">
+          <div class="lbl">Towers</div>
+          <div class="val">Matter.js rigid bodies</div>
+          <div class="det">Blocks fall, tip over, stack and break, with a strength value per material; breaking is our own code on top of Matter.js collision events. Bodies start asleep so towers stand still until hit. A level is "settled" when all bodies are still for 1 s, then the next throw is allowed.</div>
+        </div>
+        <div class="now-card">
+          <div class="lbl">Saving</div>
+          <div class="val">localStorage, guarded</div>
+          <div class="det">Saves levels unlocked, stars, best scores and the practice personal best. Every read and write is wrapped in try/catch so the game still works in a private window.</div>
+        </div>
+        <div class="now-card">
+          <div class="lbl">Input</div>
+          <div class="val">Sliders, keys, touch</div>
+          <div class="det">Real <code>&lt;input type="range"&gt;</code> sliders, big enough for thumbs. <kbd>↑</kbd>/<kbd>↓</kbd> angle · <kbd>←</kbd>/<kbd>→</kbd> pace · <kbd>Space</kbd> throw (and split a Triple) · <kbd>R</kbd> restart level · <kbd>P</kbd>/<kbd>Esc</kbd> pause.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8. Phases -->
+  <h2 class="h5 fw-bold mt-4 mb-3">Build phases</h2>
+
+  <div class="card shadow-sm mb-3 phase">
+    <div class="card-body">
+      <h2 class="h6 fw-bold">Phase 1: Rocky and the throw ✅ done 22 Nov 2026</h2>
+      <ul>
+        <li>Canvas setup, scaling, fixed-step loop, input handling, pause on hidden tab.</li>
+        <li>Rocky drawn in code with idle, run-up, throw and follow-through animations.</li>
+        <li>Angle and Pace sliders, THROW button, javelin flight with gravity and drag, camera that follows the javelin.</li>
+        <li>The Practice field: distance lines, distance shown in metres, personal best saved.</li>
+        <li>Portal card: "Game 3" becomes Javelin (Play and Plan buttons).</li>
+        <li><em>Built:</em> the game's rules and physics are kept in their own script with no drawing code, so a test program can run every level outside the browser. Checked: every tower stands still on its own (also when all blocks are woken up), and a computer solver cleared all 31 levels within their javelin limits.</li>
+      </ul>
+      <div class="accept"><b>Done when:</b> Moving the sliders changes the throw in a way you can predict, the javelin always lands tip-first on a good throw, and it runs at 60 fps on a laptop and a phone.</div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mb-3 phase p2">
+    <div class="card-body">
+      <h2 class="h6 fw-bold">Phase 2: Towers, targets and scoring ✅ done 22 Nov 2026</h2>
+      <ul>
+        <li>Matter.js pasted in; physics bodies for wood, glass and stone with strength and breaking.</li>
+        <li>Targets: bullseye boards (centre scores more), balloons, trophy cups that count when they reach the ground.</li>
+        <li>Javelin rack, level cleared and failed screens, stars, score, aim guide and last-throw ghost.</li>
+        <li>World 1 (8 levels) and a level select screen with saved progress.</li>
+      </ul>
+      <div class="accept"><b>Done when:</b> All of World 1 can be played and cleared, and no tower falls over on its own before the first throw.</div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mb-3 phase p3">
+    <div class="card-body">
+      <h2 class="h6 fw-bold">Phase 3: Wind and new javelins ✅ done 22 Nov 2026</h2>
+      <ul>
+        <li>Wind with windsock, arrow and flag animations; gusts that change between throws in World 3.</li>
+        <li>Heavy, Feather and Triple javelins, with a picker beside the rack.</li>
+        <li>World 2 (stadium) and World 3 (hilltop camp), with steel-rim boards, drifting balloons, bells, ledges and see-saws.</li>
+      </ul>
+      <div class="accept"><b>Done when:</b> A new player understands the wind arrow within two throws, and every level can be cleared with 3 stars.</div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mb-3 phase p4">
+    <div class="card-body">
+      <h2 class="h6 fw-bold">Phase 4: Night stadium, final tower and ending ✅ done 22 Nov 2026</h2>
+      <ul>
+        <li>World 4 with floodlights, moving targets on rails and swinging boards.</li>
+        <li>The three-layer Championship Tower and the podium ending, then a credits screen. <em>Changed:</em> 6 javelins instead of 8 (the solver needed only 3).</li>
+        <li>Title screen, story cut-scenes (2–3 lines that can be skipped) and the world map.</li>
+      </ul>
+      <div class="accept"><b>Done when:</b> The whole game can be finished in about 30–40 minutes, and the ending plays.</div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mb-3 phase p5">
+    <div class="card-body">
+      <h2 class="h6 fw-bold">Phase 5: Sound, polish and phones ✅ done 22 Nov 2026</h2>
+      <ul>
+        <li>Web Audio sound effects and a cheerful stadium music loop; sound and music switches that are remembered.</li>
+        <li>Slow motion for the last half-second before a big hit, screen shake, wood splinters, glass shards, dust puffs and a crowd cheer on 3 stars.</li>
+        <li>Portrait phone layout with the control deck below the scene; landscape layout with sliders on the left edge and THROW on the right.</li>
+        <li>An "Easy" option: longer aim guide, one extra javelin per level, gentler wind.</li>
+      </ul>
+      <div class="accept"><b>Done when:</b> The game is playable at 30+ fps on a phone, there is no sound before the first tap, and the sliders never get stuck on touch screens.</div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mb-3 phase p6">
+    <div class="card-body">
+      <h2 class="h6 fw-bold">Phase 6: Portal and explainer</h2>
+      <ul>
+        <li>Add a "How it works" button to the Javelin card in <code>GAMES/index.html</code>.</li>
+        <li><code>info/HOW-JAVELIN-WORKS.html</code>: how a throw becomes a flight path, with a hands-on demo (move the sliders and see the arcs, find the angle that goes furthest, add wind), how the towers and breaking work, what Claude Code built, and a dated timeline.</li>
+        <li>Add the game to the table in <code>CLAUDE.md</code>.</li>
+      </ul>
+      <div class="accept"><b>Done when:</b> The game opens from the portal, and the explainer links back to both the game and the portal.</div>
+    </div>
+  </div>
+
+  <!-- 9. Scope -->
+  <div class="card shadow-sm step-card mb-3 mt-4">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">8</span>Scope at a glance</div>
+      <div class="table-responsive">
+        <table class="table table-sm plan mb-0">
+          <thead><tr><th>Feature</th><th>Priority</th><th>Phase</th></tr></thead>
+          <tbody>
+            <tr><td>Angle and Pace sliders, throw, javelin flight</td><td><span class="tag tag-must">MUST</span></td><td>1</td></tr>
+            <tr><td>Practice field with distance and personal best</td><td><span class="tag tag-must">MUST</span></td><td>1</td></tr>
+            <tr><td>Towers that topple and break, targets, stars</td><td><span class="tag tag-must">MUST</span></td><td>2</td></tr>
+            <tr><td>Wind</td><td><span class="tag tag-must">MUST</span></td><td>3</td></tr>
+            <tr><td>Heavy, Feather and Triple javelins</td><td><span class="tag tag-nice">NICE</span></td><td>3</td></tr>
+            <tr><td>Championship Tower and ending</td><td><span class="tag tag-must">MUST</span></td><td>4</td></tr>
+            <tr><td>Slow motion on big hits, music loop</td><td><span class="tag tag-nice">NICE</span></td><td>5</td></tr>
+            <tr><td>Level editor in the explainer</td><td><span class="tag tag-nice">NICE</span></td><td>6</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 10. Testing -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">9</span>Test checklist</div>
+      <div class="row">
+        <div class="col-md-6">
+          <ul class="mb-0">
+            <li>Opens from <code>file:///</code> in Chrome, Edge and Firefox with no console errors.</li>
+            <li>The same slider settings always give the same throw when there is no wind (the physics is repeatable).</li>
+            <li>The javelin never passes through a thin plank or glass pane, even at top speed.</li>
+            <li>Towers stand still until hit; nothing jitters or slowly slides apart.</li>
+          </ul>
+        </div>
+        <div class="col-md-6">
+          <ul class="mb-0">
+            <li>Every level can be cleared, and has been cleared with 3 stars during testing.</li>
+            <li>Switching tabs pauses the game; there are no stuck keys or sliders afterwards.</li>
+            <li>The game still works in a private window (localStorage blocked).</li>
+            <li>Rotating a phone keeps the canvas sharp, and the sliders never cover the towers.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 11. Decisions -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">10</span>Decisions (agreed 22 Nov 2026)</div>
+      <ul>
+        <li><strong>Physics engine: Matter.js.</strong> The open-source Matter.js library (MIT licence) is pasted into the game file and credited in the footer, as Car Race credits its road engine. It handles toppling and stacking; breaking, targets and the javelin's own flight are written by hand.</li>
+        <li><strong>Targets only, no villains.</strong> Rocky throws at bullseye boards, balloons, trophy cups and bells on towers set up by his coach for the Target Challenge. The final stage is the Championship Tower instead of a boss.</li>
+        <li><strong>Two sliders: Angle and Pace.</strong> The player sets both sliders and then presses THROW, so a throw can be repeated and fine-tuned. There is no hold-to-power mode.</li>
+        <li><strong>Art style: drawn in code.</strong> Rocky is an original cartoon character drawn with canvas shapes, based on the colours and look of the reference picture. The picture itself is not used in the game.</li>
+        <li><strong>Genre, not a copy.</strong> The game uses the familiar launch-and-topple puzzle idea (limited throws, towers that fall, stars), but has its own hero, targets, levels, art and sounds, and the throw is controlled with sliders instead of a slingshot. No characters, levels, music or artwork from any existing game are used.</li>
+      </ul>
+    </div>
+  </div>
+
+</main>
+
+<footer class="text-white py-4 mt-5">
+  <div class="container text-center small">AI Games Portal · Javelin plan · <a href="CHINTU-GAME-PLAN.html">🏃 Chintu plan</a> · <a href="CAR-RACE-PLAN.html">🏎️ Car Race plan</a> · <a href="../index.html">🏠 Games Home</a></div>
+</footer>
+
+</body>
+</html>
