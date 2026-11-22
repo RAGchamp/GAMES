@@ -125,7 +125,7 @@
   </div>
 
   <h1 class="h3 fw-bold mb-1">🏃 Chintu: Development Plan</h1>
-  <p class="text-muted mb-3">Plan date: 20 Nov 2026 · Decisions agreed 21 Nov 2026 · Status: <strong>Version 1 done: Phases 1–3 (<a href="../GAME-2-Chintu/chintu.html">play Worlds 1 to 3</a>) · Phase 4 (fortress and boss) next</strong></p>
+  <p class="text-muted mb-3">Plan date: 20 Nov 2026 · Decisions agreed 21 Nov 2026 · Status: <strong>Phases 1–5 done: the whole story with sound and music (<a href="../GAME-2-Chintu/chintu.html">play it</a>) · Phase 6 (explainer page) next</strong></p>
 
   <div class="prompt mb-4">
     <strong>Goal:</strong> Build <code class="text-warning">GAME-2-Chintu/chintu.html</code>, a side-scrolling platform runner in the classic jump-and-run style. Chintu keeps running to the right, jumping and sliding past hurdles, stomping henchmen and collecting pages of a secret formula. The villain <strong>Dr. Andhera</strong> watches from his lair and gets more and more worried as Chintu gets closer, sending harder obstacles. The twist: the formula makes people <strong>invisible</strong>, but anyone invisible can still be seen <strong>under red light</strong>.
@@ -242,7 +242,7 @@
             <tr><td><strong>1</strong> · 3 stages</td><td>Village lanes: mud houses, a well, fields, a sunny sky</td><td>Potholes, carts, sleeping cows (jump over them), "?" blocks, simple gaps, slow goons</td><td>😏 Calm. Laughs it off.</td></tr>
             <tr><td><strong>2</strong> · 3 stages</td><td>City bazaar: fruit stalls, awnings, rickshaws, washing lines</td><td>Rolling coconuts, bouncy awnings, flying carpets over wide gaps, faster goons. Double jump unlocked.</td><td>😠 Annoyed. Sends henchmen.</td></tr>
             <tr><td><strong>3</strong> · 3 stages</td><td>Rooftops at night: water tanks, neon signs, dish antennas</td><td><strong>Red searchlights</strong> and sentries, drones with red lamps, crumbling ledges, wide gaps</td><td>😰 Worried and sweating. Orders more lights.</td></tr>
-            <tr><td><strong>4</strong> · 2 stages + boss</td><td>Dr. Andhera's island fortress: docks, conveyor belts, a laser hall</td><td>Laser tripwires (slide), conveyors, timed red alarms, cages that drop</td><td>😡 Furious. Comes out in person.</td></tr>
+            <tr><td><strong>4</strong> · 2 stages + boss</td><td>Dr. Andhera's island fortress: docks, conveyor belts, a laser hall</td><td>Red tripwires (jump), laser gates (wait), conveyors, timed red alarms, cages that drop</td><td>😡 Furious. Comes out in person.</td></tr>
             <tr><td><strong>Boss</strong></td><td>The formula vault</td><td colspan="2">Dr. Andhera stands on a control deck with <strong>4 big red lamps</strong>. Chintu drinks a vial, runs under the lamps and jumps on the switches to break them one by one while dodging the barrels Dr. Andhera throws. Once the last lamp is broken, Dr. Andhera can no longer see him. Chintu reaches the vault, turns the key and locks the formula away. Ending cut-scene: Dr. Andhera's last angry rant as the fortress lights go out.</td></tr>
           </tbody>
         </table>
@@ -363,11 +363,11 @@
 
   <div class="card shadow-sm mb-3 phase p4">
     <div class="card-body">
-      <h2 class="h6 fw-bold">Phase 4: The fortress and the boss</h2>
+      <h2 class="h6 fw-bold">Phase 4: The fortress and the boss ✅ done 21 Nov 2026</h2>
       <ul>
-        <li>World 4: conveyors, laser tripwires and timed red alarms.</li>
-        <li>Boss fight in three rounds (4 lamps; the barrels get faster each round), the vault and the ending cut-scene, then a credits screen.</li>
-        <li>Title screen, stage select map with lock and unlock, and a results screen with stars.</li>
+        <li>World 4: conveyors, laser tripwires and timed red alarms. <em>Changed:</em> phones have no SLIDE button, so there are no lasers to slide under. Instead, low <strong>red tripwires</strong> are jumped over (touching one sets off the alarm), and <strong>laser gates</strong> switch on and off and hurt even an invisible Chintu, so you wait for them. <em>Also built:</em> crates, sea-water gaps, the docks at sunset (4-1 Fortress Docks) and a laser hall with Dr. Andhera on the monitors (4-2 The Laser Hall).</li>
+        <li>Boss fight in three rounds (4 lamps; the barrels get faster each round), the vault and the ending cut-scene, then a credits screen. <em>How it plays:</em> Dr. Andhera throws aimed barrels at Chintu whenever he can see him, and blind ones when he can't. Chintu jumps on the switch under each red lamp to break it. A vial that comes back makes him visible only inside the red light. A force field guards the deck until the last lamp breaks, then the vault goes dark, Dr. Andhera stumbles about, and Chintu climbs up and turns the vault wheel.</li>
+        <li>Title screen, stage select map with lock and unlock, and a results screen with stars. Stars: finish · all 3 formula pages (in the vault: 2 hits or fewer) · beat the target time. Saves from Phase 3 that cleared 3-3 open World 4 straight away.</li>
       </ul>
       <div class="accept"><b>Done when:</b> The whole game can be finished in about 20–25 minutes, and the ending plays.</div>
     </div>
@@ -375,12 +375,13 @@
 
   <div class="card shadow-sm mb-3 phase p5">
     <div class="card-body">
-      <h2 class="h6 fw-bold">Phase 5: Sound, polish and phones</h2>
+      <h2 class="h6 fw-bold">Phase 5: Sound, polish and phones ✅ done 21 Nov 2026</h2>
       <ul>
-        <li>Web Audio sound effects and an optional chiptune loop; a mute button that is remembered.</li>
-        <li>Screen shake, dust puffs, coin sparkles and a falling formula-page animation.</li>
-        <li>Portrait phone layout with a control deck below the game and an always-visible Stop button; landscape layout with full-screen tap zones.</li>
-        <li>An "Easy" option with 5 hearts and slower speed, for younger players.</li>
+        <li>Web Audio sound effects and an optional chiptune loop; a mute button that is remembered. <em>Built:</em> about 30 sound effects (jump, laddoo, stomp, formula page, vial shimmer, alarm siren, cage thud, tripwire twang, barrel throw, breaking glass, power-down, vault lock and more) and an original chiptune loop for each world, the boss and the credits; the music stops in the dark vault. Sound and music switches on the title, the stage map, the pause menu and under the game, and <kbd>M</kbd> mutes; both choices are remembered. <em>Decided:</em> no audio files, so the WAV recordings in <code>GAME-2-Chintu/sounds/</code> are not used.</li>
+        <li>Screen shake, dust puffs, coin sparkles and a falling formula-page animation. <em>Built:</em> a collected formula page spins and flies up into its slot in the HUD.</li>
+        <li>Portrait phone layout with a control deck below the game and an always-visible Stop button; landscape layout with full-screen tap zones. <em>Kept from phone testing:</em> in landscape the controls are round thumb buttons in the corners. <em>Also built:</em> automatic quality: phones draw at most 3 canvas pixels per game pixel, and a device that runs a stage below 45 fps switches off glow effects and then draws with fewer pixels.</li>
+        <li>An "Easy" option with 5 hearts and slower speed, for younger players. <em>Built:</em> on the title and the stage map, remembered; 5 hearts, the game runs at 85% speed and the safety time after a hit is longer.</li>
+        <li><em>Also built:</em> gamepad support (stick or d-pad, A/B jump, Start pause, A works the menus), and all held keys and buttons are reset when a stage starts.</li>
       </ul>
       <div class="accept"><b>Done when:</b> The game is playable at 30+ fps on a phone, with no sound before the first tap and no stuck input.</div>
     </div>
@@ -411,8 +412,8 @@
             <tr><td>Invisibility and red-light mechanic</td><td><span class="tag tag-must">MUST</span></td><td>3</td></tr>
             <tr><td>Boss fight and ending</td><td><span class="tag tag-must">MUST</span></td><td>4</td></tr>
             <tr><td>Bonus stages unlocked by finding all pages</td><td><span class="tag tag-nice">NICE</span></td><td>4</td></tr>
-            <tr><td>Chiptune music loop</td><td><span class="tag tag-nice">NICE</span></td><td>5</td></tr>
-            <tr><td>Gamepad support</td><td><span class="tag tag-nice">NICE</span></td><td>5</td></tr>
+            <tr><td>Chiptune music loop ✅</td><td><span class="tag tag-nice">NICE</span></td><td>5</td></tr>
+            <tr><td>Gamepad support ✅</td><td><span class="tag tag-nice">NICE</span></td><td>5</td></tr>
           </tbody>
         </table>
       </div>

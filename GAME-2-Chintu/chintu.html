@@ -12,15 +12,24 @@
   Phase 2: hurdles, enemies and pickups: goons (stomp them), rolling coconuts, sleeping cows, carts,
            potholes, bouncy awnings, flying carpets, laddoo coins, ? blocks, formula pages,
            hearts, lives, checkpoint flags, score, World 1 (village) and World 2 (bazaar, double jump).
+  Phase 3: Dr. Andhera, his worry meter and control-room scenes, the invisibility vial, red light that
+           shows the invisible, alarms and cages, World 3 (rooftops at night).
+  Phase 4: World 4 (the island fortress): conveyor belts, red tripwires, laser gates, timed red alarm
+           lamps and crates; the boss fight in the formula vault (4 red lamps, 3 rounds of barrels),
+           the vault, the ending and credits; title screen, stage map with locks and stars, star results.
+  Phase 5: sound and polish: Web Audio sound effects and an original chiptune loop for each world, the boss
+           and the credits (no audio files; nothing plays before the first tap or key), sound and music
+           switches that are remembered (M mutes), formula pages that fly into the HUD, Easy mode
+           (5 hearts, a slower game), gamepad support, and input that is reset when a stage starts.
   Plan: ../info/CHINTU-GAME-PLAN.html
 
   Written by Claude Code (an AI coding agent):
-    - one self-contained file: no image files, no external scripts, no network requests
+    - one self-contained file: no image or audio files, no external scripts, no network requests
     - Chintu, goons, tiles and scenery are all drawn with canvas code
     - strict mode, event.code keys, keys cleared on blur, auto-pause on tab switch
 
   Test hooks: ?demo lets the computer play (and loops); &stage=1-2 picks a stage; &god turns off damage;
-  ?debug shows a status readout; ?touch shows touch buttons.
+  ?debug shows a status readout (and adds window.__chintu.warp for automated checks); ?touch shows touch buttons.
 -->
 <style>
   :root{
@@ -112,6 +121,73 @@
   .sbtn.sel{ border-color:var(--chintu-orange); background:#fff3ec; }
   .sbtn:disabled{ opacity:.45; cursor:not-allowed; }
 
+  /* Sound, music and Easy switches */
+  .opts{ display:flex; flex-wrap:wrap; justify-content:center; gap:.35rem; margin:.45rem 0 .1rem; }
+  .opt{ border:2px solid #c9d3e3; background:#fff; border-radius:2rem; padding:.15rem .65rem; font-size:.78rem; font-weight:700; color:var(--nav-blue); cursor:pointer; }
+  .opt.on{ border-color:#198754; background:#eefaf3; }
+  .opt.off{ color:#6c757d; background:#f1f3f5; }
+
+  /* Title screen */
+  .logo{
+    font-weight:900; font-size:2.7rem; letter-spacing:.08em; line-height:1; margin:.15rem 0 0;
+    color:var(--chintu-yellow); -webkit-text-stroke:2px var(--nav-blue); paint-order:stroke fill;
+    text-shadow:0 4px 0 var(--chintu-orange), 0 7px 12px rgba(0,0,0,.3);
+  }
+  .logo-sub{ font-weight:800; color:var(--chintu-orange); letter-spacing:.22em; font-size:.72rem; text-transform:uppercase; margin:.35rem 0 .2rem; }
+  .done-pill{ display:inline-block; background:#fff3c4; border:2px solid #c79100; border-radius:2rem; padding:.05rem .6rem; font-weight:800; font-size:.8rem; color:#7a5600; }
+
+  /* Stage map: one coloured band per world, stages as round stops on a dotted road */
+  .map-panel{ max-width:580px; }
+  .wband{ display:flex; align-items:center; gap:.5rem; border-radius:.6rem; padding:.35rem .5rem; margin:.3rem 0; text-align:left; }
+  .wband > b{ font-size:.72rem; flex:0 0 96px; color:#fff; line-height:1.15; text-shadow:0 1px 2px rgba(0,0,0,.4); }
+  .wband.w1{ background:linear-gradient(90deg,#3d8b5a,#7cc36a); }
+  .wband.w2{ background:linear-gradient(90deg,#c0601d,#f0a04b); }
+  .wband.w3{ background:linear-gradient(90deg,#0f1a3d,#34477e); }
+  .wband.w4{ background:linear-gradient(90deg,#4a0c14,#b02a37); }
+  .wpath{ flex:1; display:flex; justify-content:space-around; align-items:center; position:relative; min-height:58px; }
+  .wpath::before{ content:''; position:absolute; left:10%; right:10%; top:50%; border-top:3px dashed rgba(255,255,255,.7); }
+  .node{
+    position:relative; width:52px; height:52px; border-radius:50%; border:3px solid #fff; background:#fff;
+    color:var(--nav-blue); font-weight:900; font-size:.85rem; cursor:pointer; padding:0; line-height:1;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    box-shadow:0 2px 6px rgba(0,0,0,.3); transition:transform .12s;
+  }
+  .node .nstars{ font-size:.58rem; color:#c79100; margin-top:3px; letter-spacing:-.04em; }
+  .node.sel{ border-color:var(--chintu-yellow); box-shadow:0 0 0 3px var(--chintu-orange), 0 2px 8px rgba(0,0,0,.35); transform:scale(1.1); }
+  .node:disabled{ background:#d5d9e0; color:#6c757d; cursor:not-allowed; }
+  .node.boss{ width:60px; height:60px; background:#2b0a10; color:#ffd60a; border-color:#ffd60a; }
+  .node.boss:disabled{ background:#5a4a4e; color:#c9b9bd; }
+  .map-info{ font-size:.85rem; margin:.35rem 0 .2rem; min-height:1.3em; }
+
+  /* Stars on the results screen */
+  .stars{ display:flex; justify-content:center; gap:.7rem; margin:.1rem 0 .25rem; }
+  .stars > div{ text-align:center; font-size:.64rem; color:#5a6475; font-weight:700; width:78px; line-height:1.2; }
+  .stars[hidden]{ display:none; }
+  .stars .st{ display:block; font-size:1.9rem; line-height:1.05; color:#d5d9e0; }
+  .stars .on .st{ color:#f7b500; text-shadow:0 2px 0 #a86f00; animation:starpop .5s both; }
+  .stars .on:nth-child(2) .st{ animation-delay:.25s; }
+  .stars .on:nth-child(3) .st{ animation-delay:.5s; }
+  @keyframes starpop{ 0%{ transform:scale(0) rotate(-50deg); } 70%{ transform:scale(1.35) rotate(8deg); } 100%{ transform:scale(1) rotate(0); } }
+
+  /* Ending: the fortress lights go out while Dr. Andhera rants */
+  .ending{ animation:lightsout 2.6s 1.4s forwards; }
+  .ending .lines p{ opacity:0; animation:linein .5s forwards; }
+  .ending .lines p:nth-child(1){ animation-delay:.3s; } .ending .lines p:nth-child(2){ animation-delay:1.5s; }
+  .ending .lines p:nth-child(3){ animation-delay:2.8s; } .ending .lines p:nth-child(4){ animation-delay:4.1s; }
+  @keyframes linein{ to{ opacity:1; } }
+  @keyframes lightsout{ to{ background:#17121c; color:#e9e3f0; border-color:#5a2a3a; } }
+  .ending h2{ color:inherit; }
+
+  /* Credits */
+  .credits{ max-width:500px; }
+  .roll{ height:128px; overflow:hidden; position:relative; margin:.4rem 0; border-radius:.5rem; background:#04264d; color:#fff;
+    -webkit-mask-image:linear-gradient(transparent,#000 22%,#000 78%,transparent); mask-image:linear-gradient(transparent,#000 22%,#000 78%,transparent); }
+  .roll-in{ position:absolute; left:0; right:0; top:0; animation:roll 24s linear infinite; font-size:.85rem; }
+  .roll-in p{ margin:.15rem 0; }
+  .roll-in b{ color:var(--nav-yellow); display:block; margin-top:.6rem; font-size:.72rem; letter-spacing:.12em; text-transform:uppercase; }
+  @keyframes roll{ from{ transform:translateY(128px); } to{ transform:translateY(-100%); } }
+  @media (prefers-reduced-motion:reduce){ .roll-in{ animation:none; position:static; } .roll{ height:auto; } }
+
   /* Dr. Andhera's control room (scene before each stage) */
   .scene{ max-width:520px; }
   .scene-row{ display:flex; gap:.8rem; align-items:center; text-align:left; }
@@ -136,6 +212,14 @@
     .btn-go{ font-size:.88rem; padding:.35rem .9rem; }
     .sbtn{ min-width:70px; font-size:.72rem; }
     .world-row b{ min-width:100%; text-align:center; }
+    .logo{ font-size:2rem; }
+    .wband{ flex-direction:column; gap:.1rem; padding:.25rem .4rem; }
+    .wband > b{ flex:none; text-align:center; }
+    .wpath{ width:100%; min-height:50px; }
+    .node{ width:44px; height:44px; font-size:.75rem; }
+    .node.boss{ width:50px; height:50px; }
+    .stars > div{ width:64px; }
+    .stars .st{ font-size:1.5rem; }
   }
 
   .banner{
@@ -239,12 +323,12 @@
 <main>
   <div class="about-box">
     <h2>What is this and how does AI play a part?</h2>
-    <p>This is <strong>Game 2: Chintu</strong>, a running and jumping game written by Claude Code (an AI coding agent) as one HTML file with plain JavaScript. Chintu, the goons and everything around them are drawn with code, with no image files. This version is <strong>Phase 3</strong> of the <a href="../info/CHINTU-GAME-PLAN.html">development plan</a>: three worlds with nine stages, Dr. Andhera's worry meter, the invisibility formula and the red lights that can still see you. <strong>You don't need any AI to play.</strong></p>
+    <p>This is <strong>Game 2: Chintu</strong>, a running and jumping game written by Claude Code (an AI coding agent) as one HTML file with plain JavaScript. Chintu, the goons and everything around them are drawn with code, with no image files. This version is <strong>Phase 5</strong> of the <a href="../info/CHINTU-GAME-PLAN.html">development plan</a>: the whole story from the village to Dr. Andhera's island fortress, with four worlds, eleven stages and a final showdown in his formula vault, now with sound effects and music that are also made by code, and an Easy mode for younger players. <strong>You don't need any AI to play.</strong></p>
   </div>
 
   <div class="title-row">
     <h1>🏃 Chintu</h1>
-    <span class="phase-pill">Phase 3 of 6 · Worlds 1 to 3</span>
+    <span class="phase-pill">Phase 5 of 6 · Sound, music and Easy mode</span>
   </div>
 
   <div class="stage" id="stage">
@@ -255,14 +339,27 @@
 
       <div class="overlay" id="titleOverlay">
         <div class="panel">
-          <h2>🏃 Chintu</h2>
-          <p>Chintu has the key to a secret formula that makes people <strong>invisible</strong>, and <strong>Dr. Andhera</strong> wants it! Run through the village, the bazaar and the rooftops at night. But beware: <strong>red light</strong> shows the invisible.</p>
-          <div id="stagePick"></div>
+          <div class="logo">CHINTU</div>
+          <div class="logo-sub">and the secret formula</div>
+          <p>Chintu has the key to a secret formula that makes people <strong>invisible</strong>, and <strong>Dr. Andhera</strong> wants it! Run through the village, the bazaar and the rooftops at night to his island fortress, and lock the formula away. But beware: <strong>red light</strong> shows the invisible.</p>
           <button class="btn-go" id="startBtn">▶ Play</button>
           <button class="btn-go alt" id="practiceBtn">🏃 Practice</button>
-          <p class="small" id="hintKeys">Hold <kbd>→</kbd> / <kbd>D</kbd> to run · <kbd>←</kbd> / <kbd>A</kbd> back · <kbd>Space</kbd> / <kbd>↑</kbd> / <kbd>W</kbd> jump (hold to go higher) · <kbd>P</kbd> pause</p>
+          <div class="opts"><button class="opt" data-opt="sound"></button><button class="opt" data-opt="music"></button><button class="opt" data-opt="easy"></button></div>
+          <p class="small" id="hintKeys">Hold <kbd>→</kbd> / <kbd>D</kbd> to run · <kbd>←</kbd> / <kbd>A</kbd> back · <kbd>Space</kbd> / <kbd>↑</kbd> / <kbd>W</kbd> jump (hold to go higher) · <kbd>P</kbd> pause · <kbd>M</kbd> mute</p>
           <p class="small" id="hintTouch" hidden>📱 Hold <strong>RUN</strong> to run, <strong>BACK</strong> to go back, and tap <strong>JUMP</strong> to jump (hold it to go higher).</p>
           <p class="small" id="titleBest"></p>
+        </div>
+      </div>
+
+      <div class="overlay" id="mapOverlay" hidden>
+        <div class="panel map-panel">
+          <h2>🗺️ Choose a stage</h2>
+          <div id="stagePick"></div>
+          <div class="map-info" id="mapInfo"></div>
+          <button class="btn-go" id="mapPlayBtn">▶ Play 1-1</button>
+          <button class="btn-go alt" id="mapBackBtn">◀ Title</button>
+          <div class="opts"><button class="opt" data-opt="sound"></button><button class="opt" data-opt="music"></button><button class="opt" data-opt="easy"></button></div>
+          <p class="small" id="mapNote">★ finish the stage · ★ find all 3 formula pages · ★ beat the target time</p>
         </div>
       </div>
 
@@ -288,18 +385,20 @@
           <p class="small" id="pauseText">Press <kbd>P</kbd> or <kbd>Esc</kbd> to carry on.</p>
           <button class="btn-go" id="resumeBtn">▶ Resume</button>
           <button class="btn-go alt" id="restartBtn">↺ Restart stage</button>
-          <button class="btn-go alt" id="quitBtn">🏠 Menu</button>
+          <button class="btn-go alt" id="quitBtn">🗺️ Map</button>
+          <div class="opts"><button class="opt" data-opt="sound"></button><button class="opt" data-opt="music"></button></div>
         </div>
       </div>
 
       <div class="overlay" id="clearOverlay" hidden>
         <div class="panel">
           <h2 id="clearTitle">🎉 Stage clear!</h2>
+          <div class="stars" id="clearStars"></div>
           <table class="stats" id="clearStats"></table>
           <p class="small" id="clearNote"></p>
           <button class="btn-go" id="nextBtn">▶ Next stage</button>
           <button class="btn-go alt" id="againBtn">↺ Play again</button>
-          <button class="btn-go alt" id="menuBtn">🏠 Menu</button>
+          <button class="btn-go alt" id="menuBtn">🗺️ Map</button>
         </div>
       </div>
 
@@ -308,7 +407,39 @@
           <h2>💔 Out of lives</h2>
           <p id="overText"></p>
           <button class="btn-go" id="retryBtn">↺ Try again</button>
-          <button class="btn-go alt" id="overMenuBtn">🏠 Menu</button>
+          <button class="btn-go alt" id="overMenuBtn">🗺️ Map</button>
+        </div>
+      </div>
+
+      <div class="overlay" id="endingOverlay" hidden>
+        <div class="panel scene ending" id="endingPanel">
+          <div class="scene-row">
+            <canvas id="endFace" width="192" height="192" aria-label="Dr. Andhera, furious"></canvas>
+            <div>
+              <h2>📺 The fortress goes dark…</h2>
+              <div class="mood">Mood: 😡 FURIOUS (and in the dark)</div>
+              <div class="lines" id="endLines"></div>
+            </div>
+          </div>
+          <button class="btn-go" id="creditsBtn">▶ Credits</button>
+        </div>
+      </div>
+
+      <div class="overlay" id="creditsOverlay" hidden>
+        <div class="panel credits">
+          <h2>🏆 The End</h2>
+          <p>Chintu turned the key and locked the formula away for good. Nobody will ever turn invisible to do bad things, and Dr. Andhera is still looking for his light switch.</p>
+          <table class="stats" id="finalStats"></table>
+          <div class="roll" aria-label="Credits"><div class="roll-in">
+            <b>Starring</b><p>Chintu, the boy with the key</p><p>Dr. Andhera, in red goggles</p><p>His goons, sentries and drones</p><p>One very sleepy cow</p>
+            <b>Game</b><p>Chintu · Game 2 of the AI Games Portal</p>
+            <b>Written by</b><p>Claude Code (an AI coding agent)</p><p>from a short story idea and two character pictures</p>
+            <b>Art, levels and effects</b><p>Drawn with canvas code: no image files</p>
+            <b>Levels</b><p>Written as rows of text characters</p>
+            <b>Thank you for playing!</b><p>Remember: red light shows the invisible.</p>
+          </div></div>
+          <button class="btn-go" id="creditsMenuBtn">🏠 Title</button>
+          <button class="btn-go alt" id="creditsMapBtn">🗺️ Map</button>
         </div>
       </div>
     </div>
@@ -325,6 +456,8 @@
     <button class="tbtn" id="pauseBtn">⏸ Pause</button>
     <button class="tbtn" id="restartBtn2">↺ Restart stage</button>
     <button class="tbtn" id="fullBtn">⛶ Full screen</button>
+    <button class="tbtn opt-t" data-opt="sound"></button>
+    <button class="tbtn opt-t" data-opt="music"></button>
   </div>
 
   <div class="help">
@@ -338,7 +471,13 @@
       <li><strong>Hearts and lives:</strong> 3 hearts per life. Losing all hearts or falling into a gap costs a life, and you carry on from the last checkpoint flag.</li>
       <li><strong>Invisibility (World 3):</strong> drink a blue vial to vanish for 8 seconds. Goons and white searchlights cannot see you, and you pass straight through goons. But <strong>red light shows the invisible</strong>: red searchlights, drones with red lamps and sentries with red torches see you either way.</li>
       <li><strong>Spotted?</strong> An alarm rings and a cage drops where you are standing. Keep moving! Finish a rooftop stage without being seen for a <strong>Never seen</strong> bonus.</li>
+      <li><strong>The fortress (World 4):</strong> conveyor belts carry you along (or push you back). Jump over <strong>red tripwires</strong> or the alarm goes off. <strong>Laser gates</strong> hurt even when you are invisible: wait until they switch off. <strong>Red alarm lamps</strong> flash on and off, so cross while they are dark.</li>
+      <li><strong>The final showdown:</strong> Dr. Andhera watches his vault through 4 big red lamps and throws barrels at anyone he can see. Drink a vial so he can only see you inside the red light, and <strong>jump on the switch under each lamp</strong> to break it. With all 4 lamps broken he can't see a thing: climb up and lock the formula away in the vault.</li>
+      <li><strong>Stars:</strong> every stage gives up to 3 stars: one for finishing, one for all 3 formula pages (in the vault: for taking no more than 2 hits) and one for beating the target time.</li>
       <li><strong>Dr. Andhera's worry meter</strong> fills as you get closer to his formula. Watch his face change from calm to annoyed, worried and furious.</li>
+      <li><strong>Sound:</strong> every sound and all the music are made by the game's code (no sound files). Switch sound or music off on the menus, in the pause menu or with the buttons under the game, or press <kbd>M</kbd> to mute. The choice is remembered.</li>
+      <li><strong>Easy mode</strong> (on the title screen and the stage map): 5 hearts instead of 3, a slightly slower game and a little longer safety time after a hit. Great for younger players.</li>
+      <li><strong>Gamepad:</strong> left stick or d-pad to run, <strong>A</strong> or <strong>B</strong> to jump, down to slide, <strong>Start</strong> to pause. <strong>A</strong> also works the menus.</li>
       <li><strong>Score:</strong> laddoo 10 · stomp 100 · formula page 500 · time bonus and heart bonus at the finish gate.</li>
     </ul>
   </div>
@@ -387,6 +526,9 @@
   //  S  start          E  finish gate     1-9 ! $ % & ~  signpost
   //  World 3:  v  invisibility vial   L  white searchlight   X  red searchlight   D>>>  drone with a red lamp
   //            s  sentry with a red torch   WW/WW  water tank (2 x 2)
+  //  World 4:  {  conveyor belt pushing left   }  conveyor belt pushing right   x  crate
+  //            z  red tripwire (jump over it)   Z  laser gate (on/off)   T  timed red alarm lamp
+  //  Boss:     l  big red lamp   B  its switch (jump on it)   H  Dr. Andhera   Y  vial that comes back
   function C(w, rows) {
     const out = [];
     for (let r = 0; r < ROWS; r++) {
@@ -458,6 +600,34 @@
     drone:        C(24, { 4: '....D>>>>>>>>>..........' }),
     sentry:       C(18, { 8: '..........s.......' }),
     tank:         C(14, { 7: '.....WW.......', 8: '.....WW.......' }),
+
+    // World 4: Dr. Andhera's island fortress
+    startW4:      C(16, { 8: '..S......^......' }),
+    beltHint:     C(18, { 6: '.......ooo........', 9: '====}}}}}}}}======' }),
+    beltBack:     C(18, { 6: '.......ooo........', 9: '===={{{{{{{{======' }),
+    beltGap:      C(20, { 6: '.......ooooo........', 7: '......{{{{{{{.......', 9: '=====..........=====' }),
+    crates:       C(18, { 4: '.......o..........', 7: '......xx..........', 8: '......xx....x.....' }),
+    tripHint:     C(16, { 8: '.+.......z......' }),
+    tripPair:     C(20, { 6: '.....o.......o......', 8: '.....z.......z......' }),
+    laserHint:    C(18, { 8: '.@.......Z........' }),
+    laser:        C(14, { 8: '......Z.......' }),
+    laser2:       C(22, { 8: '......Z......Z........' }),
+    laserBelt:    C(24, { 8: '...........Z............', 9: '======{{{{{{{{{{{=======' }),
+    alarmHint:    C(22, { 8: '.;........T...........' }),
+    alarmLamp:    C(20, { 8: '.........T..........' }),
+
+    // The formula vault: 4 red lamps hang from the ceiling, each with a switch below it.
+    // Dr. Andhera stands on his control deck behind a laser gate, in front of the vault door.
+    bossArena: C(30, {
+      0: '##############################',
+      1: '##############################',
+      2: '##############################',
+      3: '.......l....l....l...l........',
+      5: '....*.......B........B....H.E.',
+      6: '..........-----.....---.######',
+      7: '.................B......######',
+      8: ':.S.Y..B.#.......#....#Z######',
+    }),
   };
 
   const SIGNS = {
@@ -475,6 +645,11 @@
     '$': ['Searchlight!', 'It cannot see you if invisible'],
     '%': ['RED light shows the invisible!', 'Wait for it to swing away'],
     '&': ['Drones and sentries carry', 'RED lamps. Stay out of red!'],
+    '^': ['Conveyor belts!', 'They carry you along'],
+    '+': ['Red tripwire = ALARM', 'Jump over it!'],
+    '@': ['Laser gate! It hurts', 'Wait until it switches off'],
+    ';': ['Red alarm lamp!', 'Cross while it is dark'],
+    ':': ['Jump on the switches', 'to break his red lamps!'],
   };
 
   const STAGES = [
@@ -505,7 +680,21 @@
     { id: '3-3', world: 3, name: 'Harbour Rooftops', par: 115, worry: [68, 78],
       pieces: ['start', 'sentry', 'drone', 'gap3', 'lightsAndVial', 'checkpoint', 'awningPage', 'redGauntlet', 'goonCrowd', 'tank',
                'checkpoint', 'drone', 'vial', 'twoLights', 'mplat', 'highroute', 'sentry', 'heartBlock', 'pageBlock', 'finish'] },
+    { id: '4-1', world: 4, name: 'Fortress Docks', par: 100, worry: [78, 86], bg: 'docks',
+      pieces: ['startW4', 'beltHint', 'coins', 'crates', 'tripHint', 'gap3', 'checkpoint', 'beltBack', 'fastGoons2', 'pageBlock',
+               'tripPair', 'checkpoint', 'beltGap', 'stepsPage', 'sentry', 'vial', 'twoLights', 'checkpoint', 'wallPage', 'crates',
+               'heartBlock', 'finish'] },
+    { id: '4-2', world: 4, name: 'The Laser Hall', par: 115, worry: [86, 94], bg: 'hall',
+      pieces: ['start', 'laserHint', 'laser', 'coins', 'checkpoint', 'alarmHint', 'crates', 'laser2', 'pageBlock', 'checkpoint',
+               'laserBelt', 'drone', 'alarmLamp', 'stepsPage', 'vial', 'redGauntlet', 'checkpoint', 'highroute', 'laser2', 'tripPair',
+               'alarmLamp', 'heartBlock', 'finish'] },
+    { id: '4-3', world: 4, name: 'The Formula Vault', par: 120, worry: [94, 100], bg: 'vault', boss: true,
+      pieces: ['bossArena'] },
   ];
+  const NEW_THINGS = {
+    '2-1': 'New: double jump!', '3-1': 'New: invisibility!', '4-1': 'New: conveyor belts and red tripwires!',
+    '4-2': 'New: laser gates and red alarm lamps!', '4-3': 'The final showdown!'
+  };
 
   // Dr. Andhera's moods and what he says in his control room before each stage
   const MOODS = ['😏 Calm', '😠 Annoyed', '😰 Worried', '😡 Furious'];
@@ -521,10 +710,20 @@
     '3-1': ['"He found the vials… now the boy can turn INVISIBLE!"', '"But nobody hides from red light. Switch on every searchlight!"'],
     '3-2': ['"Put red lamps on the drones! Give my sentries red torches!"', '"Find that boy in Neon Alley!"'],
     '3-3': ['"He is on the last rooftops before my island…"', '"My goggles are steaming up! STOP HIM!"'],
+    '4-1': ['"He crossed the water?! Start the conveyor belts! String up the tripwires!"', '"Every crate on my docks has my name on it. Guard them!"'],
+    '4-2': ['"Switch on the laser hall. Red lasers, red lamps, red EVERYTHING!"', '"Let him try being invisible in there. Ha!"'],
+    '4-3': ['"So. The boy with the key is at my vault door."', '"Four red lamps, a pile of barrels and ME. Come and get it, Chintu!"'],
   };
+  const ENDING_LINES = [
+    '"NO! NO! NO! My lamps! My beautiful red lamps!"',
+    '"A little boy with a little key… locked away MY formula?!"',
+    '"Who switched off the lights? Goons? GOONS?! Somebody find the switch!"',
+    '"This is not over, Chintu! I will… ouch! Who left this cow in my fortress?!"',
+  ];
   const PRACTICE = { id: 'P', world: 1, name: 'Practice Run', practice: true,
     pieces: ['pStart', 'pBlocks', 'pGap', 'pSteps', 'pPlank', 'pWall', 'pRoof', 'pGaps', 'pHigh', 'pEnd'] };
-  const WORLD_NAMES = { 1: 'World 1 · Village', 2: 'World 2 · Bazaar', 3: 'World 3 · Rooftops' };
+  const WORLD_NAMES = { 1: 'World 1 · Village', 2: 'World 2 · Bazaar', 3: 'World 3 · Rooftops', 4: 'World 4 · Fortress' };
+  const PAGE_STAGES = STAGES.filter(s => !s.boss).length;
 
   function buildRows(names) {
     const out = new Array(ROWS).fill('');
@@ -539,10 +738,22 @@
   // ---------- Level state ----------
   const level = { grid: [], signs: [], bumps: new Map(), blockItem: new Map(), start: { x: 0, y: 0 }, goalX: 0, goalRow: 8 };
   let coins = [], pages = [], goons = [], nuts = [], spawners = [], plats = [], flags = [], pickups = [], popups = [], particles = [];
-  let vials = [], lights = [], drones = [], sentries = [], cages = [], beams = [];
+  let vials = [], lights = [], drones = [], sentries = [], cages = [], beams = [], flyPages = [];
+  let lasers = [], trips = [], tlamps = [], barrels = [], bossLamps = [], bossSwitches = [], boss = null;
+  let lampsOut = false, lightsT = 0, clearPending = false;
+  const BELT = 75;
+  const FLY_T = 0.85;           // seconds a collected formula page takes to fly into the HUD
+
+  // Top of the first solid tile at or below row r in column c (used to stand lasers and lamps on the floor)
+  function floorBelow(grid, c, r) {
+    for (let y = r; y < grid.length; y++) if (SOLID.has(grid[y][c])) return y * TILE;
+    return grid.length * TILE;
+  }
 
   function loadStage(st) {
     vials = []; lights = []; drones = []; sentries = []; cages = []; beams = [];
+    lasers = []; trips = []; tlamps = []; barrels = []; bossLamps = []; bossSwitches = []; boss = null;
+    lampsOut = false; lightsT = 0; clearPending = false;
     const rows = buildRows(st.pieces);
     level.stage = st;
     level.rows = rows.length; level.cols = rows[0].length;
@@ -587,9 +798,35 @@
           sentries.push({ x: c * TILE + 6, y: floorY - 30, w: 18, h: 30, vx: -1, alive: true, squashT: 0, phase: 0, turnT: 3, sentry: true });
           clear();
         }
+        else if (ch === 'Z') {
+          const fy = floorBelow(level.grid, c, r);
+          // The beam runs from the ceiling (or far above the screen) to the floor, so it can't be jumped over;
+          // the emitter box with its lens hangs where it can be seen.
+          let ceil = -400;
+          for (let y = r - 1; y >= 0; y--) if (SOLID.has(level.grid[y][c])) { ceil = (y + 1) * TILE; break; }
+          lasers.push({ x: cx, top: Math.max(fy - 150, ceil + 7), beamTop: ceil, bottom: fy, phase: hash(c * 2.7) * 3, period: 3, onT: 1.3, boss: !!st.boss });
+          clear();
+        }
+        else if (ch === 'z') { trips.push({ x0: c * TILE + 3, x1: (c + 1) * TILE - 3, y: floorY - 13, base: floorY, broken: false, snapT: 0 }); clear(); }
+        else if (ch === 'T') {
+          const fy = floorBelow(level.grid, c, r);
+          tlamps.push({ x: cx, y: fy - 158, base: fy, phase: hash(c * 3.3) * 4.6, period: 4.6, onT: 1.8 });
+          clear();
+        }
+        else if (ch === 'l') { bossLamps.push({ x: cx, y: r * TILE, broken: false, phase: hash(c) * 6, ang: Math.PI / 2, breakT: 0 }); clear(); }
+        else if (ch === 'B') { bossSwitches.push({ c, r, lamp: -1 }); }          // stays in the map as a solid block
+        else if (ch === 'H') {
+          boss = { x: cx, y: floorY, home: cx, dir: -1, t: 0, throwT: 2.4, windT: 0, hurtT: 0, sayT: 0, seen: true, wasSeen: true };
+          clear();
+        }
+        else if (ch === 'Y') { vials.push({ x: cx, y: cy, taken: false, respawn: true, backT: 0 }); clear(); }
         else if (SIGNS[ch]) { level.signs.push({ x: cx, y: floorY, lines: SIGNS[ch] }); clear(); }
       }
     }
+    // each switch breaks the lamp above it (both lists left to right)
+    bossLamps.sort((a, b) => a.x - b.x);
+    bossSwitches.sort((a, b) => a.c - b.c);
+    bossSwitches.forEach((s, i) => { s.lamp = Math.min(i, bossLamps.length - 1); });
   }
 
   function tileAt(c, r) {
@@ -597,7 +834,8 @@
     if (c >= level.cols || r < 0 || r >= level.rows) return '.';
     return level.grid[r][c];
   }
-  const SOLID = new Set(['=', '#', '?', 'u', '*', 'P', 'C', 'K', 'W']);
+  const SOLID = new Set(['=', '#', '?', 'u', '*', 'P', 'C', 'K', 'W', 'x', '{', '}', 'B', 'b']);
+  const isBelt = ch => ch === '{' || ch === '}';
   const isSolid = ch => SOLID.has(ch);
   const isOneWay = ch => ch === '-' || ch === 'A';
   const isSupport = ch => isSolid(ch) || isOneWay(ch);
@@ -627,20 +865,182 @@
   let stats = {};
   const deaths = [];   // debug only (?debug)
 
+  // ---------- Options (remembered) ----------
+  let easy = store.get('chintu.easy') === '1';
+  let lowFx = params.has('lowfx');       // glow effects off (set automatically on slow devices)
+  const maxHearts = () => (easy ? 5 : 3);
+  const EASY_SPEED = 0.85;
+
+  // ---------- Sound: every effect and all the music are made with Web Audio (no audio files) ----------
+  // Nothing is created until the first tap, click or key press, so there is never sound before that.
+  const snd = (() => {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    let ac = null, master = null, fxBus = null, musBus = null, noiseBuf = null;
+    const opt = { sound: store.get('chintu.sound') !== '0', music: store.get('chintu.music') !== '0' };
+    const MUS_VOL = 0.2;
+    function apply() {
+      if (master) master.gain.value = opt.sound ? 1 : 0;
+      if (musBus) musBus.gain.value = opt.music ? MUS_VOL : 0;
+    }
+    function unlock() {
+      if (!AC) return;
+      if (!ac) {
+        try { ac = new AC(); } catch (e) { return; }
+        master = ac.createGain(); master.connect(ac.destination);
+        fxBus = ac.createGain(); fxBus.gain.value = 0.6; fxBus.connect(master);
+        musBus = ac.createGain(); musBus.connect(master);
+        noiseBuf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate);
+        const d = noiseBuf.getChannelData(0);
+        for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+        apply();
+      }
+      if (ac.state === 'suspended') { try { const r = ac.resume(); if (r && r.catch) r.catch(() => {}); } catch (e) { /* ignore */ } }
+    }
+    const mid = n => 440 * Math.pow(2, (n - 69) / 12);
+    function tone(f, dur, o) {
+      o = o || {};
+      const t = ac.currentTime + (o.at || 0), v = o.vol === undefined ? 0.15 : o.vol;
+      const osc = ac.createOscillator(), g = ac.createGain();
+      osc.type = o.type || 'square';
+      osc.frequency.setValueAtTime(f, t);
+      if (o.to) osc.frequency.exponentialRampToValueAtTime(o.to, t + dur);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(v, t + (o.attack || 0.005));
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      osc.connect(g); g.connect(o.bus || fxBus);
+      osc.start(t); osc.stop(t + dur + 0.03);
+    }
+    function noise(dur, o) {
+      o = o || {};
+      const t = ac.currentTime + (o.at || 0);
+      const src = ac.createBufferSource(); src.buffer = noiseBuf;
+      const f = ac.createBiquadFilter(); f.type = o.filter || 'lowpass'; f.frequency.setValueAtTime(o.freq || 2000, t);
+      if (o.to) f.frequency.exponentialRampToValueAtTime(o.to, t + dur);
+      const g = ac.createGain(); g.gain.setValueAtTime(o.vol || 0.2, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      src.connect(f); f.connect(g); g.connect(o.bus || fxBus);
+      src.start(t, Math.random() * 0.5); src.stop(t + dur + 0.03);
+    }
+    const arp = (notes, step, o) => notes.forEach((n, i) => tone(mid(n), (o && o.len) || step * 1.6, Object.assign({}, o, { at: ((o && o.at0) || 0) + i * step })));
+    const FX = {
+      jump:     () => tone(300, 0.14, { to: 620, vol: 0.08 }),
+      dbl:      () => tone(520, 0.12, { to: 1100, vol: 0.07 }),
+      boing:    () => tone(170, 0.32, { to: 720, type: 'sine', vol: 0.22 }),
+      coin:     () => { tone(988, 0.06, { vol: 0.06 }); tone(1319, 0.14, { vol: 0.06, at: 0.06 }); },
+      bump:     () => tone(170, 0.09, { to: 110, vol: 0.12 }),
+      stomp:    () => { tone(330, 0.13, { to: 70, type: 'triangle', vol: 0.32 }); noise(0.06, { freq: 900, vol: 0.12 }); },
+      hurt:     () => tone(440, 0.3, { to: 110, type: 'sawtooth', vol: 0.11 }),
+      page:     () => arp([72, 76, 79, 84, 88], 0.07, { type: 'triangle', vol: 0.2 }),
+      heart:    () => arp([69, 73, 76, 81], 0.06, { type: 'triangle', vol: 0.18 }),
+      oneup:    () => arp([76, 79, 88, 84, 86, 91], 0.07, { vol: 0.06 }),
+      flag:     () => arp([67, 72, 76], 0.08, { type: 'triangle', vol: 0.18 }),
+      vial:     () => { for (let i = 0; i < 7; i++) tone(1000 + i * 170, 0.28, { type: 'sine', vol: 0.05, at: i * 0.05, to: 1400 + i * 210 }); },
+      unvial:   () => tone(1400, 0.35, { to: 500, type: 'sine', vol: 0.06 }),
+      alarm:    () => { for (let i = 0; i < 4; i++) tone(i % 2 ? 620 : 880, 0.18, { type: 'sawtooth', vol: 0.06, at: i * 0.18, to: i % 2 ? 880 : 620 }); },
+      twang:    () => tone(900, 0.25, { to: 200, type: 'triangle', vol: 0.16 }),
+      thud:     () => { tone(110, 0.18, { to: 45, type: 'triangle', vol: 0.32 }); noise(0.12, { freq: 400, vol: 0.18 }); },
+      throw:    () => noise(0.22, { freq: 300, to: 1400, filter: 'bandpass', vol: 0.3 }),
+      roll:     () => tone(90, 0.12, { to: 60, type: 'triangle', vol: 0.18 }),
+      glass:    () => { noise(0.45, { filter: 'highpass', freq: 3000, vol: 0.25 }); tone(1600, 0.3, { to: 200, vol: 0.05 }); },
+      powerdown:() => tone(440, 1.5, { to: 30, type: 'sawtooth', vol: 0.12 }),
+      fall:     () => tone(700, 0.7, { to: 90, vol: 0.08 }),
+      ko:       () => arp([67, 63, 60, 55], 0.12, { vol: 0.07 }),
+      gameover: () => arp([64, 63, 62, 61, 52], 0.24, { type: 'triangle', vol: 0.22, len: 0.38 }),
+      clear:    () => arp([60, 64, 67, 72, 67, 72, 76, 79, 84], 0.09, { vol: 0.06, len: 0.16 }),
+      vault:    () => { tone(90, 0.3, { type: 'triangle', vol: 0.4 }); noise(0.18, { freq: 600, vol: 0.22 }); arp([72, 76, 79, 84, 88, 91], 0.11, { type: 'triangle', vol: 0.2, at0: 0.6 }); },
+      blip:     () => tone(660, 0.05, { vol: 0.05 }),
+      zap:      () => noise(0.15, { filter: 'bandpass', freq: 2500, vol: 0.12 }),
+    };
+    function play(name, ui) {
+      if (!ac || !opt.sound || !FX[name]) return;
+      if (!ui && (state === 'title' || DEMO)) return;        // the computer player behind the menu stays quiet
+      try { FX[name](); } catch (e) { /* ignore */ }
+    }
+
+    // Music: original chiptune loops built from 4 chords. Each step is a 16th note; 8 bars, then repeat.
+    const _ = null;
+    const TRACKS = {
+      1: { bpm: 132, chords: [[48, 'M'], [45, 'm'], [41, 'M'], [43, 'M']], drums: true, lead: 'square',
+           a: [0, _, 2, _, 1, 2, 3, _, 2, _, 4, 3, 2, _, 1, _], b: [3, _, 2, 1, 0, _, 1, 2, 3, 4, 5, _, 4, 3, 2, _],
+           bass: [0, _, _, _, 12, _, _, _, 7, _, _, _, 12, _, 7, _] },
+      2: { bpm: 140, chords: [[50, 'M'], [51, 'M'], [50, 'M'], [55, 'm']], drums: true, lead: 'square',
+           a: [3, 4, 3, _, 2, _, 3, 2, 1, _, 0, _, 1, 2, 3, _], b: [5, _, 4, 3, 4, _, 3, 2, 3, 2, 1, _, 2, _, 0, _],
+           bass: [0, _, 7, _, 0, _, 7, _, 0, _, 7, _, 12, _, 7, _] },
+      3: { bpm: 116, chords: [[45, 'm'], [41, 'M'], [48, 'M'], [40, 'M']], drums: true, lead: 'triangle',
+           a: [0, _, _, 2, _, _, 1, _, 3, _, _, 2, _, 1, _, _], b: [3, _, _, 5, _, 4, _, _, 3, _, 2, _, 1, _, _, _],
+           bass: [0, _, _, 0, _, _, 0, _, 7, _, _, 7, _, _, 12, _] },
+      4: { bpm: 150, chords: [[50, 'm'], [46, 'M'], [43, 'm'], [45, 'M']], drums: true, lead: 'square',
+           a: [0, 0, 2, _, 1, _, 2, 3, _, 3, 2, _, 1, _, 0, _], b: [3, _, 3, 4, 5, _, 4, 3, 2, _, 3, _, 1, _, 2, _],
+           bass: [0, _, 0, _, 12, _, 0, _, 0, _, 0, _, 12, _, 10, _] },
+      boss: { bpm: 168, chords: [[52, 'm'], [48, 'M'], [45, 'm'], [47, 'M']], drums: true, lead: 'sawtooth',
+           a: [0, 3, 2, 3, 1, 3, 2, 3, 0, 3, 2, 3, 4, 3, 2, 1], b: [5, _, 4, _, 3, _, 4, 5, 3, _, 2, _, 1, 2, 3, _],
+           bass: [0, _, 0, 12, 0, _, 0, 12, 0, _, 0, 12, 0, _, 7, 12] },
+      credits: { bpm: 112, chords: [[48, 'M'], [43, 'M'], [45, 'm'], [41, 'M']], drums: false, lead: 'triangle',
+           a: [0, _, 1, _, 2, _, 3, _, 2, _, 1, _, 2, _, _, _], b: [3, _, 4, _, 5, _, 4, _, 3, _, 2, _, 1, _, _, _],
+           bass: [0, _, _, _, 7, _, _, _, 12, _, _, _, 7, _, _, _] },
+    };
+    function note(f, t, dur, type, vol) {
+      const osc = ac.createOscillator(), g = ac.createGain();
+      osc.type = type; osc.frequency.setValueAtTime(f, t);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      osc.connect(g); g.connect(musBus); osc.start(t); osc.stop(t + dur + 0.03);
+    }
+    function drum(kind, t) {
+      if (kind === 'kick') {
+        const osc = ac.createOscillator(), g = ac.createGain();
+        osc.type = 'sine'; osc.frequency.setValueAtTime(150, t); osc.frequency.exponentialRampToValueAtTime(40, t + 0.12);
+        g.gain.setValueAtTime(0.7, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
+        osc.connect(g); g.connect(musBus); osc.start(t); osc.stop(t + 0.16);
+        return;
+      }
+      const src = ac.createBufferSource(); src.buffer = noiseBuf;
+      const f = ac.createBiquadFilter(), g = ac.createGain(), hat = kind === 'hat';
+      f.type = hat ? 'highpass' : 'bandpass'; f.frequency.value = hat ? 7000 : 1800;
+      g.gain.setValueAtTime(hat ? 0.12 : 0.3, t); g.gain.exponentialRampToValueAtTime(0.0001, t + (hat ? 0.03 : 0.1));
+      src.connect(f); f.connect(g); g.connect(musBus); src.start(t, Math.random() * 0.5); src.stop(t + 0.12);
+    }
+    function scheduleStep(tr, s, t, sp) {
+      const bar = Math.floor(s / 16) % 8, i = s % 16;
+      const [root, q] = tr.chords[bar % 4];
+      const tri = q === 'm' ? [0, 3, 7] : [0, 4, 7];
+      const tones = [tri[0], tri[1], tri[2], tri[0] + 12, tri[1] + 12, tri[2] + 12];
+      const k = (bar < 4 ? tr.a : tr.b)[i];
+      if (k !== null) note(mid(root + 24 + tones[k]), t, sp * 0.9, tr.lead, tr.lead === 'triangle' ? 0.16 : 0.055);
+      const bk = tr.bass[i];
+      if (bk !== null) note(mid(root - 12 + bk), t, sp * 1.8, 'triangle', 0.28);
+      if (tr.drums) { if (i % 8 === 0) drum('kick', t); if (i % 8 === 4) drum('snare', t); if (i % 2 === 0) drum('hat', t); }
+    }
+    let mus = null;
+    function music(want) {
+      if (!ac || ac.state !== 'running' || !opt.music || !TRACKS[want]) { mus = null; return; }
+      if (!mus || mus.key !== want) mus = { key: want, t: ac.currentTime + 0.1, step: 0 };
+      if (mus.t < ac.currentTime - 0.3) mus.t = ac.currentTime + 0.05;      // fell behind: skip ahead
+      const tr = TRACKS[want], sp = 60 / tr.bpm / 4;
+      while (mus.t < ac.currentTime + 0.2) { scheduleStep(tr, mus.step, mus.t, sp); mus.step = (mus.step + 1) % 128; mus.t += sp; }
+    }
+    function set(k, v) { opt[k] = v; store.set('chintu.' + k, v ? '1' : '0'); apply(); }
+    return { unlock, play, music, set, opt, get ready() { return !!ac; }, get running() { return !!ac && ac.state === 'running'; }, get track() { return mus ? mus.key : null; } };
+  })();
+  ['pointerdown', 'touchend', 'keydown'].forEach(ev => window.addEventListener(ev, () => snd.unlock(), { capture: true, passive: true }));
+
   const keys = { jump: false, slide: false, jumpPressed: false, left: false, right: false };
+  const pad = { left: false, right: false, jump: false, slide: false };
   const bot = { jump: false, slide: false, prevJump: false, jumpPressed: false, right: true };
 
   // Saved progress: furthest stage unlocked and best results per stage.
   const SAVE_KEY = 'chintu.save.v2';
-  let save = { unlocked: 0, best: {} };
+  let save = { unlocked: 0, best: {}, done: false };
   try { const s = JSON.parse(store.get(SAVE_KEY) || 'null'); if (s && typeof s.unlocked === 'number') save = Object.assign(save, s); } catch (e) { /* ignore */ }
+  if (!save.best || typeof save.best !== 'object') save.best = {};
+  // Saves from Phase 3 stopped at 3-3: if it was cleared, World 4 is open now.
+  if (save.best['3-3']) save.unlocked = Math.max(save.unlocked, STAGES.findIndex(s => s.id === '4-1'));
+  save.unlocked = Math.max(0, Math.min(STAGES.length - 1, save.unlocked | 0));
   function writeSave() { store.set(SAVE_KEY, JSON.stringify(save)); }
 
   function spawnPlayer(pos) {
     Object.assign(player, {
       x: pos.x, y: pos.y, vx: 0, vy: 0, h: STAND_H, facing: 1,
       onGround: false, coyoteT: 0, jumpBuf: 0, jumping: false, airJumps: 0, plat: null,
-      sliding: false, slideT: 0, runPhase: 0, landT: 0, blocked: false, stunT: 0, spinT: 0
+      sliding: false, slideT: 0, runPhase: 0, landT: 0, blocked: false, stunT: 0, spinT: 0, belt: 0
     });
     keys.jumpPressed = false;
     snapCamera();
@@ -682,6 +1082,14 @@
       for (const k of nuts) {
         if (k.x + 7 > p.x && k.x - 7 - (p.x + PW) < 58 && Math.abs(k.y + 7 - feet) < 24) { jump = true; right = true; }
       }
+      for (const t of trips) {
+        if (!t.broken && t.x1 > p.x && t.x0 - (p.x + PW) < 24 + v * 0.05 && Math.abs(t.base - feet) < 8) jump = true;
+      }
+    }
+    // Laser gates: wait in front of one that is on or about to switch on
+    for (const L of lasers) {
+      const d = L.x - 4 - (p.x + PW);
+      if (d > -3 && d < 46 && laserSoon(L, 0.6)) { right = false; jump = false; }
     }
     bot.jumpPressed = jump && !bot.prevJump;
     bot.jump = jump || (p.vy < 0 && p.jumping);
@@ -693,7 +1101,7 @@
   // ---------- Update ----------
   function update(dt) {
     animT += dt;
-    if (state === 'pause' || state === 'over' || state === 'scene') return;
+    if (state === 'pause' || state === 'over' || state === 'scene' || state === 'ending' || state === 'credits') return;
     stateT += dt;
     worldT += dt;
     alarmT = Math.max(0, alarmT - dt);
@@ -707,9 +1115,16 @@
       return;
     }
     if (state === 'clear') {
-      if (Math.random() < 0.5) confetti();
+      if (lampsOut) lightsT += dt;
+      // let Chintu land and slow down for his victory hop
+      if (!player.onGround || Math.abs(player.vx) > 1) {
+        stepPlayer(dt, { jump: false, slide: false, pressed: false, left: false, right: false });
+        if (player.y > level.h) { player.y = level.h; player.vy = 0; }
+      }
+      if (Math.random() < 0.5 && !(level.stage && level.stage.boss && stateT < 2.4)) confetti();
+      if (clearPending && stateT > 2.6) { clearPending = false; showOverlay('clear'); }
       if (stateT > 2.5) {
-        if (state === 'clear' && !overlays.title.hidden) attract();
+        if (state === 'clear' && menuOpen()) attract();
         else if (DEMO) beginStage(sess.practice ? 'P' : sess.stage, true);
       }
       return;
@@ -718,7 +1133,10 @@
     const auto = state === 'title' || DEMO;
     let input;
     if (auto) { botThink(); input = { jump: bot.jump, slide: bot.slide, pressed: bot.jumpPressed, left: false, right: bot.right }; }
-    else { input = { jump: keys.jump, slide: keys.slide, pressed: keys.jumpPressed, left: keys.left, right: keys.right }; keys.jumpPressed = false; }
+    else {
+      input = { jump: keys.jump || pad.jump, slide: keys.slide || pad.slide, pressed: keys.jumpPressed, left: keys.left || pad.left, right: keys.right || pad.right };
+      keys.jumpPressed = false;
+    }
 
     if (state === 'play') runTime += dt;
     invuln = Math.max(0, invuln - dt);
@@ -731,10 +1149,18 @@
     updateDrones(dt);
     updateSentries(dt);
     updateCages(dt);
+    updateLasers();
+    updateTrips(dt);
+    updateBarrels(dt);
+    updateBoss(dt);
+    updateVialRespawn(dt);
     collectItems();
     checkFlags();
+    if (invisT > 0 && invisT - dt <= 0) snd.play('unvial');
     invisT = Math.max(0, invisT - dt);
     alarmCd = Math.max(0, alarmCd - dt);
+    for (const f of flyPages) f.t += dt;
+    flyPages = flyPages.filter(f => f.t < FLY_T);
     checkVision();
     updateWorry();
 
@@ -770,9 +1196,11 @@
     if (p.jumpBuf > 0 && p.coyoteT > 0 && !p.sliding) {
       p.vy = -PHYS.jumpV; p.onGround = false; p.coyoteT = 0; p.jumpBuf = 0; p.jumping = true; p.plat = null;
       puff(p.x + PW / 2, p.y + p.h, 4);
+      snd.play('jump');
     } else if (p.jumpBuf > 0 && !p.onGround && p.coyoteT <= 0 && p.airJumps > 0) {
       p.vy = -PHYS.dblJumpV; p.airJumps--; p.jumpBuf = 0; p.jumping = true; p.spinT = 0.35;
       ring(p.x + PW / 2, p.y + p.h);
+      snd.play('dbl');
     }
     if (p.jumping && !input.jump && p.vy < 0) { p.vy *= PHYS.jumpCut; p.jumping = false; }
     if (p.vy >= 0) p.jumping = false;
@@ -790,15 +1218,17 @@
       else if (p.vx > target) p.vx = Math.max(target, p.vx - a * dt);
       if (dir) p.facing = dir;
     }
-    if (p.plat) p.x += p.plat.dx;      // ride the flying carpet
+    // ride the flying carpet or the conveyor belt
+    const carry = (p.plat ? p.plat.dx : 0) + (p.onGround && p.belt ? p.belt * dt : 0);
+    p.x += carry;
     p.x += p.vx * dt;
     p.blocked = false;
     {
       const r0 = Math.floor(p.y / TILE), r1 = Math.floor((p.y + p.h - 0.001) / TILE);
       const cR = Math.floor((p.x + PW - 0.001) / TILE), cL = Math.floor(p.x / TILE);
       for (let r = r0; r <= r1; r++) {
-        if (isSolid(tileAt(cR, r)) && p.x + PW > cR * TILE && (p.vx > 0 || (p.plat && p.plat.dx > 0))) { p.x = cR * TILE - PW; p.vx = Math.min(p.vx, 0); p.blocked = true; break; }
-        if (isSolid(tileAt(cL, r)) && (p.vx < 0 || (p.plat && p.plat.dx < 0))) { p.x = (cL + 1) * TILE; p.vx = Math.max(p.vx, 0); p.blocked = true; break; }
+        if (isSolid(tileAt(cR, r)) && p.x + PW > cR * TILE && (p.vx > 0 || carry > 0)) { p.x = cR * TILE - PW; p.vx = Math.min(p.vx, 0); p.blocked = true; break; }
+        if (isSolid(tileAt(cL, r)) && (p.vx < 0 || carry < 0)) { p.x = (cL + 1) * TILE; p.vx = Math.max(p.vx, 0); p.blocked = true; break; }
       }
     }
 
@@ -808,6 +1238,7 @@
     p.y += p.vy * dt;
     p.onGround = false;
     p.plat = null;
+    p.belt = 0;
     const c0 = Math.floor(p.x / TILE), c1 = Math.floor((p.x + PW - 0.001) / TILE);
     let bounced = false;
     if (p.vy >= 0) {
@@ -816,11 +1247,19 @@
         const ch = tileAt(c, r);
         if (isSolid(ch) || (isOneWay(ch) && prevBottom <= r * TILE + 0.5)) {
           p.y = r * TILE - p.h; p.vy = 0; p.onGround = true;
+          if (isBelt(ch)) p.belt = ch === '}' ? BELT : -BELT;
+          if (ch === 'B' && (state === 'play' || DEMO)) {
+            // jumped on one of Dr. Andhera's lamp switches
+            pressSwitch(c, r);
+            p.vy = -430; p.onGround = false; p.jumping = false; bounced = true;
+            p.airJumps = 1;
+          }
           if (ch === 'A') {
             p.vy = -(input.jump ? PHYS.bounceHeldV : PHYS.bounceV); p.onGround = false; p.jumping = false;
             level.bumps.set(c + ',' + r, 0.25); bounced = true;
             p.airJumps = level.stage.world >= 2 ? 1 : 0;
             ring(p.x + PW / 2, p.y + p.h);
+            snd.play('boing');
           }
           break;
         }
@@ -856,6 +1295,7 @@
   function bump(c, r) {
     const ch = tileAt(c, r);
     level.bumps.set(c + ',' + r, 0.2);
+    snd.play('bump');
     if (ch === '?' || ch === '*' || ch === 'P') {
       level.grid[r][c] = 'u';
       const x = c * TILE + TILE / 2, y = r * TILE;
@@ -866,8 +1306,11 @@
         // Hearts and pages pop out and are collected straight away
         pickups.push({ type: ch === '*' ? 'heart' : 'page', x, y: y - 10, t: 0 });
         if (ch === 'P') gainPage(x, y - 10);
-        else if (hearts < 3) { hearts++; popup(x, y - 22, '+❤', '#ff4d5e'); }
-        else addScore(200, x, y - 22);
+        else {
+          snd.play('heart');
+          if (hearts < maxHearts()) { hearts++; popup(x, y - 22, '+❤', '#ff4d5e'); }
+          else addScore(200, x, y - 22);
+        }
       }
       for (let i = 0; i < 8; i++) {
         particles.push({ x, y, vx: (Math.random() - 0.5) * 120, vy: -100 - Math.random() * 100,
@@ -935,7 +1378,7 @@
     }
     goons = goons.filter(g => g.alive || g.squashT > 0);
   }
-  const keyJumpHeld = () => (state === 'title' || DEMO) ? bot.jump : keys.jump;
+  const keyJumpHeld = () => (state === 'title' || DEMO) ? bot.jump : (keys.jump || pad.jump);
 
   // ---------- World 3: invisibility, lights, drones, sentries, alarms ----------
   const isHidden = () => invisT > 0 && !revealed;
@@ -949,6 +1392,13 @@
     }
     for (const d of drones) if (d.alive) out.push({ x: d.x + d.w / 2, y: d.y + d.h, ang: Math.PI / 2 + 0.12 * Math.sin(d.t * 2), half: 0.15, len: 210, red: true });
     for (const s of sentries) if (s.alive) out.push({ x: s.x + s.w / 2 + s.vx * 11, y: s.y + 12, ang: s.vx < 0 ? Math.PI - 0.1 : 0.1, half: 0.2, len: 120, red: true });
+    for (const L of tlamps) if (tlampState(L) === 'on') out.push({ x: L.x, y: L.y + 10, ang: Math.PI / 2, half: 0.42, len: 200, red: true, flood: true });
+    const bs = 0.7 + bossRound() * 0.25;
+    for (const L of bossLamps) {
+      if (L.broken) continue;
+      L.ang = Math.PI / 2 + 0.36 * Math.sin(worldT * bs + L.phase);
+      out.push({ x: L.x, y: L.y + 24, ang: L.ang, half: 0.23, len: 220, red: true });
+    }
     return out;
   }
   function inBeam(b, px, py) {
@@ -965,15 +1415,21 @@
     let inRed = false, inWhite = false;
     for (const b of beams) for (const [px, py] of pts) if (inBeam(b, px, py)) { if (b.red) inRed = true; else inWhite = true; }
     revealed = invisT > 0 && inRed;
+    if (boss) {
+      // In the vault there are no alarms: Dr. Andhera simply throws barrels at whatever he can see.
+      boss.seen = !lampsOut && (invisT <= 0 || inRed);
+      return;
+    }
     const seen = inRed || (inWhite && invisT <= 0);
     if (seen && alarmCd <= 0 && state === 'play') triggerAlarm();
   }
 
-  function triggerAlarm() {
+  function triggerAlarm(label) {
     alarmCd = 3; alarmT = 1.4;
     stats.alarms++;
+    snd.play('alarm');
     const p = player, gx = p.x + PW / 2;
-    popup(gx, p.y - 14, 'SPOTTED!', '#ff6b6b');
+    popup(gx, p.y - 14, label || 'SPOTTED!', '#ff6b6b');
     const gy = groundBelow(gx, p.y + p.h);
     cages.push({ x: gx - 17, y: cam.y - 50, w: 34, h: 38, warnT: 0.75, vy: 0, state: 'warn', life: 0, groundY: gy === null ? p.y + p.h : gy });
   }
@@ -984,7 +1440,7 @@
       if (k.state === 'warn') { k.warnT -= dt; if (k.warnT <= 0) k.state = 'fall'; }
       else if (k.state === 'fall') {
         k.vy += 2400 * dt; k.y += k.vy * dt;
-        if (k.y + k.h >= k.groundY) { k.y = k.groundY - k.h; k.state = 'landed'; shake = Math.max(shake, 0.15); puff(k.x + k.w / 2, k.groundY, 8); }
+        if (k.y + k.h >= k.groundY) { k.y = k.groundY - k.h; k.state = 'landed'; shake = Math.max(shake, 0.15); puff(k.x + k.w / 2, k.groundY, 8); snd.play('thud'); }
         if (overlap(p.x, p.y, PW, p.h, k.x + 3, k.y, k.w - 6, k.h)) {
           k.state = 'broken';
           popup(k.x + k.w / 2, k.y - 6, 'CAUGHT!', '#ff6b6b');
@@ -1012,6 +1468,7 @@
           stats.stomps++;
           addScore(200, d.x + d.w / 2, d.y - 4);
           burst(d.x + d.w / 2, d.y + 4, '#ff3b3b');
+          snd.play('stomp');
         } else if (!isHidden()) hurt(d.x + d.w / 2);
       }
     }
@@ -1030,10 +1487,191 @@
           p.vy = -(keyJumpHeld() ? PHYS.stompHeldV : PHYS.stompV); p.jumping = false;
           stats.stomps++;
           addScore(150, s.x + s.w / 2, s.y - 4);
+          snd.play('stomp');
         } else if (!isHidden()) hurt(s.x + s.w / 2);
       }
     }
     sentries = sentries.filter(s => s.alive || s.squashT > 0);
+  }
+
+  // ---------- World 4: lasers, tripwires, timed alarm lamps ----------
+  const cyc = L => ((worldT + L.phase) % L.period + L.period) % L.period;
+  function laserState(L) {
+    if (L.boss) return lampsOut ? 'off' : 'on';
+    const t = cyc(L);
+    return t < L.onT ? 'on' : t > L.period - 0.5 ? 'warn' : 'off';
+  }
+  function laserSoon(L, ahead) {          // on now, or switching on within `ahead` seconds
+    if (L.boss) return !lampsOut;
+    const t = cyc(L);
+    return t < L.onT + 0.05 || L.period - t < ahead;
+  }
+  function tlampState(L) {
+    const t = cyc(L);
+    return t < L.onT ? 'on' : t > L.period - 0.8 ? 'warn' : 'off';
+  }
+
+  function updateLasers() {
+    if (state !== 'play' && state !== 'title') return;
+    const p = player;
+    for (const L of lasers) {
+      if (laserState(L) !== 'on') continue;
+      if (Math.random() < 0.25 && onScreen(L.x, 20)) sparkle(L.x, L.bottom - 2, '#ff8080');
+      if (L.boss) {
+        // the force field in front of Dr. Andhera's deck: nobody gets through while his lamps are on
+        if (p.x + PW > L.x - 4 && p.x < L.x + 4) { p.x = L.x - 4 - PW; p.vx = Math.min(0, p.vx); hurt(L.x + 20); }
+        continue;
+      }
+      // laser light burns, invisible or not
+      if (overlap(p.x, p.y, PW, p.h, L.x - 3, L.beamTop, 6, L.bottom - L.beamTop)) { if (invuln <= 0) snd.play('zap'); hurt(L.x); }
+    }
+  }
+
+  function updateTrips(dt) {
+    const p = player;
+    for (const t of trips) {
+      if (t.broken) { t.snapT += dt; continue; }
+      if ((state === 'play' || state === 'title') && p.x < t.x1 && p.x + PW > t.x0 && p.y + p.h > t.y && p.y < t.y + 2) {
+        t.broken = true; t.snapT = 0;
+        sparkle((t.x0 + t.x1) / 2, t.y, '#ff6b6b');
+        snd.play('twang');
+        if (state === 'play' && alarmCd <= 0) triggerAlarm('TRIPWIRE!');
+      }
+    }
+  }
+
+  // ---------- The boss: Dr. Andhera in his formula vault ----------
+  const brokenLamps = () => bossLamps.filter(l => l.broken).length;
+  function bossRound() {               // round 1: lamps 1-2, round 2: lamp 3, round 3: the last lamp
+    if (!bossLamps.length) return 0;
+    const n = brokenLamps();
+    return n <= 1 ? 0 : n === 2 ? 1 : 2;
+  }
+
+  function updateBoss(dt) {
+    const b = boss;
+    if (!b) return;
+    b.t += dt; b.hurtT = Math.max(0, b.hurtT - dt); b.sayT = Math.max(0, b.sayT - dt);
+    for (const L of bossLamps) {
+      L.breakT = Math.max(0, L.breakT - dt);
+      if (L.broken && Math.random() < dt * 1.5) sparkle(L.x + (Math.random() - 0.5) * 12, L.y + 26, '#ffd27a');
+    }
+    if (lampsOut) {
+      // in the dark he stumbles about on his deck
+      lightsT += dt;
+      b.x += b.dir * 24 * dt;
+      if (b.x < b.home - 45) b.dir = 1;
+      if (b.x > b.home + 22) b.dir = -1;
+      if (b.sayT <= 0 && state === 'play') {
+        const lines = ['Where is he?!', 'Who switched off the lights?', 'Goons? GOONS?!', 'I can\'t see a thing!'];
+        popup(b.x, b.y - 82, lines[Math.floor(b.t) % lines.length], '#ffd60a');
+        b.sayT = 2.4;
+      }
+      return;
+    }
+    if (state !== 'play') return;
+    if (b.seen !== b.wasSeen) {
+      if (b.sayT <= 0) { popup(b.x - 6, b.y - 84, b.seen ? 'I SEE YOU!' : 'Where did he go?', b.seen ? '#ff6b6b' : '#ffd60a'); b.sayT = 1.6; }
+      b.wasSeen = b.seen;
+    }
+    if (b.windT > 0) { b.windT -= dt; if (b.windT <= 0) throwBarrel(); return; }
+    b.throwT -= dt * (b.hurtT > 0 ? 0.3 : 1);
+    if (b.throwT <= 0) b.windT = 0.45;
+  }
+
+  function throwBarrel() {
+    const b = boss, rd = bossRound(), p = player;
+    const x0 = b.x - 10, y0 = b.y - 74;
+    // He aims when he can see Chintu; otherwise he throws blindly.
+    const tx = b.seen ? p.x + PW / 2 + p.vx * 0.25 : 50 + Math.random() * 560;
+    const vy = -200, land = level.rows * TILE - 2 * TILE - 8;   // a flat throw, under the low ceiling
+    const t = (-vy + Math.sqrt(vy * vy + 2 * PHYS.gravity * (land - y0))) / PHYS.gravity;
+    const vx = Math.max(-720, Math.min(-40, (tx - x0) / t + (Math.random() - 0.5) * 30));
+    barrels.push({ x: x0, y: y0, vx, vy, rot: 0, roll: [115, 145, 175][rd], bounces: rd === 2 ? 1 : 0, landed: false });
+    snd.play('throw');
+    b.throwT = b.seen ? [1.8, 1.4, 1.05][rd] : [2.8, 2.5, 2.2][rd];
+  }
+
+  function updateBarrels(dt) {
+    const p = player;
+    for (const k of barrels) {
+      k.vy = Math.min(PHYS.maxFall, k.vy + PHYS.gravity * dt);
+      const nx = k.x + k.vx * dt;
+      if (isSolid(tileAt(Math.floor((nx + Math.sign(k.vx) * 8) / TILE), Math.floor(k.y / TILE)))) {
+        k.dead = true; burst(k.x, k.y, '#8a5a30'); continue;
+      }
+      k.x = nx;
+      k.rot += k.vx * dt / 8;
+      const prevBottom = k.y + 8;
+      k.y += k.vy * dt;
+      if (k.vy >= 0) {
+        const r = Math.floor((k.y + 8 - 0.001) / TILE);
+        const ch = tileAt(Math.floor(k.x / TILE), r);
+        if (isSolid(ch) || (isOneWay(ch) && prevBottom <= r * TILE + 0.5)) {
+          k.y = r * TILE - 8;
+          if (!k.landed) {
+            puff(k.x, k.y + 8, 4);
+            if (onScreen(k.x, 0)) snd.play('roll');
+            if (k.bounces > 0) { k.bounces--; k.vy = -300; k.vx = -k.roll * 1.2; }
+            else { k.landed = true; k.vy = 0; k.vx = -k.roll; }
+          } else k.vy = 0;
+        }
+      }
+      if (k.y > level.h + 40 || k.x < 4) { k.dead = true; burst(Math.max(8, k.x), k.y, '#8a5a30'); continue; }
+      if (state === 'play' && overlap(p.x, p.y, PW, p.h, k.x - 7, k.y - 7, 14, 14)) {
+        if (p.vy > 60 && p.y + p.h - p.vy * dt <= k.y - 2) {
+          k.dead = true; burst(k.x, k.y, '#8a5a30');
+          p.vy = -(keyJumpHeld() ? PHYS.stompHeldV : PHYS.stompV); p.jumping = false; p.airJumps = 1;
+          addScore(50, k.x, k.y - 10);
+          snd.play('stomp');
+        } else hurt(k.x);
+      }
+    }
+    barrels = barrels.filter(k => !k.dead);
+  }
+
+  function pressSwitch(c, r) {
+    const sw = bossSwitches.find(s => s.c === c && s.r === r);
+    if (!sw || level.grid[r][c] !== 'B') return;
+    level.grid[r][c] = 'b';
+    level.bumps.set(c + ',' + r, 0.2);
+    const L = bossLamps[sw.lamp];
+    if (!L || L.broken) return;
+    L.broken = true; L.breakT = 0.6;
+    shake = 0.4;
+    snd.play('glass');
+    for (let i = 0; i < 16; i++) particles.push({ x: L.x, y: L.y + 24, vx: (Math.random() - 0.5) * 160, vy: -40 + Math.random() * 120, life: 0.7, max: 0.7, size: 1.8, color: i % 2 ? '#ff6b6b' : '#ffe3e3', grav: 600 });
+    addScore(1000, L.x, L.y + 40);
+    if (hearts < maxHearts()) { hearts++; popup(c * TILE + 15, r * TILE - 24, '+❤', '#ff4d5e'); }
+    const n = brokenLamps();
+    if (boss) { boss.hurtT = 0.9; boss.throwT = Math.max(boss.throwT, 1.6); boss.windT = 0; }
+    if (n >= bossLamps.length) { lightsOut(); return; }
+    const msg = [
+      '',
+      '💥 One lamp down! <small><br>"My lamp! You little…"</small>',
+      '💥 Round 2! <small><br>"Faster, barrels, FASTER!"</small>',
+      '💥 Final round! One lamp left. <small><br>"I can still see you… I can still… see… you?"</small>',
+    ][n] || '';
+    if (msg && !DEMO) showBanner(msg, 2.2);
+    if (boss) popup(boss.x, boss.y - 84, ['', 'NOOO!', 'Stop that!', 'Not my last lamp!'][n] || 'Grr!', '#ff6b6b');
+  }
+
+  function lightsOut() {
+    lampsOut = true; lightsT = 0;
+    snd.play('powerdown');
+    for (const k of barrels) burst(k.x, k.y, '#8a5a30');
+    barrels = [];
+    shake = 0.6;
+    if (boss) { boss.sayT = 0.6; boss.windT = 0; }
+    if (!DEMO) showBanner('💡 All 4 lamps are broken!<br><small>In the dark he can\'t see you. Climb up and reach the vault!</small>', 3.2);
+  }
+
+  function updateVialRespawn(dt) {
+    for (const v of vials) {
+      if (!v.respawn || !v.taken || invisT > 0) continue;
+      v.backT -= dt;
+      if (v.backT <= 0) { v.taken = false; sparkle(v.x, v.y, '#7fe3ff'); }
+    }
   }
 
   function updateWorry() {
@@ -1051,6 +1689,7 @@
 
   function squashGoon(g, flipped) {
     g.alive = false; g.squashT = 0.6; g.flipped = flipped;
+    snd.play('stomp');
     for (let i = 0; i < 6; i++) particles.push({ x: g.x + g.w / 2, y: g.y + g.h, vx: (Math.random() - 0.5) * 80, vy: -40 - Math.random() * 40, life: 0.4, max: 0.4, size: 2, color: '#d8bd8f', grav: 200 });
     if (flipped) { stats.stomps++; addScore(100, g.x + g.w / 2, g.y - 4); }
   }
@@ -1086,6 +1725,7 @@
           k.dead = true; burst(k.x, k.y + 7, '#6b4423');
           p.vy = -PHYS.stompV; p.jumping = false;
           addScore(50, k.x, k.y - 4);
+          snd.play('stomp');
         } else hurt(k.x);
       }
     }
@@ -1107,8 +1747,9 @@
     }
     for (const v of vials) {
       if (!v.taken && overlap(p.x, p.y, PW, p.h, v.x - 7, v.y - 9, 14, 18)) {
-        v.taken = true;
+        v.taken = true; v.backT = 2.5;
         invisT = INVIS_TIME;
+        snd.play('vial');
         popup(v.x, v.y - 14, 'INVISIBLE!', '#7fe3ff');
         for (let i = 0; i < 14; i++) { const a = i / 14 * Math.PI * 2; particles.push({ x: v.x, y: v.y, vx: Math.cos(a) * 70, vy: Math.sin(a) * 70, life: 0.6, max: 0.6, size: 2, color: '#7fe3ff', grav: 0 }); }
       }
@@ -1119,10 +1760,14 @@
     if (state !== 'play') return;
     sess.coins++; stats.coins++;
     addScore(10, x, y - 8, true);
-    if (sess.coins % 100 === 0 && !sess.practice) { sess.lives++; popup(x, y - 22, '1UP!', '#7CFC9A'); }
+    snd.play('coin');
+    if (sess.coins % 100 === 0 && !sess.practice) { sess.lives++; popup(x, y - 22, '1UP!', '#7CFC9A'); snd.play('oneup'); }
   }
   function gainPage(x, y) {
     stats.pages++;
+    snd.play('page');
+    // the page flies up into its slot in the HUD
+    if (state === 'play') flyPages.push({ x: x - cam.x, y: y - cam.y, t: 0, slot: stats.pages - 1 });
     addScore(500, x, y - 12);
     for (let i = 0; i < 18; i++) {
       const a = i / 18 * Math.PI * 2;
@@ -1137,7 +1782,7 @@
       if (player.x + PW / 2 > f.x) {
         f.on = true;
         checkpoint = { x: f.x - PW / 2, y: f.y - STAND_H };
-        if (state === 'play') popup(f.x, f.y - 70, 'Checkpoint!', '#7CFC9A');
+        if (state === 'play') { popup(f.x, f.y - 70, 'Checkpoint!', '#7CFC9A'); snd.play('flag'); }
       }
     }
   }
@@ -1147,7 +1792,8 @@
     if (state !== 'play') return;
     stats.hits++;
     hearts--;
-    invuln = 1.6;
+    invuln = easy ? 2 : 1.6;
+    snd.play('hurt');
     shake = 0.25;
     const p = player;
     if (p.sliding && canStand()) { p.y -= STAND_H - SLIDE_H; p.h = STAND_H; p.sliding = false; }
@@ -1167,6 +1813,7 @@
     if (state !== 'play') return;
     if (!sess.practice) sess.lives--;
     state = 'ko'; stateT = 0;
+    snd.play(reason === 'fall' ? 'fall' : 'ko');
     const left = sess.practice ? '' : '<br><small>' + (sess.lives > 0 ? 'Lives left: ' + sess.lives : 'No lives left') + '</small>';
     showBanner((reason === 'fall' ? 'Oops! Chintu fell.' : 'Ouch! Out of hearts.') + left, 0);
     updateStopBtn();
@@ -1181,14 +1828,17 @@
   function respawn() {
     if (DEBUG) deaths.push({ ev: 'respawn', from: Math.round(player.x), t: +runTime.toFixed(1) });
     spawnPlayer(checkpoint || level.start);
-    hearts = 3;
+    hearts = maxHearts();
     invuln = 1.2;
-    nuts = []; cages = [];
+    nuts = []; cages = []; barrels = [];
     invisT = 0; revealed = false; alarmCd = 1.5;
+    for (const v of vials) if (v.respawn) v.taken = false;
+    if (boss) { boss.throwT = 2.4; boss.windT = 0; }
   }
   function resetStageState() {
     stats = { coins: 0, stomps: 0, score: 0, pages: 0, hits: 0, alarms: 0 };
-    checkpoint = null; hearts = 3; invuln = 0; runTime = 0;
+    checkpoint = null; hearts = maxHearts(); invuln = 0; runTime = 0;
+    flyPages = [];
     invisT = 0; revealed = false; alarmT = 0; alarmCd = 0; worldT = 0;
     const st = level.stage;
     worry = st && st.worry ? st.worry[0] : 0;
@@ -1216,6 +1866,7 @@
     if (!level.w) return;
     cam.x = Math.max(0, Math.min(level.w - viewW, cam.x));
     cam.y = Math.max(0, Math.min(level.h - VIEW_H, cam.y));
+    if (level.stage && level.stage.boss) cam.y = TILE;     // the vault: show the ceiling lamps and the floor
   }
 
   // ---------- Score, popups and particles ----------
@@ -1265,7 +1916,9 @@
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.setTransform(scale, 0, 0, scale, 0, 0);
-    if (world() === 3) drawNightBackground();
+    const bg = level.stage && level.stage.bg;
+    if (world() === 4) { if (bg === 'docks') drawDocksBackground(); else drawHallBackground(bg === 'vault'); }
+    else if (world() === 3) drawNightBackground();
     else if (world() === 2) drawBazaarBackground();
     else drawVillageBackground();
 
@@ -1274,10 +1927,12 @@
     ctx.setTransform(scale, 0, 0, scale, -ox * scale, -oy * scale);
     drawSigns();
     drawLightTowers();
-    drawGoal();
+    drawAlarmLamps();
+    if (boss) drawVault(); else drawGoal();
     drawFlags();
     drawSpawners();
     drawTiles();
+    drawTrips();
     drawPlats();
     drawCoins();
     drawPages();
@@ -1287,13 +1942,32 @@
     drawSentries();
     drawNuts();
     drawDrones();
+    drawBossLamps();
+    drawAndheraBoss();
+    drawBarrels();
     drawCages();
     drawPlayer();
+    drawLasers();
     drawBeams();
     drawParticles();
     drawPopups();
 
     ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    if (lampsOut) {
+      // the vault goes dark; a little light stays around Chintu
+      const k = Math.min(1, lightsT / 1.2) * 0.66;
+      const px = player.x + PW / 2 - ox, py = player.y + player.h / 2 - oy;
+      const g = ctx.createRadialGradient(px, py, 18, px, py, 150);
+      g.addColorStop(0, `rgba(6,4,14,${k * 0.15})`); g.addColorStop(1, `rgba(6,4,14,${k})`);
+      ctx.fillStyle = g; ctx.fillRect(0, 0, viewW, VIEW_H);
+      if (boss && state === 'play') {
+        // a glowing arrow over the vault door
+        const vx = level.goalX + 15 - ox, vy = (level.goalRow + 1) * TILE - 98 - oy + Math.sin(animT * 5) * 3;
+        ctx.fillStyle = `rgba(90,255,150,${0.6 + 0.4 * Math.sin(animT * 6)})`;
+        ctx.beginPath(); ctx.moveTo(vx - 8, vy - 8); ctx.lineTo(vx + 8, vy - 8); ctx.lineTo(vx, vy + 3); ctx.closePath(); ctx.fill();
+        ctx.font = '900 8px system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('VAULT', vx, vy - 15);
+      }
+    }
     if (alarmT > 0) {
       const a = 0.35 * Math.abs(Math.sin(alarmT * 9));
       const g = ctx.createRadialGradient(viewW / 2, VIEW_H / 2, VIEW_H * 0.35, viewW / 2, VIEW_H / 2, viewW * 0.75);
@@ -1457,7 +2131,7 @@
         ctx.save();
         ctx.font = '900 9px system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         const tw = ctx.measureText(word).width + 8;
-        ctx.strokeStyle = col; ctx.lineWidth = 1; ctx.shadowColor = col; ctx.shadowBlur = 6;
+        ctx.strokeStyle = col; ctx.lineWidth = 1; ctx.shadowColor = col; ctx.shadowBlur = lowFx ? 0 : 6;
         roundRect(x + 31 - tw / 2, base - h - 17, tw, 13, 2); ctx.stroke();
         ctx.globalAlpha = 0.75 + 0.25 * Math.sin(animT * 7 + i);
         ctx.fillStyle = col; ctx.fillText(word, x + 31, base - h - 10.5);
@@ -1466,6 +2140,130 @@
       for (let wy = base - h + 5; wy < base - 4; wy += 8) for (let wx = x + 5; wx < x + w - 5; wx += 8) {
         if (hash(wx * 0.71 + wy * 0.13 + i * 3) > 0.75) { ctx.fillStyle = 'rgba(255,200,90,.55)'; ctx.fillRect(wx, wy, 3, 3); }
       }
+    }
+  }
+
+  // --- World 4: the island fortress ---
+  function drawDocksBackground() {
+    const sky = ctx.createLinearGradient(0, 0, 0, VIEW_H);
+    sky.addColorStop(0, '#2b1030'); sky.addColorStop(0.5, '#7a2b3a'); sky.addColorStop(0.78, '#e0703a'); sky.addColorStop(1, '#f4a35a');
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, viewW, VIEW_H);
+    ctx.fillStyle = 'rgba(255,190,110,.35)'; ctx.beginPath(); ctx.arc(viewW - 100, 150, 38, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ffb35c'; ctx.beginPath(); ctx.arc(viewW - 100, 150, 24, 0, Math.PI * 2); ctx.fill();
+    drawClouds('rgba(70,24,46,.6)');
+
+    // Dr. Andhera's fortress on its island, far away
+    const fx = cam.x * 0.1, fBase = 184 - (cam.y - 60) * 0.15;
+    for (let i = Math.floor((fx - 300) / 560); i <= Math.floor((fx + viewW) / 560); i++) {
+      const x = i * 560 - fx + 140;
+      ctx.fillStyle = '#2a1626';
+      ctx.beginPath(); ctx.ellipse(x + 110, fBase + 4, 150, 16, 0, Math.PI, 0); ctx.fill();
+      ctx.fillRect(x + 10, fBase - 36, 200, 36);
+      for (let t = 0; t < 4; t++) {
+        const tx = x + 4 + t * 62, th = t === 1 || t === 2 ? 78 : 56;
+        ctx.fillStyle = '#2a1626'; ctx.fillRect(tx, fBase - th, 24, th);
+        for (let k = 0; k < 4; k++) ctx.fillRect(tx + k * 7, fBase - th - 5, 4, 5);
+        ctx.fillStyle = 'rgba(255,90,70,.8)';
+        for (let wy = fBase - th + 10; wy < fBase - 12; wy += 14) ctx.fillRect(tx + 10, wy, 4, 5);
+        ctx.fillStyle = `rgba(255,40,40,${0.5 + 0.5 * Math.sin(animT * 3 + t * 1.7)})`;
+        ctx.beginPath(); ctx.arc(tx + 12, fBase - th - 8, 2.2, 0, Math.PI * 2); ctx.fill();
+      }
+      // a red searchlight sweeping the sky
+      ctx.save(); ctx.globalCompositeOperation = 'lighter';
+      const a = -Math.PI / 2 + 0.7 * Math.sin(animT * 0.6 + i);
+      ctx.fillStyle = 'rgba(255,60,60,.12)';
+      ctx.beginPath(); ctx.moveTo(x + 78, fBase - 86); ctx.arc(x + 78, fBase - 86, 170, a - 0.06, a + 0.06); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+    // the sea
+    const seaY = 190 - (cam.y - 60) * 0.25;
+    const sea = ctx.createLinearGradient(0, seaY, 0, VIEW_H);
+    sea.addColorStop(0, '#3a3557'); sea.addColorStop(1, '#14203a');
+    ctx.fillStyle = sea; ctx.fillRect(0, seaY, viewW, VIEW_H - seaY);
+    ctx.strokeStyle = 'rgba(255,170,120,.35)'; ctx.lineWidth = 1;
+    const wx = cam.x * 0.3;
+    for (let row = 0; row < 5; row++) {
+      const y = seaY + 6 + row * 11;
+      for (let i = Math.floor(wx / 46) - 1; i <= Math.floor((wx + viewW) / 46) + 1; i++) {
+        const x = i * 46 - wx + (row % 2) * 23 + Math.sin(animT * 1.5 + i + row) * 3;
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x + 6, y - 2.5, x + 12, y); ctx.stroke();
+      }
+    }
+    // cranes and warehouses on the docks
+    const vx = cam.x * 0.45, base = 216 - (cam.y - 60) * 0.45, sp = 120;
+    for (let i = Math.floor(vx / sp) - 1; i <= Math.floor((vx + viewW) / sp) + 1; i++) {
+      const x = i * sp - vx, k = hash(i * 3.7);
+      ctx.fillStyle = '#251a2c';
+      if (k < 0.45) {
+        ctx.fillRect(x, base - 46, 78, 46);
+        ctx.beginPath(); ctx.moveTo(x - 4, base - 46); ctx.lineTo(x + 39, base - 62); ctx.lineTo(x + 82, base - 46); ctx.fill();
+        ctx.fillStyle = '#c79100'; ctx.fillRect(x + 8, base - 30, 62, 3);
+        ctx.fillStyle = 'rgba(255,200,90,.55)'; ctx.fillRect(x + 12, base - 22, 8, 6); ctx.fillRect(x + 56, base - 22, 8, 6);
+      } else if (k < 0.75) {
+        ctx.fillRect(x + 20, base - 92, 5, 92);
+        ctx.fillRect(x + 6, base - 96, 64, 4);
+        ctx.strokeStyle = '#251a2c'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(x + 60, base - 92); ctx.lineTo(x + 60, base - 60 + Math.sin(animT + i) * 3); ctx.stroke();
+        ctx.fillRect(x + 54, base - 60 + Math.sin(animT + i) * 3, 12, 9);
+        for (let y = base - 88; y < base; y += 10) { ctx.beginPath(); ctx.moveTo(x + 20, y); ctx.lineTo(x + 25, y + 10); ctx.stroke(); }
+      } else {
+        for (let s = 0; s < 3; s++) { ctx.fillStyle = ['#3b2433', '#2f2438', '#40292d'][s]; ctx.fillRect(x + s * 26, base - 18 - (s === 1 ? 18 : 0), 24, 18); }
+      }
+    }
+  }
+
+  // Inside the fortress: steel walls, pipes, warning lights and monitors that show Dr. Andhera
+  function drawHallBackground(vault) {
+    ctx.fillStyle = vault ? '#15161f' : '#1d202b'; ctx.fillRect(0, 0, viewW, VIEW_H);
+    const px = cam.x * 0.4, oy = -(cam.y - 60) * 0.4;
+    // wall panels
+    for (let i = Math.floor(px / 60) - 1; i <= Math.floor((px + viewW) / 60) + 1; i++) {
+      const x = i * 60 - px;
+      ctx.fillStyle = (i % 2) ? '#232734' : '#262a38'; ctx.fillRect(x, 0, 60, VIEW_H);
+      ctx.fillStyle = '#171a24'; ctx.fillRect(x, 0, 1.5, VIEW_H);
+      ctx.fillStyle = '#3a3f52';
+      for (let y = 16 + oy; y < VIEW_H; y += 48) { ctx.fillRect(x + 5, y, 2, 2); ctx.fillRect(x + 53, y, 2, 2); }
+    }
+    // pipes
+    for (const [y, col] of [[52, '#3c4357'], [64, '#4a3a3a']]) {
+      ctx.fillStyle = col; ctx.fillRect(0, y + oy, viewW, 6);
+      ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.fillRect(0, y + oy, viewW, 1.5);
+      for (let i = Math.floor(px / 90); i <= Math.floor((px + viewW) / 90) + 1; i++) { ctx.fillStyle = '#20232f'; ctx.fillRect(i * 90 - px, y + oy - 1, 5, 8); }
+    }
+    // monitors and warning beacons
+    const sp = vault ? 150 : 190;
+    for (let i = Math.floor(px / sp) - 1; i <= Math.floor((px + viewW) / sp) + 1; i++) {
+      const x = i * sp - px + 40, y = 100 + oy;
+      if (hash(i * 1.3) < 0.6) {
+        ctx.fillStyle = '#0d0f16'; roundRect(x - 2, y - 2, 52, 38, 3); ctx.fill();
+        ctx.fillStyle = '#2a0e14'; ctx.fillRect(x + 1, y + 1, 46, 32);
+        ctx.save(); ctx.beginPath(); ctx.rect(x + 1, y + 1, 46, 32); ctx.clip();
+        andheraFace(x + 24, y + 18, 1.15, 3);
+        ctx.fillStyle = 'rgba(0,0,0,.25)';
+        for (let s = 0; s < 32; s += 2) ctx.fillRect(x + 1, y + 1 + s, 46, 1);
+        ctx.restore();
+        ctx.fillStyle = '#ff4d4d'; ctx.font = '900 5px system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('● REC', x + 38, y + 5);
+      } else {
+        ctx.fillStyle = '#c79100'; ctx.fillRect(x, y + 4, 48, 14);
+        ctx.fillStyle = '#1d202b'; for (let s = 0; s < 6; s++) { ctx.beginPath(); ctx.moveTo(x + s * 9, y + 18); ctx.lineTo(x + s * 9 + 5, y + 4); ctx.lineTo(x + s * 9 + 9, y + 4); ctx.lineTo(x + s * 9 + 4, y + 18); ctx.fill(); }
+        ctx.fillStyle = '#fff'; ctx.fillRect(x + 6, y + 22, 36, 9);
+        ctx.fillStyle = '#b02a37'; ctx.font = '900 5.5px system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('KEEP OUT', x + 24, y + 26.5);
+      }
+      const on = Math.sin(animT * 4 + i * 2) > 0;
+      ctx.fillStyle = on ? '#ff3030' : '#5a1a1a';
+      if (on) { ctx.shadowColor = '#ff3030'; ctx.shadowBlur = lowFx ? 0 : 8; }
+      ctx.beginPath(); ctx.arc(x + 24 + sp / 2, 82 + oy, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.shadowBlur = lowFx ? 0 : 0;
+    }
+    if (vault) {
+      // Dr. Andhera's sign over the vault
+      const gx = 300 - px;
+      ctx.strokeStyle = 'rgba(212,167,44,.3)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(gx, 160 + oy, 26, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = 'rgba(212,167,44,.3)'; ctx.font = '900 30px system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('A', gx, 162 + oy);
     }
   }
 
@@ -1492,7 +2290,7 @@
       ctx.save(); ctx.translate(L.x, L.y); ctx.rotate(L.ang - Math.PI / 2);
       ctx.fillStyle = '#55607a'; roundRect(-7, -6, 14, 10, 2); ctx.fill();
       ctx.fillStyle = L.red ? '#ff3030' : '#fff4b8';
-      ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = 8;
+      ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = lowFx ? 0 : 8;
       ctx.beginPath(); ctx.ellipse(0, 4, 5.5, 2.5, 0, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
     }
@@ -1504,13 +2302,41 @@
     ctx.globalCompositeOperation = 'lighter';
     for (const b of beams) {
       if (b.x < cam.x - 260 || b.x > cam.x + viewW + 260) continue;
-      const col = b.red ? '255,45,45' : '255,240,170';
-      const g = ctx.createRadialGradient(b.x, b.y, 2, b.x, b.y, b.len);
-      g.addColorStop(0, `rgba(${col},${b.red ? 0.5 : 0.42})`); g.addColorStop(0.8, `rgba(${col},0.12)`); g.addColorStop(1, `rgba(${col},0)`);
+      // one gradient per colour and length, drawn around (0,0) and moved into place
+      const key = (b.red ? 'r' : 'w') + b.len;
+      let g = beamGrads.get(key);
+      if (!g) {
+        const col = b.red ? '255,45,45' : '255,240,170';
+        g = ctx.createRadialGradient(0, 0, 2, 0, 0, b.len);
+        g.addColorStop(0, `rgba(${col},${b.red ? 0.5 : 0.42})`); g.addColorStop(0.8, `rgba(${col},0.12)`); g.addColorStop(1, `rgba(${col},0)`);
+        beamGrads.set(key, g);
+      }
+      ctx.save(); ctx.translate(b.x, b.y);
       ctx.fillStyle = g;
-      ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.arc(b.x, b.y, b.len, b.ang - b.half, b.ang + b.half); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, b.len, b.ang - b.half, b.ang + b.half); ctx.closePath(); ctx.fill();
+      ctx.restore();
     }
     ctx.restore();
+  }
+  const beamGrads = new Map();
+
+  // Dr. Andhera's face drawn once per mood and size, then copied (it is many shapes, and the vault
+  // and the laser hall show it on every monitor)
+  const faceCache = new Map();
+  function andheraFace(x, y, s, mood) {
+    const px = Math.max(1, Math.round(s * scale * 4) / 4);
+    const key = mood + '|' + px;
+    let oc = faceCache.get(key);
+    if (!oc) {
+      if (faceCache.size > 40) faceCache.clear();
+      oc = document.createElement('canvas');
+      oc.width = Math.ceil(36 * px); oc.height = Math.ceil(37 * px);
+      const c = oc.getContext('2d');
+      c.translate(18 * px, 14 * px);
+      drawAndhera(c, 0, 0, px, mood);
+      faceCache.set(key, oc);
+    }
+    ctx.drawImage(oc, x - 18 * s, y - 14 * s, oc.width * s / px, oc.height * s / px);
   }
 
   function drawVials() {
@@ -1539,7 +2365,7 @@
       ctx.beginPath(); ctx.ellipse(x - 2, y - 2, rw + 1, 1.3, 0, 0, Math.PI * 2); ctx.ellipse(x + 28, y - 2, rw + 1, 1.3, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#2b2f3d'; roundRect(x + 2, y, 22, 9, 3.5); ctx.fill();
       ctx.fillStyle = '#4a5068'; ctx.fillRect(x + 5, y + 2, 16, 1.5);
-      ctx.fillStyle = '#ff3030'; ctx.shadowColor = '#ff3030'; ctx.shadowBlur = 6;
+      ctx.fillStyle = '#ff3030'; ctx.shadowColor = '#ff3030'; ctx.shadowBlur = lowFx ? 0 : 6;
       ctx.beginPath(); ctx.arc(x + 13, y + 10, 2.6, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
     }
@@ -1567,6 +2393,180 @@
       ctx.beginPath(); for (let i = 0; i <= 5; i++) { const bx = k.x + 2 + i * (k.w - 4) / 5; ctx.moveTo(bx, k.y + 3); ctx.lineTo(bx, k.y + k.h - 2); } ctx.stroke();
       ctx.strokeStyle = '#2c2f3a'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(cx, k.y - 3, 3, 0, Math.PI * 2); ctx.stroke();
       ctx.restore();
+    }
+  }
+
+  const onScreen = (x, pad) => x > cam.x - pad && x < cam.x + viewW + pad;
+
+  function drawTrips() {
+    for (const t of trips) {
+      if (!onScreen(t.x0, 40)) continue;
+      ctx.fillStyle = '#2b2f3a';
+      ctx.fillRect(t.x0 - 2, t.y - 4, 3.5, t.base - t.y + 4); ctx.fillRect(t.x1 - 1.5, t.y - 4, 3.5, t.base - t.y + 4);
+      ctx.fillStyle = '#ff3030'; ctx.fillRect(t.x0 - 1.5, t.y - 4, 2.5, 2); ctx.fillRect(t.x1 - 1, t.y - 4, 2.5, 2);
+      if (!t.broken) {
+        ctx.save();
+        ctx.strokeStyle = `rgba(255,40,40,${0.75 + 0.25 * Math.sin(animT * 12)})`; ctx.lineWidth = 1.4;
+        ctx.shadowColor = '#ff2020'; ctx.shadowBlur = lowFx ? 0 : 6;
+        ctx.beginPath(); ctx.moveTo(t.x0, t.y); ctx.lineTo(t.x1, t.y); ctx.stroke();
+        ctx.restore();
+      } else {
+        // snapped: two loose ends hanging down
+        const d = Math.min(1, t.snapT * 3) * 9;
+        ctx.strokeStyle = '#7a2a2a'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(t.x0, t.y); ctx.lineTo(t.x0 + 7, t.y + d); ctx.moveTo(t.x1, t.y); ctx.lineTo(t.x1 - 7, t.y + d); ctx.stroke();
+      }
+    }
+  }
+
+  function drawLasers() {
+    for (const L of lasers) {
+      if (!onScreen(L.x, 40)) continue;
+      const st = laserState(L);
+      const y0 = Math.max(L.beamTop, cam.y - 10), h = L.bottom - y0;
+      ctx.fillStyle = '#2b2f3a'; ctx.fillRect(L.x - 1.5, y0, 3, L.top - y0);
+      ctx.fillStyle = '#2b2f3a'; ctx.fillRect(L.x - 7, L.bottom - 3, 14, 3);
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      if (st === 'on') {
+        const j = Math.sin(animT * 40) * 0.4;
+        ctx.fillStyle = 'rgba(255,30,30,.22)'; ctx.fillRect(L.x - 6, y0, 12, h);
+        ctx.fillStyle = 'rgba(255,60,60,.6)'; ctx.fillRect(L.x - 2.5 + j, y0, 5, h);
+        ctx.fillStyle = 'rgba(255,230,230,.9)'; ctx.fillRect(L.x - 0.8 + j, y0, 1.6, h);
+      } else if (st === 'warn') {
+        ctx.fillStyle = `rgba(255,60,60,${0.2 + 0.25 * Math.abs(Math.sin(animT * 20))})`; ctx.fillRect(L.x - 0.6, y0, 1.2, h);
+      }
+      ctx.restore();
+      // the emitter box, drawn over the beam
+      ctx.fillStyle = '#3c4250'; roundRect(L.x - 9, L.top - 6, 18, 14, 3); ctx.fill();
+      ctx.fillStyle = '#c79100'; ctx.fillRect(L.x - 9, L.top - 6, 18, 2.5);
+      const lens = st === 'on' ? '#ff3030' : st === 'warn' ? (Math.floor(animT * 16) % 2 ? '#ff9090' : '#7a2020') : '#4a1a1a';
+      ctx.fillStyle = lens; ctx.beginPath(); ctx.arc(L.x, L.top + 3, 3, 0, Math.PI * 2); ctx.fill();
+      if (L.boss && st === 'on') {
+        ctx.fillStyle = 'rgba(255,60,60,.85)'; ctx.font = '900 6px system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('FORCE FIELD', L.x, L.top - 12);
+      }
+    }
+  }
+
+  function drawAlarmLamps() {
+    for (const L of tlamps) {
+      if (!onScreen(L.x, 140)) continue;
+      const st = tlampState(L);
+      // where the red light will fall
+      ctx.strokeStyle = `rgba(255,60,60,${st === 'on' ? 0 : st === 'warn' ? 0.55 : 0.22})`; ctx.lineWidth = 1; ctx.setLineDash([3, 3]);
+      ctx.beginPath(); ctx.ellipse(L.x, L.base - 1, 76, 4, 0, 0, Math.PI * 2); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#2b2f3a'; ctx.fillRect(L.x - 1.5, L.y - 220, 3, 220);
+      ctx.fillStyle = '#3c4250'; roundRect(L.x - 10, L.y - 3, 20, 8, 2); ctx.fill();
+      const col = st === 'on' ? '#ff2a2a' : st === 'warn' ? (Math.floor(animT * 8) % 2 ? '#ffb020' : '#6a3a10') : '#4a1616';
+      ctx.fillStyle = col;
+      if (st !== 'off') { ctx.shadowColor = col; ctx.shadowBlur = lowFx ? 0 : 10; }
+      ctx.beginPath(); ctx.arc(L.x, L.y + 5, 7, 0, Math.PI); ctx.fill();
+      ctx.shadowBlur = lowFx ? 0 : 0;
+      if (st === 'on') { ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.fillRect(L.x - 4 + Math.sin(animT * 10) * 3, L.y + 6, 2, 2); }
+    }
+  }
+
+  function drawBossLamps() {
+    for (const L of bossLamps) {
+      if (!onScreen(L.x, 60)) continue;
+      ctx.strokeStyle = '#2b2f3a'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(L.x, L.y); ctx.lineTo(L.x, L.y + 10); ctx.stroke();
+      const sh = L.breakT > 0 ? Math.sin(animT * 60) * 2 : 0;
+      ctx.save(); ctx.translate(L.x + sh, L.y + 10);
+      if (!L.broken) ctx.rotate(L.ang - Math.PI / 2);
+      ctx.fillStyle = '#3c4250'; ctx.beginPath(); ctx.moveTo(-13, 0); ctx.lineTo(13, 0); ctx.lineTo(16, 12); ctx.lineTo(-16, 12); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#c79100'; ctx.fillRect(-13, 0, 26, 2);
+      if (!L.broken) {
+        ctx.fillStyle = '#ff2a2a'; ctx.shadowColor = '#ff2a2a'; ctx.shadowBlur = lowFx ? 0 : 14;
+        ctx.beginPath(); ctx.ellipse(0, 13, 14, 5, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = lowFx ? 0 : 0;
+        ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.beginPath(); ctx.ellipse(-5, 12, 4, 1.4, 0, 0, Math.PI * 2); ctx.fill();
+      } else {
+        ctx.fillStyle = '#2a1416'; ctx.beginPath(); ctx.ellipse(0, 13, 14, 5, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#6b6f7d'; ctx.lineWidth = 0.8;
+        ctx.beginPath(); ctx.moveTo(-8, 11); ctx.lineTo(-2, 15); ctx.lineTo(3, 11); ctx.lineTo(9, 15); ctx.stroke();
+      }
+      ctx.restore();
+    }
+  }
+
+  // Dr. Andhera, full figure, on his control deck
+  function drawAndheraBoss() {
+    const b = boss;
+    if (!b || !onScreen(b.x, 60)) return;
+    ctx.save();
+    ctx.translate(b.x + (b.hurtT > 0 ? Math.sin(animT * 60) * 1.5 : 0), b.y);
+    const walk = lampsOut ? Math.sin(b.t * 8) : 0;
+    // legs and shoes
+    ctx.fillStyle = '#101018'; ctx.fillRect(-7, -17, 5, 17 - walk); ctx.fillRect(2, -17, 5, 17 + walk);
+    ctx.fillStyle = '#000'; ctx.beginPath(); ctx.ellipse(-5, -1 - walk, 5, 2.4, 0, 0, Math.PI * 2); ctx.ellipse(5, -1 + walk, 5, 2.4, 0, 0, Math.PI * 2); ctx.fill();
+    // long black coat with gold braid
+    ctx.fillStyle = '#14141c';
+    ctx.beginPath(); ctx.moveTo(-11, -46); ctx.lineTo(11, -46); ctx.lineTo(14, -13); ctx.lineTo(-14, -13); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#d4a72c'; ctx.lineWidth = 1.3;
+    ctx.beginPath(); ctx.moveTo(0, -44); ctx.lineTo(0, -14); ctx.moveTo(-11, -13.5); ctx.lineTo(11, -13.5); ctx.stroke();
+    ctx.fillStyle = '#d4a72c'; for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.arc(-3, -40 + i * 7, 1, 0, Math.PI * 2); ctx.arc(3, -40 + i * 7, 1, 0, Math.PI * 2); ctx.fill(); }
+    ctx.fillRect(-12, -46, 5, 2); ctx.fillRect(7, -46, 5, 2);
+    // arms: raised with a barrel while winding up, flailing in the dark, otherwise on his hips
+    ctx.strokeStyle = '#14141c'; ctx.lineWidth = 4.5; ctx.lineCap = 'round';
+    const up = b.windT > 0, flail = lampsOut || b.hurtT > 0;
+    const arm = (sx, ex, ey) => { ctx.beginPath(); ctx.moveTo(sx, -43); ctx.lineTo(ex, ey); ctx.stroke(); ctx.fillStyle = '#d8a27a'; ctx.beginPath(); ctx.arc(ex, ey, 2.4, 0, Math.PI * 2); ctx.fill(); };
+    if (up) { arm(-10, -9, -76); arm(10, 9, -76); }
+    else if (flail) { const w = Math.sin(animT * 14) * 6; arm(-10, -20, -54 + w); arm(10, 20, -54 - w); }
+    else { arm(-10, -15, -26); arm(10, 15, -26); }
+    const mood = lampsOut ? 2 : 3;
+    andheraFace(0, -56, 1, mood);
+    if (up) drawBarrelAt(0, -78, 0);
+    if (lampsOut) {
+      ctx.fillStyle = '#ffd60a'; ctx.font = '900 10px system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('?', -10, -76 - Math.abs(Math.sin(animT * 3)) * 4); ctx.fillText('?', 11, -80 - Math.abs(Math.cos(animT * 3)) * 4);
+    }
+    ctx.restore();
+  }
+
+  function drawBarrelAt(x, y, rot) {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(rot);
+    ctx.fillStyle = '#4a2f18'; ctx.beginPath(); ctx.arc(0, 0, 8.6, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#9c6b3f'; ctx.beginPath(); ctx.arc(0, 0, 7.6, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#4a4f5e'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(0, 0, 5.6, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = '#6b4423'; ctx.lineWidth = 0.9;
+    ctx.beginPath(); for (let i = 0; i < 4; i++) { const a = i * Math.PI / 4; ctx.moveTo(Math.cos(a) * 4.5, Math.sin(a) * 4.5); ctx.lineTo(-Math.cos(a) * 4.5, -Math.sin(a) * 4.5); } ctx.stroke();
+    ctx.fillStyle = '#b02a37'; ctx.beginPath(); ctx.arc(0, 0, 2, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+  function drawBarrels() { for (const k of barrels) drawBarrelAt(k.x, k.y, k.rot); }
+
+  // The formula vault: a round steel door at the back of the deck
+  function drawVault() {
+    const cx = level.goalX + 15, base = (level.goalRow + 1) * TILE, cy = base - 44;
+    if (!onScreen(cx, 80)) return;
+    const lockT = state === 'clear' ? stateT : 0, locked = lockT > 1.3;
+    ctx.fillStyle = '#1b1d26'; roundRect(cx - 36, base - 90, 72, 90, 6); ctx.fill();
+    ctx.fillStyle = '#c79100'; ctx.fillRect(cx - 36, base - 90, 72, 3);
+    ctx.fillStyle = '#d4a72c'; ctx.font = '900 7px system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('FORMULA VAULT', cx, base - 81);
+    ctx.fillStyle = '#4a4f5e'; ctx.beginPath(); ctx.arc(cx, cy, 31, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#7a8199'; ctx.beginPath(); ctx.arc(cx, cy, 27, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#9aa1b8'; ctx.beginPath(); ctx.arc(cx, cy, 22, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#5b6176';
+    for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2; ctx.beginPath(); ctx.arc(cx + Math.cos(a) * 29, cy + Math.sin(a) * 29, 1.3, 0, Math.PI * 2); ctx.fill(); }
+    // the wheel turns when Chintu turns the key
+    const ang = Math.min(lockT, 1.3) / 1.3 * Math.PI * 2;
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate(ang);
+    ctx.strokeStyle = '#3b3f4c'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    ctx.beginPath(); for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI; ctx.moveTo(Math.cos(a) * 15, Math.sin(a) * 15); ctx.lineTo(-Math.cos(a) * 15, -Math.sin(a) * 15); } ctx.stroke();
+    ctx.strokeStyle = '#3b3f4c'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = '#c79100'; ctx.beginPath(); ctx.arc(0, 0, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    const lamp = locked ? '#3dff8a' : lampsOut ? (Math.floor(animT * 4) % 2 ? '#3dff8a' : '#1a5a30') : '#ff3030';
+    ctx.fillStyle = lamp; ctx.shadowColor = lamp; ctx.shadowBlur = lowFx ? 0 : 8;
+    ctx.beginPath(); ctx.arc(cx + 27, base - 70, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.shadowBlur = lowFx ? 0 : 0;
+    if (locked) {
+      ctx.fillStyle = '#198754'; roundRect(cx - 30, base - 88, 60, 13, 3); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.font = '900 8px system-ui,sans-serif'; ctx.fillText('LOCKED ✓', cx, base - 81);
     }
   }
 
@@ -1629,9 +2629,21 @@
     // Gaps: dark pits, so they never look like solid ground
     const pitTop = 9 * TILE;
     const pit = ctx.createLinearGradient(0, pitTop, 0, level.h);
-    pit.addColorStop(0, world() === 3 ? '#0b0f1f' : world() === 2 ? '#5a3b22' : '#4a2c16'); pit.addColorStop(1, world() === 3 ? '#020309' : '#120a04');
+    const w4 = world() === 4;
+    pit.addColorStop(0, w4 ? '#1d4a6b' : world() === 3 ? '#0b0f1f' : world() === 2 ? '#5a3b22' : '#4a2c16');
+    pit.addColorStop(1, w4 ? '#04121f' : world() === 3 ? '#020309' : '#120a04');
     ctx.fillStyle = pit;
-    for (let c = c0; c <= c1; c++) if (tileAt(c, level.rows - 1) === '.') ctx.fillRect(c * TILE - 0.25, pitTop, TILE + 0.5, level.h - pitTop + 60);
+    for (let c = c0; c <= c1; c++) if (tileAt(c, level.rows - 1) === '.') ctx.fillRect(c * TILE - 0.25, pitTop + (w4 ? 10 : 0), TILE + 0.5, level.h - pitTop + 60);
+    if (w4) {
+      // the fortress gaps are full of sea water
+      ctx.strokeStyle = 'rgba(160,220,255,.6)'; ctx.lineWidth = 1.2;
+      for (let c = c0; c <= c1; c++) {
+        if (tileAt(c, level.rows - 1) !== '.') continue;
+        ctx.beginPath();
+        for (let i = 0; i <= 6; i++) { const x = c * TILE + i * 5, y = pitTop + 10 + Math.sin(animT * 3 + (c * 6 + i) * 0.9) * 1.6; if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
+        ctx.stroke();
+      }
+    }
     for (let r = r0; r <= r1; r++) {
       for (let c = c0; c <= c1; c++) {
         const ch = level.grid[r][c];
@@ -1645,14 +2657,91 @@
         else if (ch === 'C' && tileAt(c - 1, r) !== 'C') drawCow(x, y);
         else if (ch === 'K' && tileAt(c - 1, r) !== 'K') drawCart(x, y);
         else if (ch === 'W' && tileAt(c - 1, r) !== 'W' && tileAt(c, r - 1) !== 'W') drawTank(x, y);
+        else if (isBelt(ch)) drawBelt(x, y, c, r, ch);
+        else if (ch === 'x') drawCrate(x, y, c, r);
+        else if (ch === 'B' || ch === 'b') drawSwitch(x, y, ch, level.bumps.get(c + ',' + r) || 0);
       }
+    }
+  }
+
+  function drawBelt(x, y, c, r, ch) {
+    if (isBelt(tileAt(c, r - 1))) { drawGround(x, y, c, r); return; }       // the part under the belt
+    const dir = ch === '}' ? 1 : -1;
+    ctx.fillStyle = '#2a2d36'; ctx.fillRect(x, y, TILE + 0.5, TILE + 0.5);
+    ctx.fillStyle = '#3a3e4b'; ctx.fillRect(x, y + 10, TILE + 0.5, 2);
+    for (let i = 0; i < 3; i++) { ctx.fillStyle = '#565b6b'; ctx.beginPath(); ctx.arc(x + 5 + i * 10, y + 17, 3.2, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#1d1f27'; ctx.beginPath(); ctx.arc(x + 5 + i * 10, y + 17, 1, 0, Math.PI * 2); ctx.fill(); }
+    ctx.fillStyle = '#16181f'; ctx.fillRect(x, y, TILE + 0.5, 8);
+    ctx.save();
+    ctx.beginPath(); ctx.rect(x, y, TILE + 0.5, 8); ctx.clip();
+    const off = ((worldT * BELT * dir) % 10 + 10) % 10;
+    ctx.fillStyle = '#f2c14e';
+    for (let i = -1; i < 4; i++) {
+      const ax = x + i * 10 + off;
+      ctx.beginPath();
+      if (dir > 0) { ctx.moveTo(ax, y + 1.5); ctx.lineTo(ax + 4, y + 4); ctx.lineTo(ax, y + 6.5); ctx.lineTo(ax + 2, y + 4); }
+      else { ctx.moveTo(ax + 4, y + 1.5); ctx.lineTo(ax, y + 4); ctx.lineTo(ax + 4, y + 6.5); ctx.lineTo(ax + 2, y + 4); }
+      ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
+    if (!isBelt(tileAt(c - 1, r))) { ctx.fillStyle = '#565b6b'; ctx.beginPath(); ctx.arc(x + 1, y + 4, 4.5, 0, Math.PI * 2); ctx.fill(); }
+    if (!isBelt(tileAt(c + 1, r))) { ctx.fillStyle = '#565b6b'; ctx.beginPath(); ctx.arc(x + TILE - 1, y + 4, 4.5, 0, Math.PI * 2); ctx.fill(); }
+  }
+
+  function drawCrate(x, y, c, r) {
+    ctx.fillStyle = '#5b3a1e'; ctx.fillRect(x, y, TILE + 0.5, TILE + 0.5);
+    ctx.fillStyle = '#9c6b3f'; ctx.fillRect(x + 2, y + 2, TILE - 4, TILE - 4);
+    ctx.fillStyle = '#b07d4b'; ctx.fillRect(x + 2, y + 9, TILE - 4, 1.2); ctx.fillRect(x + 2, y + 19, TILE - 4, 1.2);
+    ctx.strokeStyle = '#5b3a1e'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(x + 3, y + TILE - 3); ctx.lineTo(x + TILE - 3, y + 3); ctx.stroke();
+    if (hash(c * 5 + r) < 0.5) {
+      ctx.fillStyle = 'rgba(40,20,10,.55)'; ctx.font = '900 6px system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('DR.A', x + 10, y + 23);
+    }
+  }
+
+  function drawSwitch(x, y, ch, t) {
+    const dy = t > 0 ? Math.sin((t / 0.2) * Math.PI) * 3 : 0;
+    ctx.fillStyle = '#2b2f3a'; roundRect(x + 1, y + 8, TILE - 2, TILE - 8, 3); ctx.fill();
+    ctx.fillStyle = '#4a5068'; roundRect(x + 3, y + 10, TILE - 6, TILE - 12, 2); ctx.fill();
+    ctx.fillStyle = '#c79100'; for (let s = 0; s < 3; s++) ctx.fillRect(x + 5 + s * 8, y + 22, 4, 3);
+    if (ch === 'B') {
+      const glow = 0.5 + 0.5 * Math.sin(animT * 6);
+      ctx.fillStyle = `rgba(255,60,60,${0.25 + 0.25 * glow})`; ctx.beginPath(); ctx.arc(x + 15, y + 6 + dy, 13, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#7a1010'; ctx.beginPath(); ctx.ellipse(x + 15, y + 8 + dy, 10, 4, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#e02424'; ctx.beginPath(); ctx.arc(x + 15, y + 7 + dy, 8.5, Math.PI, 0); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.beginPath(); ctx.ellipse(x + 12, y + 3 + dy, 3, 1.5, -0.3, 0, Math.PI * 2); ctx.fill();
+      // a bouncing arrow says "jump on me"
+      const ay = y - 14 - Math.abs(Math.sin(animT * 4)) * 5;
+      ctx.fillStyle = '#ffd60a';
+      ctx.beginPath(); ctx.moveTo(x + 10, ay); ctx.lineTo(x + 20, ay); ctx.lineTo(x + 15, ay + 6); ctx.closePath(); ctx.fill();
+    } else {
+      ctx.fillStyle = '#3a3e4b'; ctx.beginPath(); ctx.ellipse(x + 15, y + 8, 10, 3, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#6b6f7d'; ctx.beginPath(); ctx.ellipse(x + 15, y + 7, 8, 2, 0, 0, Math.PI * 2); ctx.fill();
     }
   }
 
   function drawGround(x, y, c, r) {
     const above = tileAt(c, r - 1);
-    const top = !isSolid(above) || above === 'C' || above === 'K' || above === 'W';
+    const top = !isSolid(above) || above === 'C' || above === 'K' || above === 'W' || above === 'x' || above === 'B' || above === 'b';
     const w2 = world() === 2, w3 = world() === 3;
+    if (world() === 4) {
+      // riveted steel plates with a yellow and black hazard edge
+      ctx.fillStyle = '#4a4f5e'; ctx.fillRect(x, y, TILE + 0.5, TILE + 0.5);
+      ctx.fillStyle = '#3b3f4c'; ctx.fillRect(x, y + TILE - 1, TILE + 0.5, 1); ctx.fillRect(x + TILE - 1, y, 1, TILE);
+      ctx.fillStyle = '#6b7186';
+      for (const [a, b] of [[4, top ? 11 : 4], [TILE - 5, top ? 11 : 4], [4, TILE - 5], [TILE - 5, TILE - 5]]) ctx.fillRect(x + a - 1, y + b - 1, 2, 2);
+      if (!top) return;
+      ctx.save();
+      ctx.beginPath(); ctx.rect(x, y, TILE + 0.5, 6); ctx.clip();
+      ctx.fillStyle = '#f2c14e'; ctx.fillRect(x, y, TILE + 0.5, 6);
+      ctx.fillStyle = '#1d1f27';
+      for (let s = -1; s < 5; s++) { const sx = x + s * 8 + (c % 2) * 2; ctx.beginPath(); ctx.moveTo(sx, y + 6); ctx.lineTo(sx + 4, y); ctx.lineTo(sx + 8, y); ctx.lineTo(sx + 4, y + 6); ctx.fill(); }
+      ctx.restore();
+      ctx.fillStyle = '#2a2d36'; ctx.fillRect(x, y + 6, TILE + 0.5, 1.5);
+      if (!isSolid(tileAt(c - 1, r))) { ctx.fillStyle = 'rgba(255,255,255,.15)'; ctx.fillRect(x, y, 2, TILE); }
+      if (!isSolid(tileAt(c + 1, r))) { ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.fillRect(x + TILE - 2, y, 2, TILE); }
+      return;
+    }
     ctx.fillStyle = w3 ? '#4b5269' : w2 ? '#b98d62' : '#a8693a'; ctx.fillRect(x, y, TILE + 0.5, TILE + 0.5);
     if (w3) {
       // flat concrete roof with a parapet
@@ -1687,6 +2776,14 @@
   }
 
   function drawBrick(x, y, r) {
+    if (world() === 4) {
+      ctx.fillStyle = '#20232d'; ctx.fillRect(x, y, TILE + 0.5, TILE + 0.5);
+      ctx.fillStyle = '#353a49'; ctx.fillRect(x + 1.5, y + 1.5, TILE - 3, TILE - 3);
+      ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.fillRect(x + 1.5, y + 1.5, TILE - 3, 2);
+      ctx.fillStyle = '#5b6176';
+      for (const [a, b] of [[5, 5], [TILE - 5, 5], [5, TILE - 5], [TILE - 5, TILE - 5]]) { ctx.beginPath(); ctx.arc(x + a, y + b, 1.4, 0, Math.PI * 2); ctx.fill(); }
+      return;
+    }
     const w2 = world() === 2, w3 = world() === 3;
     ctx.fillStyle = w3 ? '#6e3a32' : w2 ? '#d98a4e' : '#c8643b'; ctx.fillRect(x, y, TILE + 0.5, TILE + 0.5);
     ctx.fillStyle = w3 ? '#3e1f1a' : w2 ? '#94532a' : '#8a3f22';
@@ -1951,7 +3048,7 @@
         ctx.fillStyle = '#d4a72c'; ctx.fillRect(hx - 2, hy - 6.5, 3, 2);
         limb(-1, -26, -1.45, 9, 3.8, '#20202a');
         ctx.fillStyle = '#2b2b2b'; ctx.fillRect(-15, -27.5, 7, 3.4);
-        if (g.alive) { ctx.fillStyle = '#ff3030'; ctx.shadowColor = '#ff3030'; ctx.shadowBlur = 8; ctx.beginPath(); ctx.arc(-15.5, -25.8, 2.4, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0; }
+        if (g.alive) { ctx.fillStyle = '#ff3030'; ctx.shadowColor = '#ff3030'; ctx.shadowBlur = lowFx ? 0 : 8; ctx.beginPath(); ctx.arc(-15.5, -25.8, 2.4, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = lowFx ? 0 : 0; }
       } else {
         limb(-1, -26, s * 0.8 - 0.2, 10, 3.8, '#20202a');
       }
@@ -2077,6 +3174,10 @@
       legA = 0.35; kneeA = 0.5; legB = -0.25; kneeB = 0.7; armA = 1.5; elbA = -0.4; armB = -2.2; elbB = -0.3;
     } else if (pose === 'idle') {
       bob = -Math.max(0, Math.sin(animT * 3)) * 0.6;
+    } else if (pose === 'win') {
+      // both arms up, hopping for joy
+      legA = 0.15; kneeA = 0.2; legB = -0.15; kneeB = 0.2; armA = 2.75; elbA = 0.25; armB = -2.75; elbB = -0.25;
+      bob = -Math.abs(Math.sin(animT * 7)) * 4;
     } else if (pose === 'hurt') {
       legA = 0.5; kneeA = 0.9; legB = -0.5; kneeB = 0.9; armA = 2.4; elbA = 0.4; armB = -2.4; elbB = -0.4;
     } else if (pose === 'slide') {
@@ -2146,6 +3247,7 @@
     if (invuln > 0 && state === 'play' && Math.floor(animT * 14) % 2 === 0) return;   // blink while safe
     let pose;
     if (state === 'ko' || p.stunT > 0) pose = 'hurt';
+    else if (state === 'clear' || state === 'ending' || state === 'credits') pose = 'win';
     else if (p.sliding) pose = 'slide';
     else if (!p.onGround) pose = p.vy < 0 ? 'jump' : 'fall';
     else if (p.landT > 0) pose = 'land';
@@ -2155,7 +3257,7 @@
       ctx.save();
       if (revealed) {
         // red light shows the invisible: a glowing red outline
-        ctx.shadowColor = '#ff1e1e'; ctx.shadowBlur = 14;
+        ctx.shadowColor = '#ff1e1e'; ctx.shadowBlur = lowFx ? 0 : 14;
         drawChintu(fx, fy, pose, p.runPhase, p.facing, p.spinT);
         ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.35;
         drawChintu(fx, fy, pose, p.runPhase, p.facing, p.spinT);
@@ -2198,18 +3300,29 @@
     } else {
       // hearts and lives
       pill(6, 80);
-      for (let i = 0; i < 3; i++) drawHeart(18 + i * 13, 10.5, 11, i < hearts ? '#ff4d5e' : 'rgba(255,255,255,.22)');
+      const mh = maxHearts(), hs = mh > 3 ? 8.5 : 11, hg = mh > 3 ? 9 : 13;
+      for (let i = 0; i < mh; i++) drawHeart(18 + i * hg, mh > 3 ? 12 : 10.5, hs, i < hearts ? '#ff4d5e' : 'rgba(255,255,255,.22)');
       ctx.fillStyle = '#fff'; ctx.font = '800 9px system-ui,sans-serif'; ctx.textAlign = 'left';
-      ctx.fillText('×' + sess.lives, 59, 16.5);
-      // laddoos and pages
+      ctx.fillText('×' + sess.lives, 61, 16.5);
+      // laddoos and pages (a page that is still flying in shows only when it lands)
       pill(90, 92);
       drawLaddoo(101, 16, 5);
       ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.fillText(String(sess.coins), 109, 16.5);
+      const flying = new Set(flyPages.map(f => f.slot));
       for (let i = 0; i < level.pageTotal; i++) {
-        ctx.globalAlpha = i < stats.pages ? 1 : 0.3;
+        const got = i < stats.pages && !flying.has(i);
+        ctx.globalAlpha = got ? 1 : 0.3;
         drawPageIcon(143 + i * 12, 16, 0.55, false);
       }
       ctx.globalAlpha = 1;
+      for (const f of flyPages) {
+        const k = Math.min(1, f.t / FLY_T), e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+        const tx = 143 + f.slot * 12, ty = 16;
+        const x = f.x + (tx - f.x) * e, y = f.y + (ty - f.y) * e - Math.sin(k * Math.PI) * 36;
+        ctx.save(); ctx.translate(x, y); ctx.rotate((1 - k) * Math.PI * 3);
+        drawPageIcon(0, 0, 1.5 - 0.95 * e, k < 0.6);
+        ctx.restore();
+      }
       // score and time
       pill(viewW - 98, 92);
       ctx.fillStyle = '#ffd60a'; ctx.textAlign = 'left'; ctx.fillText(String(sess.score).padStart(6, '0'), viewW - 90, 16.5);
@@ -2218,15 +3331,40 @@
       const m = moodOf(worry);
       ctx.save();
       ctx.fillStyle = 'rgba(4,38,77,.74)'; roundRect(6, 30, 132, 20, 10); ctx.fill(); ctx.clip();
-      drawAndhera(ctx, 19, 41.5, 0.62, m);
+      andheraFace(19, 41.5, 0.62, m);
       ctx.restore();
       ctx.fillStyle = 'rgba(255,255,255,.2)'; roundRect(33, 37.5, 56, 5, 2.5); ctx.fill();
       ctx.fillStyle = MOOD_COLS[m]; roundRect(33, 37.5, Math.max(3, 56 * worry / 100), 5, 2.5); ctx.fill();
       ctx.fillStyle = '#fff'; ctx.font = '800 7px system-ui,sans-serif'; ctx.textAlign = 'left';
       ctx.fillText(['Calm', 'Annoyed', 'Worried', 'FURIOUS'][m], 94, 40.5);
+      if (st.boss) {
+        // the vault: Dr. Andhera's lamps, and whether he can see Chintu
+        const bx = 142;
+        ctx.fillStyle = 'rgba(4,38,77,.74)'; roundRect(bx, 30, 92, 20, 10); ctx.fill();
+        ctx.fillStyle = '#fff'; ctx.font = '800 7px system-ui,sans-serif'; ctx.textAlign = 'left';
+        ctx.fillText('LAMPS', bx + 8, 40.5);
+        bossLamps.forEach((L, i) => {
+          ctx.fillStyle = L.broken ? 'rgba(255,255,255,.22)' : '#ff3030';
+          ctx.beginPath(); ctx.arc(bx + 39 + i * 8.5, 40, 3, 0, Math.PI * 2); ctx.fill();
+        });
+        const ex = bx + 78, ey = 40;
+        if (boss && boss.seen) {
+          ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.ellipse(ex, ey, 7, 4, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#ff2d2d'; ctx.beginPath(); ctx.arc(ex, ey, 2.6, 0, Math.PI * 2); ctx.fill();
+        } else {
+          ctx.strokeStyle = '#7fe3ff'; ctx.lineWidth = 1.4;
+          ctx.beginPath(); ctx.ellipse(ex, ey - 1, 6.5, 3, 0, 0.15, Math.PI - 0.15); ctx.stroke();
+          for (const dx of [-4, 0, 4]) { ctx.beginPath(); ctx.moveTo(ex + dx, ey + 2); ctx.lineTo(ex + dx * 1.2, ey + 4); ctx.stroke(); }
+        }
+      }
       // stage name and progress, when there is room
       const room = viewW - 98 - 186 - 16;
-      if (room >= 90) {
+      if (room >= 90 && st.boss) {
+        const bw = Math.min(150, room), bx = 186 + (room - bw) / 2 + 8;
+        pill(bx - 4, bw + 8);
+        ctx.fillStyle = '#ffd60a'; ctx.font = '800 7px system-ui,sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText(lampsOut ? 'Lights out! Reach the vault' : boss && boss.seen ? 'He can SEE you!' : 'Hidden… he can\'t see you', bx + bw / 2, 16.5);
+      } else if (room >= 90) {
         const bw = Math.min(150, room), bx = 186 + (room - bw) / 2 + 8;
         pill(bx - 4, bw + 8);
         const f = Math.max(0, Math.min(1, (player.x - level.start.x) / (level.goalX - level.start.x)));
@@ -2253,7 +3391,9 @@
   }
 
   // ---------- Flow, overlays and banners ----------
-  const overlays = { title: $('titleOverlay'), pause: $('pauseOverlay'), clear: $('clearOverlay'), over: $('overOverlay'), scene: $('sceneOverlay') };
+  const overlays = { title: $('titleOverlay'), map: $('mapOverlay'), pause: $('pauseOverlay'), clear: $('clearOverlay'), over: $('overOverlay'),
+    scene: $('sceneOverlay'), ending: $('endingOverlay'), credits: $('creditsOverlay') };
+  const menuOpen = () => !overlays.title.hidden || !overlays.map.hidden;
   function showOverlay(name) {
     for (const k in overlays) overlays[k].hidden = k !== name;
     wrap.classList.toggle('menu', !!name);
@@ -2268,30 +3408,47 @@
   const isPhoneLandscape = () => isTouch && window.matchMedia && matchMedia('(orientation: landscape) and (max-height: 540px)').matches;
 
   let picked = Math.min(save.unlocked, STAGES.length - 1);
+  const starsOf = id => { const b = save.best[id]; return b ? Math.max(1, b.stars || 0) : 0; };
+  const starText = n => '★'.repeat(n) + '☆'.repeat(3 - n);
+
+  // The stage map: one band per world, each stage a stop on the road
   function buildStagePick() {
     const box = $('stagePick');
     box.innerHTML = '';
-    for (const w of [1, 2, 3]) {
-      const row = document.createElement('div');
-      row.className = 'world-row';
-      const label = document.createElement('b'); label.textContent = WORLD_NAMES[w]; row.appendChild(label);
+    for (const w of [1, 2, 3, 4]) {
+      const band = document.createElement('div');
+      band.className = 'wband w' + w;
+      const label = document.createElement('b'); label.textContent = WORLD_NAMES[w]; band.appendChild(label);
+      const path = document.createElement('div'); path.className = 'wpath';
       STAGES.forEach((st, i) => {
         if (st.world !== w) return;
         const b = document.createElement('button');
-        b.className = 'sbtn' + (i === picked ? ' sel' : '');
         const locked = i > save.unlocked;
+        b.className = 'node' + (i === picked ? ' sel' : '') + (st.boss ? ' boss' : '');
         b.disabled = locked;
-        const best = save.best[st.id];
-        b.innerHTML = (locked ? '🔒 ' : '') + st.id + '<small>' + (best ? '📜 ' + best.pages + '/3 · ' + best.score : st.name) + '</small>';
-        b.title = st.name;
+        const n = starsOf(st.id);
+        b.innerHTML = '<span>' + (locked ? '🔒' : st.boss ? '🔐' : st.id) + '</span>' + (locked ? '' : '<span class="nstars">' + starText(n) + '</span>');
+        b.title = st.id + ' · ' + st.name + (locked ? ' (locked)' : '');
+        b.setAttribute('aria-label', b.title);
         b.addEventListener('click', () => { picked = i; buildStagePick(); });
-        row.appendChild(b);
+        b.addEventListener('dblclick', () => { picked = i; playStage(i, true); });
+        path.appendChild(b);
       });
-      box.appendChild(row);
+      band.appendChild(path);
+      box.appendChild(band);
     }
-    $('startBtn').textContent = '▶ Play ' + STAGES[picked].id;
-    const total = Object.values(save.best).reduce((a, b) => a + (b.pages || 0), 0);
-    $('titleBest').textContent = total ? 'Formula pages found so far: ' + total + ' of ' + STAGES.length * 3 : '';
+    const st = STAGES[picked], best = save.best[st.id];
+    $('mapInfo').innerHTML = '<b>' + st.id + ' · ' + st.name + '</b>' +
+      (best ? ' · best ' + best.score + (st.boss ? '' : ' · 📜 ' + best.pages + '/3') + ' · <span style="color:#c79100">' + starText(starsOf(st.id)) + '</span>' : '');
+    $('mapPlayBtn').textContent = '▶ Play ' + st.id;
+    const pagesFound = Object.values(save.best).reduce((a, b) => a + (b.pages || 0), 0);
+    const stars = STAGES.reduce((a, s) => a + starsOf(s.id), 0);
+    $('titleBest').innerHTML = (save.done ? '<span class="done-pill">🏆 Game complete! The formula is safe.</span><br>' : '') +
+      (pagesFound || stars ? '📜 Formula pages found: ' + pagesFound + ' of ' + PAGE_STAGES * 3 + ' · ⭐ Stars: ' + stars + ' of ' + STAGES.length * 3 : '');
+  }
+  function movePick(d) {
+    const n = Math.max(0, Math.min(save.unlocked, picked + d));
+    if (n !== picked) { picked = n; buildStagePick(); }
   }
 
   function attract() {
@@ -2310,6 +3467,12 @@
     showOverlay('title');
     buildStagePick();
   }
+  function toMap() {
+    exitFull();
+    if (state !== 'title') attract();
+    showOverlay('map');
+    buildStagePick();
+  }
 
   function beginStage(which, fresh) {
     if (DEBUG) deaths.push({ ev: 'begin', which, from: player.x === undefined ? null : Math.round(player.x), st: state });
@@ -2322,12 +3485,18 @@
     resetStageState();
     spawnPlayer(level.start);
     state = 'play'; stateT = 0;
+    // start clean: no key or button left "held" from the menu (touch buttons that are still down stay down)
+    keys.jump = keys.slide = keys.jumpPressed = false;
+    if (!$('btnRun').classList.contains('down')) keys.right = false;
+    if (!$('btnBack').classList.contains('down')) keys.left = false;
     showOverlay(null);
     updateStopBtn();
     if (!sess.practice) {
-      let msg = 'World ' + st.id + ' · ' + st.name + '<br><small>Find the ' + level.pageTotal + ' formula pages!</small>';
-      if (st.id === '2-1') msg += '<br><small>New move: double jump!</small>';
-      showBanner(msg, 2.4);
+      let msg = st.boss
+        ? '🔐 Final showdown · ' + st.name + '<br><small>Jump on the switches to break his 4 red lamps!</small>'
+        : 'World ' + st.id + ' · ' + st.name + '<br><small>Find the ' + level.pageTotal + ' formula pages!</small>';
+      if (NEW_THINGS[st.id] && !st.boss) msg += '<br><small>' + NEW_THINGS[st.id] + '</small>';
+      showBanner(msg, st.boss ? 3.2 : 2.4);
     }
     if (DEMO) return;
     if (isPhoneLandscape() && canFull && !(document.fullscreenElement || document.webkitFullscreenElement)) {
@@ -2350,7 +3519,7 @@
     $('sceneLines').innerHTML = (SCENES[st.id] || []).map(l => '<p>' + l + '</p>').join('');
     $('sceneMeter').style.width = Math.max(3, w) + '%';
     $('sceneMeter').style.backgroundSize = (100 / Math.max(0.03, w / 100)) + '% 100%';
-    $('sceneNext').textContent = 'Next: World ' + st.id + ' · ' + st.name + (st.id === '3-1' ? ' · New: invisibility!' : st.id === '2-1' ? ' · New: double jump!' : '');
+    $('sceneNext').textContent = 'Next: ' + (st.boss ? '' : 'World ') + st.id + ' · ' + st.name + (NEW_THINGS[st.id] ? ' · ' + NEW_THINGS[st.id] : '');
     hideBanner();
     showOverlay('scene');
     updateStopBtn();
@@ -2378,11 +3547,15 @@
 
   function finishStage() {
     state = 'clear'; stateT = 0;
-    for (let i = 0; i < 40; i++) confetti();
-    updateStopBtn();
+    invisT = 0; revealed = false;
+    player.vx = 0;
     const st = level.stage;
+    if (!st.boss) for (let i = 0; i < 40; i++) confetti();
+    snd.play(st.boss ? 'vault' : 'clear');
+    flyPages = [];
+    updateStopBtn();
     const rows = [];
-    let note = '', nextOk = false;
+    let note = '', nextOk = false, starsHtml = '';
     if (st.practice) {
       const prev = parseFloat(store.get('chintu.best.test'));
       const isBest = !isFinite(prev) || runTime < prev;
@@ -2392,33 +3565,80 @@
       note = 'Ready? Pick World 1-1 on the menu.';
     } else {
       const timeBonus = Math.max(0, Math.round(st.par - runTime)) * 10;
-      const heartBonus = hearts * 100;
-      const watched = lights.length + sentries.length + drones.length > 0 || st.world === 3;
+      const heartBonus = Math.round(hearts * 300 / maxHearts());
+      const watched = !st.boss && (lights.length + sentries.length + drones.length + tlamps.length + trips.length > 0 || st.world >= 3);
       const unseenBonus = watched && stats.alarms === 0 ? 1000 : 0;
-      addScore(timeBonus + heartBonus + unseenBonus, undefined, undefined, true);
-      $('clearTitle').textContent = '🎉 Stage ' + st.id + ' clear!';
-      rows.push(['Time', fmtTime(runTime)], ['Laddoos', stats.coins], ['Goons stomped', stats.stomps],
-        ['📜 Formula pages', stats.pages + ' / ' + level.pageTotal], ['Time bonus', '+' + timeBonus], ['Heart bonus', '+' + heartBonus]);
+      const vaultBonus = st.boss ? 5000 : 0;
+      addScore(timeBonus + heartBonus + unseenBonus + vaultBonus, undefined, undefined, true);
+      $('clearTitle').textContent = st.boss ? '🔐 The formula is safe!' : '🎉 Stage ' + st.id + ' clear!';
+      rows.push(['Time', fmtTime(runTime)], ['Laddoos', stats.coins], [st.boss ? 'Barrels and goons stomped' : 'Goons stomped', stats.stomps]);
+      if (st.boss) rows.push(['💡 Lamps broken', brokenLamps() + ' / ' + bossLamps.length], ['💔 Hits taken', stats.hits], ['🔐 Vault bonus', '+' + vaultBonus]);
+      else rows.push(['📜 Formula pages', stats.pages + ' / ' + level.pageTotal]);
+      rows.push(['Time bonus', '+' + timeBonus], ['Heart bonus', '+' + heartBonus]);
       if (watched) rows.push(['🚨 Times spotted', stats.alarms], ['👻 Never seen bonus', '+' + unseenBonus]);
       rows.push(['Stage score', stats.score], ['Total score', sess.score]);
+
+      // Stars: finished · all formula pages (in the vault: 2 hits or fewer) · beat the target time
+      const got = [true, st.boss ? stats.hits <= 2 : stats.pages >= level.pageTotal, runTime <= st.par];
+      const labels = ['Finished', st.boss ? '2 hits or fewer' : 'All 3 pages', 'Under ' + fmtTime(st.par, true)];
+      const nStars = got.filter(Boolean).length;
+      starsHtml = got.map((g, i) => '<div class="' + (g ? 'on' : '') + '"><span class="st">★</span>' + labels[i] + '</div>').join('');
+
       const idx = STAGES.indexOf(st);
       const prev = save.best[st.id];
-      save.best[st.id] = { score: Math.max(stats.score, prev ? prev.score : 0), pages: Math.max(stats.pages, prev ? prev.pages : 0) };
+      save.best[st.id] = {
+        score: Math.max(stats.score, prev ? prev.score : 0), pages: Math.max(stats.pages, prev ? prev.pages : 0),
+        stars: Math.max(nStars, prev ? (prev.stars || 1) : 0)
+      };
       if (idx + 1 < STAGES.length) { save.unlocked = Math.max(save.unlocked, idx + 1); nextOk = true; picked = idx + 1; }
+      if (st.boss) { save.done = true; nextOk = true; }
       if (!DEMO) writeSave();
       if (prev && stats.score > prev.score) note = '🏆 New best score for this stage!';
-      if (stats.pages < level.pageTotal) note += (note ? ' ' : '') + 'Some formula pages are still hidden here.';
-      if (!nextOk) note = '🏆 You crossed the last rooftops! Across the water, Dr. Andhera\'s island fortress waits, and he is FURIOUS. (The fortress and the final showdown come in Phase 4.)';
+      if (!st.boss && stats.pages < level.pageTotal) note += (note ? ' ' : '') + 'Some formula pages are still hidden here.';
+      if (st.id === '3-3') note += (note ? ' ' : '') + 'Across the water, Dr. Andhera\'s island fortress is waiting!';
+      if (st.boss) note = 'Chintu turned the key and locked the formula away. Dr. Andhera can\'t see a thing…';
     }
+    $('clearStars').innerHTML = starsHtml;
+    $('clearStars').hidden = !starsHtml;
+    $('nextBtn').textContent = st.boss ? '▶ The ending' : '▶ Next stage';
     const tbl = $('clearStats');
     tbl.innerHTML = rows.map((r, i) => '<tr' + (i === rows.length - 1 && !st.practice ? ' class="total"' : '') + '><td>' + r[0] + '</td><td>' + r[1] + '</td></tr>').join('');
     $('clearNote').textContent = note;
     $('nextBtn').hidden = !nextOk;
-    if (!DEMO) showOverlay('clear');
+    if (DEMO) return;
+    if (st.boss) clearPending = true;       // first watch Chintu turn the vault wheel
+    else showOverlay('clear');
+  }
+  function nextAction() {
+    if (level.stage && level.stage.boss) showEnding();
+    else playStage(sess.stage + 1, false);
+  }
+
+  // After the vault: Dr. Andhera's last rant as the fortress lights go out, then the credits
+  function showEnding() {
+    state = 'ending';
+    const fc = $('endFace'), c2 = fc.getContext('2d');
+    c2.setTransform(1, 0, 0, 1, 0, 0); c2.clearRect(0, 0, fc.width, fc.height);
+    drawAndhera(c2, 96, 84, 5.2, 3);
+    $('endLines').innerHTML = ENDING_LINES.map(l => '<p>' + l + '</p>').join('');
+    const panel = $('endingPanel');
+    panel.classList.remove('ending'); void panel.offsetWidth; panel.classList.add('ending');   // restart the animation
+    showOverlay('ending');
+    updateStopBtn();
+  }
+  function showCredits() {
+    state = 'credits';
+    const pagesFound = Object.values(save.best).reduce((a, b) => a + (b.pages || 0), 0);
+    const stars = STAGES.reduce((a, s) => a + starsOf(s.id), 0);
+    $('finalStats').innerHTML = [['Score this run', sess.score], ['📜 Formula pages found', pagesFound + ' / ' + PAGE_STAGES * 3],
+      ['⭐ Stars', stars + ' / ' + STAGES.length * 3]].map(r => '<tr><td>' + r[0] + '</td><td>' + r[1] + '</td></tr>').join('');
+    showOverlay('credits');
+    updateStopBtn();
   }
 
   function gameOver() {
     state = 'over';
+    snd.play('gameover', true);
     $('overText').innerHTML = 'Score: <strong>' + sess.score + '</strong>. Try stage ' + level.stage.id + ' again with 3 new lives.';
     showOverlay('over');
     updateStopBtn();
@@ -2433,20 +3653,33 @@
   window.addEventListener('keydown', e => {
     const inGame = state === 'play' || state === 'ko';
     const bodyFocus = document.activeElement === document.body;
-    if (state === 'scene' && (e.code === 'Enter' || e.code === 'Space') && bodyFocus) { e.preventDefault(); sceneGo(); return; }
+    const enterish = (e.code === 'Enter' || e.code === 'Space') && bodyFocus;
+    if (state === 'scene' && enterish) { e.preventDefault(); sceneGo(); return; }
+    if (state === 'ending' && enterish) { e.preventDefault(); showCredits(); return; }
+    if (state === 'credits' && enterish) { e.preventDefault(); toTitle(); return; }
+    const onMap = state === 'title' && !overlays.map.hidden, onTitle = state === 'title' && !overlays.title.hidden;
+    if (onMap) {
+      if (RIGHT_KEYS.includes(e.code) || LEFT_KEYS.includes(e.code)) {
+        e.preventDefault(); movePick(RIGHT_KEYS.includes(e.code) ? 1 : -1);
+        if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
+        return;
+      }
+      if (enterish) { e.preventDefault(); playStage(picked, true); return; }
+      if (e.code === 'Escape') { toTitle(); return; }
+    }
+    if (onTitle && enterish) { e.preventDefault(); toMap(); return; }
     if (RIGHT_KEYS.includes(e.code)) { keys.right = true; if (inGame) e.preventDefault(); return; }
     if (LEFT_KEYS.includes(e.code)) { keys.left = true; if (inGame) e.preventDefault(); return; }
     if (JUMP_KEYS.includes(e.code) || SLIDE_KEYS.includes(e.code)) {
       if (inGame) e.preventDefault();
-      if (state === 'title' && e.code === 'Space' && bodyFocus) { e.preventDefault(); playStage(picked, true); return; }
     }
     if (JUMP_KEYS.includes(e.code)) { if (!e.repeat) { keys.jump = true; keys.jumpPressed = true; } }
     else if (SLIDE_KEYS.includes(e.code)) keys.slide = true;
+    else if (e.code === 'KeyM') toggleOpt('sound');
     else if (e.code === 'KeyP' || e.code === 'Escape') {
       if (state === 'pause') resume(); else if (inGame) pause();
     } else if (e.code === 'Enter' && bodyFocus) {
-      if (state === 'title') playStage(picked, true);
-      else if (state === 'clear' && !overlays.clear.hidden) { if (!$('nextBtn').hidden) playStage(sess.stage + 1, false); else restartStage(); }
+      if (state === 'clear' && !overlays.clear.hidden) { if (!$('nextBtn').hidden) nextAction(); else restartStage(); }
       else if (state === 'over') restartStage();
     }
   });
@@ -2477,20 +3710,50 @@
   holdButton($('btnBack'), () => { keys.left = true; }, () => { keys.left = false; });
   $('btnPause').addEventListener('click', () => { if (state === 'pause') resume(); else pause(); });
 
-  $('startBtn').addEventListener('click', () => playStage(picked, true));
+  // Sound / music / Easy switches (all copies stay in step; the choices are remembered)
+  function refreshOpts() {
+    document.querySelectorAll('[data-opt]').forEach(b => {
+      const k = b.dataset.opt;
+      const on = k === 'easy' ? easy : snd.opt[k];
+      b.textContent = k === 'sound' ? (on ? '🔊 Sound on' : '🔇 Sound off')
+        : k === 'music' ? (on ? '🎵 Music on' : '🎵 Music off')
+        : (on ? '🐢 Easy: on (5 hearts, slower)' : '🐢 Easy: off');
+      b.classList.toggle('on', !!on); b.classList.toggle('off', !on);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+  }
+  function toggleOpt(k) {
+    if (k === 'easy') {
+      if (state !== 'title') return;          // only from the menus, never in the middle of a stage
+      easy = !easy; store.set('chintu.easy', easy ? '1' : '0');
+    } else snd.set(k, !snd.opt[k]);
+    refreshOpts();
+    snd.play('blip', true);
+  }
+  document.querySelectorAll('[data-opt]').forEach(b => b.addEventListener('click', e => { e.preventDefault(); toggleOpt(b.dataset.opt); b.blur(); }));
+  refreshOpts();
+  // a little click for menu buttons
+  document.addEventListener('click', e => { if (e.target.closest && e.target.closest('.btn-go, .node')) snd.play('blip', true); });
+
+  $('startBtn').addEventListener('click', toMap);
+  $('mapPlayBtn').addEventListener('click', () => playStage(picked, true));
+  $('mapBackBtn').addEventListener('click', toTitle);
   $('sceneGo').addEventListener('click', sceneGo);
   $('practiceBtn').addEventListener('click', () => beginStage('P', true));
   $('resumeBtn').addEventListener('click', resume);
   $('restartBtn').addEventListener('click', restartStage);
-  $('quitBtn').addEventListener('click', toTitle);
-  $('nextBtn').addEventListener('click', () => playStage(sess.stage + 1, false));
+  $('quitBtn').addEventListener('click', toMap);
+  $('nextBtn').addEventListener('click', nextAction);
   $('againBtn').addEventListener('click', restartStage);
-  $('menuBtn').addEventListener('click', toTitle);
+  $('menuBtn').addEventListener('click', toMap);
   $('retryBtn').addEventListener('click', restartStage);
-  $('overMenuBtn').addEventListener('click', toTitle);
-  $('stopBtn').addEventListener('click', toTitle);
+  $('overMenuBtn').addEventListener('click', toMap);
+  $('stopBtn').addEventListener('click', toMap);
+  $('creditsBtn').addEventListener('click', showCredits);
+  $('creditsMenuBtn').addEventListener('click', toTitle);
+  $('creditsMapBtn').addEventListener('click', toMap);
   $('pauseBtn').addEventListener('click', () => { if (state === 'pause') resume(); else pause(); });
-  $('restartBtn2').addEventListener('click', () => { if (state !== 'title' && state !== 'scene') restartStage(); });
+  $('restartBtn2').addEventListener('click', () => { if (['play', 'ko', 'pause', 'clear', 'over'].includes(state)) restartStage(); });
 
   const fullEl = stage;
   const canFull = !!(fullEl.requestFullscreen || fullEl.webkitRequestFullscreen);
@@ -2513,10 +3776,15 @@
   }
 
   // ---------- Canvas size ----------
+  // The game is drawn at 480 x 270 and scaled up. Phones get at most 3 canvas pixels per game pixel
+  // (a 3x screen would otherwise mean a canvas 2500 pixels wide); slow devices step down further (see below).
+  let maxScale = isTouch ? 3 : 4;
   function resize() {
     const r = canvas.getBoundingClientRect();
+    if (r.width < 1 || r.height < 1) return;
     const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
-    const w = Math.max(1, Math.round(r.width * dpr)), h = Math.max(1, Math.round(r.height * dpr));
+    const s = Math.min(r.height * dpr / VIEW_H, maxScale);
+    const h = Math.max(1, Math.round(VIEW_H * s)), w = Math.max(1, Math.round(r.width / r.height * h));
     if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
     scale = h / VIEW_H;
     viewW = w / scale;
@@ -2525,17 +3793,71 @@
   if (window.ResizeObserver) new ResizeObserver(resize).observe(canvas);
   window.addEventListener('resize', resize);
 
+  // Automatic quality: if a stage runs below 45 fps for a few seconds, switch off the glow effects first,
+  // then draw with fewer canvas pixels, down to 1.5 per game pixel.
+  let slowN = 0;
+  function adaptQuality() {
+    if (state !== 'play' || document.hidden) { slowN = 0; return; }
+    slowN = fps < 45 ? slowN + 1 : 0;
+    if (slowN < 4) return;
+    slowN = 0;
+    if (!lowFx) { lowFx = true; return; }
+    if (scale > 1.55) { maxScale = Math.max(1.5, scale * 0.75); resize(); }
+  }
+
   // ---------- Main loop (fixed 1/60 s step) ----------
   let last = performance.now(), acc = 0, fps = 60, fpsT = 0, fpsN = 0;
   function frame(now) {
     const dt = Math.min(0.25, (now - last) / 1000);
     last = now;
     fpsT += dt; fpsN++;
-    if (fpsT >= 0.5) { fps = fpsN / fpsT; fpsT = 0; fpsN = 0; }
-    acc += dt * SPEED;
+    if (fpsT >= 0.5) { fps = fpsN / fpsT; fpsT = 0; fpsN = 0; adaptQuality(); }
+    pollPad();
+    acc += dt * SPEED * (easy && !DEMO ? EASY_SPEED : 1);
     while (acc >= STEP) { update(STEP); acc -= STEP; }
     render();
+    snd.music(wantedMusic());
     requestAnimationFrame(frame);
+  }
+
+  // Which music loop fits the moment: one per world, the boss, the credits; silence in menus and in the dark vault
+  function wantedMusic() {
+    if (state === 'credits') return 'credits';
+    if (state !== 'play' || DEMO || !level.stage) return null;
+    if (level.stage.boss) return lampsOut ? null : 'boss';
+    return level.stage.world;
+  }
+
+  // ---------- Gamepad (standard mapping): stick or d-pad to run, A/B to jump, down to slide, Start to pause ----------
+  const padPrev = { jump: false, start: false, ok: false };
+  function pollPad() {
+    let gp = null;
+    try { const list = navigator.getGamepads ? navigator.getGamepads() : []; for (const g of list) if (g && g.connected) { gp = g; break; } } catch (e) { /* ignore */ }
+    if (!gp) { pad.left = pad.right = pad.jump = pad.slide = false; return; }
+    const b = i => !!(gp.buttons[i] && gp.buttons[i].pressed);
+    const ax = gp.axes[0] || 0, ay = gp.axes[1] || 0;
+    pad.right = ax > 0.4 || b(15);
+    pad.left = ax < -0.4 || b(14);
+    pad.slide = ay > 0.6 || b(13);
+    pad.jump = b(0) || b(1);
+    const start = b(9), ok = b(0);
+    if (pad.jump && !padPrev.jump && (state === 'play' || state === 'ko')) keys.jumpPressed = true;
+    if (start && !padPrev.start) { if (state === 'pause') resume(); else if (state === 'play' || state === 'ko') pause(); }
+    if (ok && !padPrev.ok) {
+      // A also works the menus, like Enter
+      if (state === 'title' && !overlays.title.hidden) toMap();
+      else if (state === 'title' && !overlays.map.hidden) playStage(picked, true);
+      else if (state === 'scene') sceneGo();
+      else if (state === 'clear' && !overlays.clear.hidden) { if (!$('nextBtn').hidden) nextAction(); else restartStage(); }
+      else if (state === 'over') restartStage();
+      else if (state === 'ending') showCredits();
+    }
+    if (state === 'title' && !overlays.map.hidden) {
+      const dir = ax > 0.6 || b(15) ? 1 : ax < -0.6 || b(14) ? -1 : 0;
+      if (dir && !padPrev.dir) movePick(dir);
+      padPrev.dir = dir;
+    }
+    padPrev.jump = pad.jump; padPrev.start = start; padPrev.ok = ok;
   }
 
   resize();
@@ -2553,8 +3875,17 @@
     get state() { return state; }, player, level,
     get runTime() { return runTime; }, get stats() { return stats; }, get sess() { return sess; },
     get hearts() { return hearts; }, deaths,
-    get invisT() { return invisT; }, get revealed() { return revealed; }, get worry() { return worry; }, get cages() { return cages.length; }, get drones() { return drones; }, get cam() { return cam; }
+    get invisT() { return invisT; }, get revealed() { return revealed; }, get worry() { return worry; }, get cages() { return cages.length; }, get drones() { return drones; }, get cam() { return cam; },
+    get boss() { return boss; }, get bossLamps() { return bossLamps; }, get lampsOut() { return lampsOut; }, get barrels() { return barrels.length; },
+    get lasers() { return lasers; }, get tlamps() { return tlamps; }, get save() { return save; },
+    get audio() { return { ready: snd.ready, running: snd.running, track: snd.track, sound: snd.opt.sound, music: snd.opt.music }; },
+    get flyPages() { return flyPages.length; }, get pages() { return pages; }, get fps() { return fps; }, get easy() { return easy; }, get quality() { return { lowFx, scale: +scale.toFixed(2) }; }
   };
+  if (DEBUG) {
+    // test helpers for automated checks only (?debug)
+    window.__chintu.warp = (x, y) => { player.x = x; player.y = y; player.vx = 0; player.vy = 0; snapCamera(); };
+    window.__chintu.overlay = () => Object.keys(overlays).find(k => !overlays[k].hidden) || null;
+  }
 })();
 </script>
 </body>
