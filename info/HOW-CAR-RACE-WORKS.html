@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How Car Race Works</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<!--
+  How Car Race works: the "Learn more" page for Game 1 (Phase 5 of the Car Race plan).
+  Explains how the pseudo-3D road works (with a diagram and a live demo), the physics, the rivals and the hired
+  driver, drawing and sound, and what Claude Code changed compared with the original open-source example.
+  The demos use the same formulas and numbers as GAME1-CAR-RACE/car-race.html.
+-->
+<style>
+  :root{
+    --biz-blue:#0d6efd;
+    --biz-blue-dark:#084298;
+    --biz-yellow:#ffc107;
+    --biz-red:#dc3545;
+    --biz-green:#198754;
+    --biz-purple:#6f42c1;
+    --nav-blue:#04264d;
+    --nav-yellow:#ffd60a;
+  }
+  body{ background:#f7f8fa; margin:0; }
+  .topnav{
+    position:sticky; top:0; z-index:1030;
+    background:var(--nav-blue); color:var(--nav-yellow);
+    padding:.9rem 1.5rem; display:flex; justify-content:space-between; align-items:center;
+    box-shadow:0 .15rem .5rem rgba(0,0,0,.25);
+  }
+  .topnav .brand{ display:inline-flex; align-items:center; text-decoration:none; }
+  .topnav .brand-logo{ height:44px; width:auto; display:block; }
+  .topnav .tagline{ font-weight:600; font-size:1.05rem; color:var(--nav-yellow); letter-spacing:.15em; word-spacing:.6em; font-style:italic; }
+  @media (max-width:576px){ .topnav{ flex-direction:column; text-align:center; gap:.4rem; padding:.75rem 1rem; } }
+
+  .step-num{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:1.9rem; height:1.9rem; border-radius:50%;
+    background:var(--biz-yellow); color:#2b2b2b; font-weight:800; font-size:.95rem; margin-right:.55rem; flex:none;
+  }
+  .step-title{ display:flex; align-items:center; font-weight:700; font-size:1.1rem; margin-bottom:.75rem; }
+  .step-card{ border:2px solid #c9d3e3; border-radius:.6rem; }
+  .ctrl-label{ font-size:.75rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#6c757d; margin-bottom:.25rem; display:block; }
+  .prompt{ background:linear-gradient(120deg,var(--biz-blue-dark),var(--biz-blue)); color:#fff; border-radius:.6rem; padding:.9rem 1.1rem; font-size:1.02rem; }
+  .about-box{ background:#fde2ec; border:2px solid #f5a3c0; border-radius:.6rem; padding:.9rem 1.1rem; }
+  .about-box h2{ font-size:1.05rem; font-weight:700; color:#8a1f4a; margin-bottom:.4rem; }
+  .about-box p{ font-size:.92rem; color:#3b2a31; }
+  .facts{ display:flex; flex-wrap:wrap; gap:.6rem; }
+  .fact{ flex:1 1 140px; background:#fff; border:2px solid #dde3ec; border-radius:.6rem; padding:.5rem .75rem; }
+  .fact .val{ font-size:1.35rem; font-weight:800; line-height:1.15; color:var(--nav-blue); }
+  .fact .lbl{ font-size:.75rem; color:#5a6475; }
+  pre.code{ background:#0f1b2d; color:#d7e3f4; border-radius:.5rem; padding:.7rem .9rem; font-size:.8rem; margin:0; white-space:pre-wrap; }
+  pre.code .c{ color:#8fa7c7; } pre.code .k{ color:#ffd60a; }
+  table.ref th{ background:#eef3fb; font-size:.78rem; text-transform:uppercase; letter-spacing:.04em; }
+  table.ref td, table.ref th{ font-size:.88rem; vertical-align:top; }
+  .demo{ background:#fff; border:2px dashed #9ec5fe; border-radius:.6rem; padding:.75rem .9rem; }
+  .demo h3{ font-size:.95rem; font-weight:800; color:var(--biz-blue-dark); margin:0 0 .4rem; }
+  .demo canvas{ width:100%; display:block; border-radius:.45rem; background:#7cc6f2; }
+  .read{ font-size:.9rem; font-weight:700; }
+  .diagram{ width:100%; height:auto; display:block; background:#fff; border:2px solid #dde3ec; border-radius:.5rem; }
+  .flow{ display:flex; flex-wrap:wrap; align-items:stretch; gap:.4rem; }
+  .flow .box{ flex:1 1 150px; background:#eef3fb; border:2px solid #c9d3e3; border-radius:.5rem; padding:.45rem .6rem; font-size:.84rem; }
+  .flow .box b{ display:block; color:var(--nav-blue); }
+  .flow .arrow{ align-self:center; font-weight:800; color:#6c757d; }
+  @media (max-width:700px){ .flow .arrow{ display:none; } }
+  .timeline td:first-child{ white-space:nowrap; }
+  .tag{ border-radius:.3rem; padding:0 .35rem; font-size:.7rem; font-weight:700; color:#fff; background:#6c757d; }
+  .tag.chg{ background:var(--biz-red); }
+  .tag.fix{ background:var(--biz-green); }
+  kbd{ background:#04264d; }
+  footer{ background:var(--nav-blue); }
+  footer a{ color:#fff; }
+</style>
+</head>
+<body>
+
+<!-- STICKY TOP NAV -->
+<div class="topnav">
+  <a class="brand" href="../index.html"><img class="brand-logo" src="../logo.svg" alt="RAG Champ"></a>
+  <div class="tagline">AI Games Portal</div>
+</div>
+
+<main class="container my-4">
+
+  <div class="about-box mb-4">
+    <h2>What is this page and how does AI play a part?</h2>
+    <p class="mb-0">This page explains how <strong>Game 1: Car Race</strong> works inside: how a flat canvas is made to look like a road racing towards you, how the car, the curves and the rivals behave, and what Claude Code (an AI coding agent) changed compared with the small open-source example it started from. Claude Code read that example, fixed its bugs and turned a driving demo into a full racing game, and a person tested every version on a computer and a phone. <strong>Players don't need any AI to play.</strong> The demos on this page use the same formulas and numbers as the game, so you can try them yourself.</p>
+  </div>
+
+  <h1 class="h3 fw-bold mb-1">🏎️ How Car Race Works</h1>
+  <p class="text-muted mb-3"><a href="../GAME1-CAR-RACE/car-race.html">▶ Play Car Race</a> · <a href="CAR-RACE-PLAN.html">📋 The development plan</a> · <a href="../index.html">🏠 Games Home</a></p>
+
+  <div class="facts mb-4">
+    <div class="fact"><div class="val">1 file</div><div class="lbl"><code>car-race.html</code>: HTML, CSS and JavaScript together</div></div>
+    <div class="fact"><div class="val">3,447</div><div class="lbl">lines of code, in 11 clearly marked sections</div></div>
+    <div class="fact"><div class="val">0</div><div class="lbl">image or sound files (the original needed 2 picture files)</div></div>
+    <div class="fact"><div class="val">3 × 3</div><div class="lbl">tracks and modes: Grand Prix, Time Attack, Endless</div></div>
+    <div class="fact"><div class="val">8 cars</div><div class="lbl">in a Grand Prix: you and 7 rivals, plus traffic</div></div>
+    <div class="fact"><div class="val">≈ 5 km</div><div class="lbl">one lap of Coast Highway: 4,725 road segments</div></div>
+  </div>
+
+  <!-- 1. Pseudo-3D -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">1</span>How a flat picture becomes a road (pseudo-3D)</div>
+      <p>There is no real 3D engine. The road is a long list of short, flat <b>segments</b>, each 200 units long, laid end to end. Every frame the game takes the next 300 segments in front of the car and works out where each one appears on the screen. Things far away are drawn smaller and closer to the horizon, things near are drawn bigger and lower down. Each segment becomes a <b>trapezoid</b> of grass, red-and-white rumble strip, grey road and white lane lines, and together they look like a road stretching away. This trick is called <b>pseudo-3D</b>, and classic arcade racing games used it long before computers could draw real 3D.</p>
+
+      <div class="row g-3 mb-3">
+        <div class="col-lg-7">
+          <span class="ctrl-label">The projection: why far things look small</span>
+          <svg class="diagram" viewBox="0 0 640 260" role="img" aria-label="Side view: the camera above the road looks through the screen; road points further away appear higher up on the screen and smaller">
+            <title>The camera, the screen and two points on the road, seen from the side</title>
+            <!-- ground -->
+            <line x1="20" y1="215" x2="625" y2="215" stroke="#6b6b6b" stroke-width="6"/>
+            <text x="600" y="240" text-anchor="end" font-size="13" fill="#5a6475" font-family="system-ui">the road (seen from the side)</text>
+            <!-- camera -->
+            <circle cx="60" cy="95" r="11" fill="#04264d"/>
+            <text x="60" y="76" text-anchor="middle" font-size="13" font-weight="700" fill="#04264d" font-family="system-ui">camera</text>
+            <line x1="60" y1="106" x2="60" y2="212" stroke="#04264d" stroke-width="1.5" stroke-dasharray="4 4"/>
+            <text x="68" y="168" font-size="12" fill="#04264d" font-family="system-ui">height</text>
+            <text x="68" y="182" font-size="12" fill="#04264d" font-family="system-ui">1000</text>
+            <!-- screen -->
+            <line x1="150" y1="40" x2="150" y2="200" stroke="#0d6efd" stroke-width="4"/>
+            <text x="150" y="32" text-anchor="middle" font-size="13" font-weight="700" fill="#0d6efd" font-family="system-ui">screen</text>
+            <line x1="60" y1="228" x2="150" y2="228" stroke="#5a6475" stroke-width="1.2"/>
+            <text x="105" y="250" text-anchor="middle" font-size="12" fill="#5a6475" font-family="system-ui">depth d</text>
+            <!-- near point -->
+            <circle cx="300" cy="215" r="7" fill="#e8572a"/>
+            <line x1="60" y1="95" x2="300" y2="215" stroke="#e8572a" stroke-width="2"/>
+            <circle cx="150" cy="140" r="5" fill="#e8572a"/>
+            <text x="300" y="200" text-anchor="middle" font-size="12" font-weight="700" fill="#e8572a" font-family="system-ui">near</text>
+            <!-- far point -->
+            <circle cx="590" cy="215" r="7" fill="#198754"/>
+            <line x1="60" y1="95" x2="590" y2="215" stroke="#198754" stroke-width="2"/>
+            <circle cx="150" cy="115.4" r="5" fill="#198754"/>
+            <text x="590" y="200" text-anchor="middle" font-size="12" font-weight="700" fill="#198754" font-family="system-ui">far</text>
+            <!-- horizon -->
+            <line x1="60" y1="95" x2="625" y2="95" stroke="#9aa4b1" stroke-width="1" stroke-dasharray="2 5"/>
+            <text x="620" y="88" text-anchor="end" font-size="12" fill="#5a6475" font-family="system-ui">horizon (eye level)</text>
+            <text x="160" y="146" font-size="12" fill="#e8572a" font-family="system-ui">lower on screen</text>
+            <text x="160" y="112" font-size="12" fill="#198754" font-family="system-ui">nearer the horizon</text>
+          </svg>
+          <p class="small mt-2 mb-0">A line from the camera to a point on the road crosses the screen. The further away the point, the closer that crossing is to the horizon. Dividing by the distance <i>z</i> does exactly this, so a point twice as far away is drawn half as far below the horizon, and half as wide.</p>
+        </div>
+        <div class="col-lg-5">
+          <span class="ctrl-label">The same thing in code (from car-race.html)</span>
+<pre class="code"><span class="c">// how wide the view is: 100° field of view</span>
+cameraDepth = 1 / Math.tan(fieldOfView / 2);
+
+<span class="c">// for each end of each road segment:</span>
+scale    = cameraDepth / z;      <span class="c">// far = small</span>
+screen.x = w/2 + scale * x * w/2;
+screen.y = h/2 - scale * y * h/2;
+screen.w = scale * roadWidth * w/2;</pre>
+          <p class="small mt-2 mb-0"><i>x</i>, <i>y</i> and <i>z</i> are the point's position compared with the camera: sideways, up and down, and straight ahead. One division per point is all it takes.</p>
+        </div>
+      </div>
+
+      <div class="flow mb-3">
+        <div class="box"><b>Curves</b>The road never really turns. Each segment has a <code>curve</code> number, and while drawing, every segment is shifted a little more sideways than the last, so the road appears to bend.</div>
+        <div class="arrow">·</div>
+        <div class="box"><b>Hills</b>Each segment has a height. Going up a hill, the far road rises on the screen; over a crest, the road behind it is hidden.</div>
+        <div class="arrow">·</div>
+        <div class="box"><b>Hidden road</b>Segments are drawn near to far. Anything that would appear above the last thing drawn is behind a hill, so it is skipped.</div>
+        <div class="arrow">·</div>
+        <div class="box"><b>Cars and trees</b>Drawn far to near, after the road, so near things cover far things: the "painter's" order.</div>
+      </div>
+
+      <div class="demo">
+        <h3>🧪 Try it: bend the road, add hills and drive</h3>
+        <div class="row g-3 align-items-center">
+          <div class="col-md-4">
+            <label class="ctrl-label" for="dCurve">Curve: <span id="dCurveV">0</span></label>
+            <input type="range" class="form-range" id="dCurve" min="-6" max="6" step="0.5" value="2">
+            <label class="ctrl-label" for="dHill">Hills: <span id="dHillV">40</span></label>
+            <input type="range" class="form-range" id="dHill" min="0" max="80" step="5" value="40">
+            <label class="ctrl-label" for="dFov">Field of view: <span id="dFovV">100</span>°</label>
+            <input type="range" class="form-range" id="dFov" min="50" max="140" step="5" value="100">
+            <label class="ctrl-label" for="dCam">Camera height: <span id="dCamV">1000</span></label>
+            <input type="range" class="form-range" id="dCam" min="300" max="3000" step="100" value="1000">
+            <div class="d-flex flex-wrap gap-2 mt-1">
+              <button type="button" class="btn btn-sm btn-success" id="dDrive">⏸ Stop driving</button>
+              <button type="button" class="btn btn-sm btn-outline-secondary" id="dReset">↺ The game's values</button>
+            </div>
+          </div>
+          <div class="col-md-8"><canvas id="dCanvas" width="960" height="540" aria-label="A pseudo-3D road drawn the same way as in the game"></canvas>
+            <div class="small text-muted mt-1">Drawn with the game's own steps: 300 segments, the same projection, the curve shift, hill hiding and fog. Curve 2 is an easy bend, 4 medium and 6 hard.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Tracks -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">2</span>Tracks are recipes</div>
+      <p>A track is built from a few helper functions that add stretches of road: <code>addStraight</code>, <code>addCurve</code>, <code>addHill</code>, <code>addSCurves</code>, <code>addBumps</code> and so on. Each stretch eases <b>in</b> to its bend or slope, <b>holds</b> it, then eases <b>out</b> again, so the road never jerks. These helpers come from the original example; the three tracks are new recipes built with them.</p>
+      <div class="row g-3">
+        <div class="col-lg-6">
+          <span class="ctrl-label">Neon City (from car-race.html)</span>
+<pre class="code">neon: { road(){
+  addStraight(L.SHORT);               <span class="c">// the start grid</span>
+  addCurve(L.MEDIUM, C.MEDIUM, H.NONE);
+  addStraight(L.MEDIUM);
+  addCurve(L.MEDIUM, -C.HARD, H.NONE); <span class="c">// minus = left</span>
+  addSCurves();
+  addStraight(L.LONG);
+  addCurve(L.LONG, C.HARD, H.LOW);
+  ...
+}, scenery: sceneryNeon }</pre>
+        </div>
+        <div class="col-lg-6">
+          <table class="table table-sm table-bordered ref mb-2">
+            <thead><tr><th>Track</th><th>Character</th></tr></thead>
+            <tbody>
+              <tr><td>🌴 Coast Highway</td><td>Sunny, palm trees, rolling hills and sweeping bends. A Grand Prix version of the original track, made 30% shorter so 3 laps take about 4 to 5 minutes.</td></tr>
+              <tr><td>🏜️ Desert Canyon</td><td>Sunset, cactus and red rocks, big blind crests and one very tight bend.</td></tr>
+              <tr><td>🌃 Neon City</td><td>Night, street lamps and neon signs, flat but full of tight street corners. Cars show headlights and tail lights.</td></tr>
+            </tbody>
+          </table>
+          <p class="small mb-0">The scenery (trees, rocks, billboards, buildings) is placed by a random number generator with a fixed starting <i>seed</i>, so the same track always looks exactly the same. Coins, nitro cans and repair spanners sit in the centres of the 3 lanes and come back every lap.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Physics -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">3</span>Driving: speed, steering and bends</div>
+      <p>The game moves forward in exact steps of 1/60 of a second (the same "fixed step" loop as the original). The car's position is how far along the road it is, plus how far left or right it is: <code>playerX</code>, where −1 and +1 are the edges of the road.</p>
+      <div class="row g-3 mb-3">
+        <div class="col-lg-6">
+          <table class="table table-sm table-bordered ref mb-2">
+            <thead><tr><th>Rule</th><th>Value</th></tr></thead>
+            <tbody>
+              <tr><td>Top speed</td><td>12,000 units a second: exactly one segment per step, shown as 240 km/h</td></tr>
+              <tr><td>Gas · brake · coasting</td><td>+ top ÷ 5 · − top · − top ÷ 5, per second</td></tr>
+              <tr><td>⚡ Nitro</td><td>Up to 125% of top speed; a full bar lasts 2 seconds</td></tr>
+              <tr><td>On the grass</td><td>Slows you to a quarter of top speed; trees and signs there cause a crash</td></tr>
+              <tr><td>Damage</td><td>Each hard crash takes 7% off top speed (up to 3 times) until a 🔧 repair</td></tr>
+              <tr><td>🌧 Rain</td><td>Steering 12% weaker, bends push 30% harder, thicker fog</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="col-lg-6">
+          <span class="ctrl-label">Steering and the push in a bend (from car-race.html)</span>
+<pre class="code mb-2"><span class="c">// you can only steer while moving</span>
+dx = dt * 2 * Math.min(1, speed / maxSpeed);
+playerX += dx * steer;
+<span class="c">// a bend pushes you outwards: more speed, more push</span>
+playerX -= dx * (speed / maxSpeed) * curve * 0.3;</pre>
+          <p class="small mb-0">That second line is the whole secret of cornering. Steering pulls the car one way, the bend pushes it the other, and the push grows with speed and with how sharp the bend is. Go into a hard bend too fast and steering can't win, so you slide onto the grass.</p>
+        </div>
+      </div>
+
+      <div class="demo">
+        <h3>🧪 Try it: how fast can you take a bend?</h3>
+        <p class="small mb-2">The game's hired driver uses this rule: steering can pull back about <b>0.92 × grip</b>, the bend pushes <b>speed × curve × 0.3</b> (× 1.3 in the rain), so the top safe speed is <b>0.92 × grip ÷ (curve × push)</b>.</p>
+        <div class="row g-3 align-items-center">
+          <div class="col-md-5">
+            <label class="ctrl-label" for="bCurve">Bend: <span id="bCurveV">4</span></label>
+            <input type="range" class="form-range" id="bCurve" min="0.5" max="6" step="0.5" value="4">
+            <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="bRain"><label class="form-check-label small" for="bRain">🌧 Rain</label></div>
+          </div>
+          <div class="col-md-7">
+            <div class="read" id="bRead"></div>
+            <div class="progress mt-2" style="height:1.1rem" aria-hidden="true"><div class="progress-bar bg-success" id="bBar" style="width:50%"></div></div>
+            <div class="small text-muted mt-1">The bar is the safe speed out of 300 km/h (top speed with nitro).</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Rivals and the hired driver -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">4</span>Rivals, positions and the hired driver</div>
+      <div class="row g-3">
+        <div class="col-lg-6">
+          <p class="small"><b>The 7 rivals</b> each have their own top speed (spread evenly between two values set by Easy, Normal or Hard), a cornering skill, a launch and an aggression level. Every step each rival:</p>
+          <ul class="small">
+            <li>aims for its top speed, minus a slowdown in bends (good corner drivers lose less),</li>
+            <li>looks 10 segments ahead; if a slower car is in its lane, it moves to a free lane to overtake, or slows behind it,</li>
+            <li>sometimes moves across to <b>block</b> you when you close in from behind (the aggressive ones more often),</li>
+            <li>gets a gentle <b>catch-up</b>: a rival far ahead of you eases off a little and one far behind tries a little harder, so races stay close.</li>
+          </ul>
+          <p class="small mb-0"><b>Positions</b> come from one number per car: <i>laps × track length + distance past the start line</i>. Sorting the cars by it gives the live order (finished cars by their finishing time), which the HUD shows as "P3 / 8".</p>
+        </div>
+        <div class="col-lg-6">
+          <p class="small"><b>The hired driver</b> (press <kbd>H</kbd>) drives your car and explains what it does in a coaching box, like a driving instructor:</p>
+          <ul class="small">
+            <li>it reads the next 60 segments, finds the bend that needs the lowest speed, and lifts off or brakes in time (it allows more speed for bends further away, because there is still room to slow down),</li>
+            <li>it changes lane early to pass slower cars, and detours for pickups when that lane is clear,</li>
+            <li>it steers a little into each bend to fight the push, and saves nitro for straights.</li>
+          </ul>
+          <p class="small mb-0">Races driven with its help are not added to the top 5. The same driver also races the self-playing demo on the portal (<code>?demo</code>) and the cool-down lap after the flag.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. Drawing and sound -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">5</span>Drawing and sound, all with code</div>
+      <div class="row g-3">
+        <div class="col-lg-6">
+          <p class="small"><b>Pictures.</b> The original needed two picture files of cars and trees, and if one failed to load the game stayed on "Loading…" for ever. Now every car (seen from behind, in three steering poses), truck, palm tree, cactus, building, sign and coin is drawn with canvas shapes <b>once</b>, when the game starts, onto small hidden canvases. During the race they are just copied and scaled, which is fast.</p>
+          <p class="small mb-0"><b>Effects.</b> The sky, hills and trees are wide strips that slide sideways in bends (parallax). There is screen shake on crashes, tyre smoke, grass dust, rain spray and streaks, speed lines with nitro, and at night every lamp and tail light is added with "lighter" blending so lights glow. Canvas pixels are capped at 1,600 across to keep big screens fast.</p>
+        </div>
+        <div class="col-lg-6">
+          <p class="small"><b>Sound.</b> No sound files: everything is made with the browser's Web Audio. The <b>engine</b> is two oscillators through a filter, and its pitch climbs through 5 gears, dropping at each gear change. Tyre squeal, grass rumble and rain are looping filtered noise whose volume follows what the car is doing. Coins, nitro, crashes, laps and the countdown are short tones and noise bursts.</p>
+          <p class="small mb-0"><b>After the race</b> the browser's built-in voice announces the result ("Game over. You won the race!"), then a little synthesised music loop plays. Nothing sounds until the first click or key press, and <kbd>M</kbd> mutes. You can also <b>record a video</b> of a race, with sound and the dials drawn in, and download it.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. What changed -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">6</span>What Claude Code changed compared with the original</div>
+      <p class="small">The starting point was <a href="https://flathtml.github.io/800Examples/234-car-race.html" target="_blank" rel="noopener">234-car-race.html</a>, the open-source "Javascript Racer v4" by Jake Gordon (MIT licence), from the flathtml 800 Examples collection. It had a beautiful road engine but was a driving demo, not a game: no rivals, no score, no end. Claude Code kept the engine (the projection, the road helpers, the fixed-step loop) and the credit, and changed the rest.</p>
+      <div class="row g-3 mb-3">
+        <div class="col-lg-6">
+          <span class="ctrl-label">Bugs and problems fixed</span>
+          <table class="table table-sm table-bordered ref mb-0">
+            <tbody>
+              <tr><td><span class="tag fix">fixed</span></td><td>Needed 2 picture files and could hang on "Loading…" → everything is drawn with code</td></tr>
+              <tr><td><span class="tag fix">fixed</span></td><td>Old key codes; a missed key-release (switching tabs) left the car steering → modern keys, all keys released when the window loses focus, auto-pause</td></tr>
+              <tr><td><span class="tag fix">fixed</span></td><td>An accidental global variable, a value declared twice, dead code and a duplicate id → strict mode and cleaned up</td></tr>
+              <tr><td><span class="tag fix">fixed</span></td><td>Music tried to start before any click (blocked by browsers) → sound starts only after the first click or key</td></tr>
+              <tr><td><span class="tag fix">fixed</span></td><td>Traffic ignored the lanes → rivals and traffic use lanes and change lanes on purpose</td></tr>
+              <tr><td><span class="tag fix">fixed</span></td><td>Speed was not a real unit; the first lap was not timed; a fixed 640 × 480 picture with no phone support → km/h dial, every lap timed, a picture that fits any screen, touch and tilt controls</td></tr>
+              <tr><td><span class="tag fix">fixed</span></td><td>An old analytics snippet → removed: the game makes no network requests</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="col-lg-6">
+          <span class="ctrl-label">Added to make it a game</span>
+          <ul class="small mb-0">
+            <li>A real race: 7 named rivals with skills, laps, live positions, a 3-2-1-GO start and a results screen with a score</li>
+            <li>3 modes: Grand Prix, Time Attack (checkpoints add time) and Endless (dodge ever more traffic, 3 lives, near-miss points)</li>
+            <li>3 tracks with their own looks, optional rain, Easy / Normal / Hard, Short (3 minutes) or Long races</li>
+            <li>Nitro, crashes with spin-outs and damage, coins, nitro cans and repair spanners</li>
+            <li>Arc speedometer, lap ring, mini standings, rival name tags, a top-5 board per track and mode</li>
+            <li>Keyboard, touch pedals, phone tilt and gamepad; the hired driver; video recording</li>
+          </ul>
+        </div>
+      </div>
+
+      <span class="ctrl-label">Timeline</span>
+      <p class="small mb-2"><span class="tag chg">changed</span> marks changes that came from a person testing the game.</p>
+      <table class="table table-sm table-bordered ref timeline mb-3">
+        <thead><tr><th>When</th><th>What was built</th></tr></thead>
+        <tbody>
+          <tr><td>20 Nov 2026</td><td><b>The plan:</b> read the original, list its problems, decide the features and 5 build phases.</td></tr>
+          <tr><td>20 Nov 2026</td><td><b>Phase 1, port and clean up:</b> the engine rewritten in clear sections with the fixes above; everything drawn with code; a picture that fits the screen.</td></tr>
+          <tr><td>20 Nov 2026</td><td><b>Phase 2, make it a race:</b> title screen, countdown, laps, rivals, positions, crashes, nitro, the HUD and results.</td></tr>
+          <tr><td>20 Nov 2026</td><td><b>Phase 3, sound and pickups:</b> engine and effect sounds, mute, coins, nitro cans, repairs, damage and the score.</td></tr>
+          <tr><td>20 Nov 2026</td><td><b>Phase 4, content and devices:</b> Desert Canyon and Neon City, rain, Time Attack and Endless, difficulty, touch, tilt, gamepad and the top-5 board. <span class="tag chg">changed</span> Coast Highway made 30% shorter so a race takes 4 to 5 minutes.</td></tr>
+          <tr><td>20 Nov 2026</td><td><b>Extras:</b> the hired driver with its coaching box, video recording, and Short or Long races. The AI Games portal.</td></tr>
+          <tr><td>20 Nov 2026</td><td><span class="tag chg">changed</span> After phone testing: full-size menus on phones, a control deck under the picture when the phone is upright, and a Stop button.</td></tr>
+          <tr><td>22 Nov 2026</td><td><span class="tag chg">changed</span> After phone testing: the results fit a phone held sideways (two columns), and menus can be scrolled with a finger.</td></tr>
+          <tr><td>22 Nov 2026</td><td><b>This page.</b></td></tr>
+        </tbody>
+      </table>
+      <span class="ctrl-label">How it was checked</span>
+      <ul class="small mb-0">
+        <li><b>A self-driving demo</b> (<code>?demo</code>, also the portal preview) races with the hired driver, so a test browser can run whole races on every track and mode and check positions, laps and the results screen.</li>
+        <li><b>The plan's test list</b> covers opening with no errors in Chrome, Edge and Firefox, no sound before the first click, no stuck keys after switching tabs, correct laps and positions, and still working when the browser blocks saving (private windows).</li>
+        <li><b>People</b> played it on a laptop and on a phone held upright and sideways, which found the menus that were cut off on phones.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="text-center my-4">
+    <a class="btn btn-lg fw-bold text-white px-4" style="background:#04264d;border:3px solid #ffd60a;border-radius:2rem;color:#ffd60a!important" href="../GAME1-CAR-RACE/car-race.html">▶ Play Car Race</a>
+    <a class="btn btn-lg fw-bold px-4 ms-2" style="border:2px solid #04264d;color:#04264d;border-radius:2rem" href="../index.html">🏠 Games Home</a>
+  </div>
+  <p class="small text-muted text-center">Road engine based on the open-source "Javascript Racer" by Jake Gordon (MIT licence). Rebuilt and extended with Claude Code.</p>
+
+</main>
+
+<footer class="text-white py-4 mt-5">
+  <div class="container text-center small">AI Games Portal · How Car Race works · <a href="../GAME1-CAR-RACE/car-race.html">🏎️ Play Car Race</a> · <a href="CAR-RACE-PLAN.html">📋 Car Race plan</a> · <a href="HOW-CHINTU-WORKS.html">💡 How Chintu works</a> · <a href="../index.html">🏠 Games Home</a></div>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+  const $ = id => document.getElementById(id);
+
+  /* ---------- Demo 1: a pseudo-3D road, drawn with the game's steps ---------- */
+  const SEG = 200, ROAD_W = 2000, LANES = 3, DRAW = 300, FOG = 5, N = 600, RUMBLE = 3;
+  const cv = $('dCanvas'), cx = cv.getContext('2d');
+  let pos = 0, driving = true, last = performance.now(), segs = [];
+  const easeInOut = (a, b, p) => a + (b - a) * ((-Math.cos(p * Math.PI) / 2) + 0.5);
+  function build() {
+    const curve = +$('dCurve').value, hill = +$('dHill').value;
+    segs = [];
+    for (let i = 0; i < N; i++) {
+      // bends and hills come and go along a looping road, so you can see them arrive
+      const k = i % 150, c = k < 75 ? curve * easeInOut(0, 1, Math.min(1, k / 25)) * (k > 50 ? easeInOut(1, 0, (k - 50) / 25) : 1) : 0;
+      const y = hill * SEG * 0.3 * Math.sin(i / N * Math.PI * 4);   // two long hills per loop
+      segs.push({ i, curve: c, y, light: Math.floor(i / RUMBLE) % 2 === 0, p1: {}, p2: {} });
+    }
+    segs.forEach((s, i) => { s.y1 = s.y; s.y2 = segs[(i + 1) % N].y; });
+  }
+  function project(z, wx, wy, camX, camY, camZ, depth, w, h) {
+    const cz = z - camZ, scale = depth / cz;
+    return { x: Math.round(w / 2 + scale * (wx - camX) * w / 2), y: Math.round(h / 2 - scale * (wy - camY) * h / 2), w: Math.round(scale * ROAD_W * w / 2), z: cz };
+  }
+  function poly(x1, y1, x2, y2, x3, y3, x4, y4, c) { cx.fillStyle = c; cx.beginPath(); cx.moveTo(x1, y1); cx.lineTo(x2, y2); cx.lineTo(x3, y3); cx.lineTo(x4, y4); cx.closePath(); cx.fill(); }
+  function drawRoad(now) {
+    const dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); last = now;   // the first frame's time can be a little earlier
+    if (driving) pos = ((pos + 7000 * dt) % (N * SEG) + N * SEG) % (N * SEG);
+    const fov = +$('dFov').value, camH = +$('dCam').value, depth = 1 / Math.tan(fov / 2 * Math.PI / 180);
+    const w = cv.width, h = cv.height;
+    const sky = cx.createLinearGradient(0, 0, 0, h / 2); sky.addColorStop(0, '#1e6fd9'); sky.addColorStop(1, '#d9f2fc');
+    cx.fillStyle = sky; cx.fillRect(0, 0, w, h);
+    cx.fillStyle = '#4f9d63'; cx.fillRect(0, h / 2, w, h / 2);
+    const base = Math.floor(pos / SEG), basePct = (pos % SEG) / SEG;
+    const playerZ = camH * depth, ps = segs[Math.floor((pos + playerZ) / SEG) % N];
+    const pp = ((pos + playerZ) % SEG) / SEG, playerY = ps.y1 + (ps.y2 - ps.y1) * pp;
+    let maxy = h, x = 0, dx = -(segs[base].curve * basePct);
+    for (let n = 0; n < DRAW; n++) {
+      const s = segs[(base + n) % N], looped = s.i < base, camZ = pos - (looped ? N * SEG : 0);
+      const p1 = project(s.i * SEG, 0, s.y1, -x, playerY + camH, camZ, depth, w, h);
+      const p2 = project((s.i + 1) * SEG, 0, s.y2, -x - dx, playerY + camH, camZ, depth, w, h);
+      x += dx; dx += s.curve;                               // the curve trick: every segment shifts a bit more
+      if (p1.z <= depth || p2.y >= p1.y || p2.y >= maxy) continue;   // behind us, back face, or behind a hill
+      const r1 = p1.w / 6, r2 = p2.w / 6, l1 = p1.w / 32, l2 = p2.w / 32;
+      cx.fillStyle = s.light ? '#10aa10' : '#009a00'; cx.fillRect(0, p2.y, w, p1.y - p2.y);
+      poly(p1.x - p1.w - r1, p1.y, p1.x - p1.w, p1.y, p2.x - p2.w, p2.y, p2.x - p2.w - r2, p2.y, s.light ? '#c0392b' : '#f2f2f2');
+      poly(p1.x + p1.w + r1, p1.y, p1.x + p1.w, p1.y, p2.x + p2.w, p2.y, p2.x + p2.w + r2, p2.y, s.light ? '#c0392b' : '#f2f2f2');
+      poly(p1.x - p1.w, p1.y, p1.x + p1.w, p1.y, p2.x + p2.w, p2.y, p2.x - p2.w, p2.y, s.light ? '#6b6b6b' : '#676767');
+      if (s.light) {
+        const lw1 = p1.w * 2 / LANES, lw2 = p2.w * 2 / LANES;
+        for (let k = 1; k < LANES; k++) poly(p1.x - p1.w + lw1 * k - l1 / 2, p1.y, p1.x - p1.w + lw1 * k + l1 / 2, p1.y, p2.x - p2.w + lw2 * k + l2 / 2, p2.y, p2.x - p2.w + lw2 * k - l2 / 2, p2.y, '#e8e8e8');
+      }
+      const fog = 1 / Math.pow(Math.E, Math.pow(n / DRAW, 2) * FOG);
+      if (fog < 1) { cx.globalAlpha = 1 - fog; cx.fillStyle = '#1d6b33'; cx.fillRect(0, p2.y, w, p1.y - p2.y); cx.globalAlpha = 1; }
+      maxy = p1.y;
+    }
+    // the player's car, drawn simply
+    const cw = w * 0.16, ch = cw * 0.45, ox = w / 2 - cw / 2, oy = h - ch - h * 0.04;
+    cx.fillStyle = 'rgba(0,0,0,.3)'; cx.fillRect(ox + 4, oy + ch - 6, cw - 8, 10);
+    cx.fillStyle = '#d62828'; cx.fillRect(ox, oy + ch * 0.3, cw, ch * 0.6); cx.fillRect(ox + cw * 0.18, oy, cw * 0.64, ch * 0.4);
+    cx.fillStyle = '#ffd60a'; cx.fillRect(ox + cw * 0.44, oy, cw * 0.12, ch * 0.9);
+    cx.fillStyle = '#1b2a44'; cx.fillRect(ox + cw * 0.24, oy + ch * 0.08, cw * 0.52, ch * 0.22);
+    cx.fillStyle = '#111'; cx.fillRect(ox - 4, oy + ch * 0.75, cw * 0.22, ch * 0.3); cx.fillRect(ox + cw * 0.78 + 4, oy + ch * 0.75, cw * 0.22, ch * 0.3);
+    requestAnimationFrame(drawRoad);
+  }
+  const dVals = { dCurve: 2, dHill: 40, dFov: 100, dCam: 1000 };
+  function showVals() { for (const id in dVals) $(id + 'V').textContent = $(id).value; }
+  ['dCurve', 'dHill'].forEach(id => $(id).addEventListener('input', () => { build(); showVals(); }));
+  ['dFov', 'dCam'].forEach(id => $(id).addEventListener('input', showVals));
+  $('dDrive').addEventListener('click', () => {
+    driving = !driving;
+    $('dDrive').textContent = driving ? '⏸ Stop driving' : '▶ Drive';
+    $('dDrive').className = 'btn btn-sm ' + (driving ? 'btn-success' : 'btn-outline-success');
+  });
+  $('dReset').addEventListener('click', () => { for (const id in dVals) $(id).value = dVals[id]; build(); showVals(); });
+  build(); showVals(); requestAnimationFrame(drawRoad);
+
+  /* ---------- Demo 2: safe speed through a bend (the hired driver's rule) ---------- */
+  function bend() {
+    const c = +$('bCurve').value, rain = $('bRain').checked;
+    const grip = rain ? 0.88 : 1, push = 0.3 * (rain ? 1.3 : 1);
+    const safe = Math.abs(c) < 0.5 ? 1.25 : Math.min(1.25, 0.92 * grip / (Math.abs(c) * push));
+    const kmh = Math.round(safe * 240);
+    $('bCurveV').textContent = c + (c <= 2 ? ' (easy)' : c <= 4 ? ' (medium)' : ' (hard)');
+    $('bRead').innerHTML = safe >= 1.25
+      ? 'Safe at any speed, even 300 km/h with nitro ⚡'
+      : 'Top safe speed: <span style="color:' + (kmh < 140 ? '#b02a37' : '#198754') + '">' + kmh + ' km/h</span>' + (safe < 1 ? ' (' + Math.round(safe * 100) + '% of top speed)' : ' (full speed is fine)');
+    $('bBar').style.width = Math.min(100, safe * 240 / 300 * 100) + '%';
+    $('bBar').className = 'progress-bar ' + (kmh < 140 ? 'bg-danger' : kmh < 240 ? 'bg-warning' : 'bg-success');
+  }
+  ['bCurve', 'bRain'].forEach(id => $(id).addEventListener('input', bend));
+  $('bRain').addEventListener('change', bend);
+  bend();
+})();
+</script>
+</body>
+</html>
