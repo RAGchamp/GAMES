@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Geography Map Plan</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+  :root{
+    --biz-blue:#0d6efd;
+    --biz-blue-dark:#084298;
+    --biz-yellow:#ffc107;
+    --biz-red:#dc3545;
+    --biz-green:#198754;
+    --biz-purple:#6f42c1;
+    --nav-blue:#04264d;
+    --nav-yellow:#ffd60a;
+    --map-navy:#0b1a4a;
+  }
+  body{ background:#f7f8fa; margin:0; }
+
+  .topnav{
+    position:sticky; top:0; z-index:1030;
+    background:var(--nav-blue); color:var(--nav-yellow);
+    padding:.9rem 1.5rem; display:flex; justify-content:space-between; align-items:center;
+    box-shadow:0 .15rem .5rem rgba(0,0,0,.25);
+  }
+  .topnav .brand{ display:inline-flex; align-items:center; text-decoration:none; }
+  .topnav .brand-logo{ height:44px; width:auto; display:block; }
+  .topnav .tagline{
+    font-weight:600; font-size:1.05rem; color:var(--nav-yellow);
+    letter-spacing:.15em; word-spacing:.6em; font-style:italic;
+  }
+  @media (max-width:576px){
+    .topnav{ flex-direction:column; text-align:center; gap:.4rem; padding:.75rem 1rem; }
+  }
+
+  .step-num{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:1.9rem; height:1.9rem; border-radius:50%;
+    background:var(--biz-yellow); color:#2b2b2b; font-weight:800; font-size:.95rem; margin-right:.55rem; flex:none;
+  }
+  .step-title{ display:flex; align-items:center; font-weight:700; font-size:1.1rem; margin-bottom:.75rem; }
+  .step-card{ border:2px solid #c9d3e3; border-radius:.6rem; }
+  .ctrl-label{ font-size:.75rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#6c757d; margin-bottom:.25rem; display:block; }
+  .stat-pill{ background:#eef3fb; border-radius:2rem; padding:.2rem .7rem; font-size:.8rem; font-weight:600; display:inline-block; margin:.15rem .2rem .15rem 0; }
+
+  .prompt{
+    background:linear-gradient(120deg,var(--biz-blue-dark),var(--biz-blue)); color:#fff;
+    border-radius:.6rem; padding:.9rem 1.1rem; font-size:1.02rem;
+  }
+
+  .about-box{ background:#fde2ec; border:2px solid #f5a3c0; border-radius:.6rem; padding:.9rem 1.1rem; }
+  .about-box h2{ font-size:1.05rem; font-weight:700; color:#8a1f4a; margin-bottom:.4rem; }
+  .about-box p{ font-size:.92rem; color:#3b2a31; }
+
+  .now-box{ display:flex; gap:.75rem; flex-wrap:wrap; }
+  .now-card{ flex:1 1 220px; background:#fff; border:2px solid #dde3ec; border-radius:.6rem; padding:.7rem .9rem; }
+  .now-card.now{ border-color:#c79100; background:#fff8e1; }
+  .now-card .lbl{ font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#6c757d; }
+  .now-card .val{ font-size:1.1rem; font-weight:800; line-height:1.25; margin:.15rem 0 .25rem; }
+  .now-card .det{ font-size:.86rem; color:#5a6475; }
+
+  .phase{ border-left:5px solid var(--biz-blue); }
+  .phase.p2{ border-left-color:var(--biz-green); }
+  .phase.p3{ border-left-color:var(--biz-purple); }
+  .phase.p4{ border-left-color:#c79100; }
+  .phase.p5{ border-left-color:var(--biz-red); }
+  .phase.p6{ border-left-color:#0aa2c0; }
+  .phase ul{ margin-bottom:.4rem; }
+  .accept{ background:#eefaf3; border:1px solid #bfe3cf; border-radius:.45rem; padding:.5rem .75rem; font-size:.88rem; }
+  .accept b{ color:var(--biz-green); }
+
+  table.plan th{ background:#eef3fb; font-size:.8rem; text-transform:uppercase; letter-spacing:.04em; }
+  table.plan td, table.plan th{ font-size:.9rem; vertical-align:top; }
+
+  pre.tree{ background:#0f1b2d; color:#d7e3f4; border-radius:.5rem; padding:.9rem 1rem; font-size:.85rem; margin:0; overflow-x:auto; }
+  pre.tree .c{ color:#ffd60a; }
+
+  .tag{ border-radius:.3rem; padding:0 .35rem; font-size:.7rem; font-weight:700; color:#fff; }
+  .tag-must{ background:var(--biz-green); } .tag-nice{ background:#6c757d; } .tag-open{ background:var(--biz-red); }
+
+  /* Map sheet mock */
+  .mock-wrap{ background:var(--map-navy); border-radius:.6rem; border:3px solid #1b2a44; padding:.4rem; max-width:420px; margin:0 auto; }
+  .mock-wrap svg{ display:block; width:100%; height:auto; }
+
+  /* Pipeline strip */
+  .pipe{ display:flex; gap:.5rem; flex-wrap:wrap; align-items:stretch; }
+  .pipe .st{ flex:1 1 150px; background:#fff; border:2px solid #dde3ec; border-radius:.55rem; padding:.55rem .7rem; font-size:.84rem; color:#3a4456; position:relative; }
+  .pipe .st b{ display:block; font-size:.9rem; color:#1b2a44; margin-bottom:.15rem; }
+  .pipe .st .n{ font-size:.68rem; font-weight:800; color:#c79100; text-transform:uppercase; letter-spacing:.05em; }
+  .pipe .st.out{ border-color:#c79100; background:#fff8e1; }
+
+  /* Palette swatches */
+  .sw{ display:inline-block; width:1.6rem; height:1.6rem; border-radius:.35rem; border:2px solid #fff; box-shadow:0 0 0 1px #c9d3e3; vertical-align:middle; margin-right:.25rem; }
+
+  footer{ background:var(--nav-blue); }
+  footer a{ color:#fff; }
+</style>
+</head>
+<body>
+
+<!-- STICKY TOP NAV -->
+<div class="topnav">
+  <a class="brand" href="../index.html"><img class="brand-logo" src="../logo.svg" alt="RAG Champ"></a>
+  <div class="tagline">AI Games Portal</div>
+</div>
+
+<main class="container my-4">
+
+  <!-- How AI plays a part (pink box) -->
+  <div class="about-box mb-4">
+    <h2>What is this plan and how does AI play a part?</h2>
+    <p class="mb-0">This page is the build plan for the <strong>first phase of Game 3: Geography</strong>, the third game in the RAG Champ Games portal. Before there can be a geography game there has to be a good map, so this phase builds a <strong>world map with every country</strong>, drawn in the bright poster style of the reference picture: coloured countries on a dark navy sea, white name labels with flags and red arrows. Like Car Race and Chintu, everything will be written by an AI coding agent (Claude Code) in plain HTML and JavaScript with the Canvas API. The map shapes come from free public-domain map data, which a small script prepares once. <strong>PLEASE NOTE: players don't need any AI to use the map or play the game.</strong> The AI is used only to write the code and prepare the data.</p>
+  </div>
+
+  <h1 class="h3 fw-bold mb-1">🌍 Geography: World Map Plan (Phase 1 of the game)</h1>
+  <p class="text-muted mb-3">Plan date: 22 Nov 2026 · Decisions agreed 22 Nov 2026 · Status: <strong>Phases 1–5 done 22 Nov 2026 (<a href="../GAME-3-Geography/WORLD-MAP.html">open the world map</a>); Phase 6 portal card still to do</strong></p>
+
+  <div class="prompt mb-4">
+    <strong>Goal:</strong> Build <code class="text-warning">GAME-3-Geography/WORLD-MAP.html</code>, a map viewer that shows <strong>all the world's countries</strong> (about 250 map units, see step 2) as a set of poster-style <strong>map sheets</strong>: one world overview plus one sheet for each continent and region. Every sheet looks like the reference picture: a yellow title banner, brightly coloured countries with a raised relief look, and a white label with the country's flag and a red arrow for each country. Players can pan, zoom and tap any country. This map is the base that the quiz games in later phases will be built on.
+  </div>
+
+  <!-- 1. The look -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">1</span>The look we are aiming for</div>
+      <div class="row g-3 align-items-center">
+        <div class="col-lg-6">
+          <div class="mock-wrap" role="img" aria-label="Layout sketch of one map sheet: a yellow title banner on top, coloured country shapes in the middle, white flag labels around the edges with red arrows pointing to the countries">
+            <svg viewBox="0 0 400 480" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <filter id="lift" x="-10%" y="-10%" width="120%" height="120%">
+                  <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000" flood-opacity=".55"/>
+                </filter>
+                <linearGradient id="shine" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0" stop-color="#fff" stop-opacity=".28"/>
+                  <stop offset=".55" stop-color="#fff" stop-opacity="0"/>
+                  <stop offset="1" stop-color="#000" stop-opacity=".22"/>
+                </linearGradient>
+                <marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                  <path d="M0 0 L10 5 L0 10 z" fill="#e8262b"/>
+                </marker>
+              </defs>
+              <!-- title banner -->
+              <rect x="40" y="12" width="320" height="46" rx="23" fill="#0d2a8a" stroke="#ffd60a" stroke-width="4"/>
+              <text x="200" y="45" text-anchor="middle" font-family="Impact, 'Arial Black', sans-serif" font-size="28" fill="#ffd60a" stroke="#0b1a4a" stroke-width="1">MAP SHEET TITLE</text>
+              <!-- made-up land shapes (not real geography) -->
+              <g filter="url(#lift)" stroke="#ffffff" stroke-width="1.6" stroke-linejoin="round">
+                <path d="M150 110 L215 98 L262 120 L300 150 L318 200 L300 236 L250 246 L212 222 L175 230 L148 196 L138 150 Z" fill="#2fb84a"/>
+                <path d="M138 150 L148 196 L175 230 L160 262 L128 250 L112 205 L118 165 Z" fill="#f6c82b"/>
+                <path d="M175 230 L212 222 L250 246 L242 290 L200 300 L168 286 L160 262 Z" fill="#b43ee0"/>
+                <path d="M250 246 L300 236 L322 270 L300 312 L262 318 L242 290 Z" fill="#ff3fa4"/>
+                <path d="M168 286 L200 300 L242 290 L262 318 L246 372 L214 420 L190 438 L176 400 L170 340 Z" fill="#ff8a1f"/>
+                <path d="M160 262 L168 286 L170 340 L176 400 L190 438 L178 446 L160 404 L150 340 L148 290 Z" fill="#2b8cff"/>
+                <path d="M215 98 L262 120 L258 96 L232 88 Z" fill="#ff8a1f"/>
+              </g>
+              <path d="M150 110 L215 98 L262 120 L300 150 L318 200 L300 236 L250 246 L212 222 L175 230 L148 196 L138 150 Z" fill="url(#shine)" pointer-events="none"/>
+              <!-- callouts -->
+              <g font-family="'Arial Narrow', 'Roboto Condensed', Arial, sans-serif" font-weight="700" font-size="15" fill="#111">
+                <g>
+                  <rect x="14" y="120" width="104" height="30" rx="8" fill="#fff" stroke="#9cc7ff" stroke-width="3"/>
+                  <rect x="22" y="127" width="24" height="16" fill="#f6c82b"/><rect x="22" y="138" width="24" height="5" fill="#2b5bd6"/>
+                  <text x="52" y="141">Country A</text>
+                  <line x1="118" y1="140" x2="150" y2="168" stroke="#e8262b" stroke-width="4" marker-end="url(#ah)"/>
+                </g>
+                <g>
+                  <rect x="14" y="300" width="104" height="30" rx="8" fill="#fff" stroke="#9cc7ff" stroke-width="3"/>
+                  <rect x="22" y="307" width="24" height="16" fill="#e8262b"/><rect x="29" y="307" width="10" height="16" fill="#fff"/>
+                  <text x="52" y="321">Country B</text>
+                  <line x1="118" y1="315" x2="160" y2="330" stroke="#e8262b" stroke-width="4" marker-end="url(#ah)"/>
+                </g>
+                <g>
+                  <rect x="282" y="66" width="104" height="30" rx="8" fill="#fff" stroke="#9cc7ff" stroke-width="3"/>
+                  <rect x="290" y="73" width="24" height="16" fill="#2fb84a"/><rect x="290" y="79" width="24" height="4" fill="#ffd60a"/>
+                  <text x="320" y="87">Country C</text>
+                  <line x1="300" y1="96" x2="270" y2="140" stroke="#e8262b" stroke-width="4" marker-end="url(#ah)"/>
+                </g>
+                <g>
+                  <rect x="282" y="330" width="104" height="30" rx="8" fill="#fff" stroke="#9cc7ff" stroke-width="3"/>
+                  <rect x="290" y="337" width="24" height="16" fill="#ff3fa4"/><rect x="290" y="343" width="24" height="4" fill="#fff"/>
+                  <text x="320" y="351">Country D</text>
+                  <line x1="300" y1="330" x2="282" y2="296" stroke="#e8262b" stroke-width="4" marker-end="url(#ah)"/>
+                </g>
+                <g>
+                  <rect x="282" y="408" width="104" height="30" rx="8" fill="#fff" stroke="#9cc7ff" stroke-width="3"/>
+                  <rect x="290" y="415" width="24" height="16" fill="#8fd3ff"/><rect x="290" y="420" width="24" height="6" fill="#fff"/>
+                  <text x="320" y="429">Country E</text>
+                  <line x1="282" y1="420" x2="226" y2="392" stroke="#e8262b" stroke-width="4" marker-end="url(#ah)"/>
+                </g>
+              </g>
+            </svg>
+          </div>
+          <p class="small text-muted mt-2 mb-0 text-center">Layout sketch only, with made-up shapes. The real sheets use real country outlines.</p>
+        </div>
+        <div class="col-lg-6">
+          <p>The reference picture (a South America poster shared on social media) has seven features that together make the look. We will build each one in code:</p>
+          <ol class="mb-2">
+            <li><strong>Dark navy sea</strong> with no grid lines, so the land stands out.</li>
+            <li><strong>Bright, flat country colours</strong> (green, orange, yellow, purple, pink, blue), with no two neighbours sharing a colour.</li>
+            <li><strong>A raised, textured relief look</strong>: mountains and rivers show as light and shade on top of the colour, and the land seems to float a little above the sea.</li>
+            <li><strong>Thin white borders</strong> between countries and a white coastline.</li>
+            <li><strong>A yellow title banner</strong>: heavy yellow capitals in a navy pill with a yellow rim.</li>
+            <li><strong>White rounded labels</strong> with a light-blue rim, the country's <strong>flag</strong> on the left and its name in bold condensed letters.</li>
+            <li><strong>Red arrows</strong> from each label to its country, arranged so labels never overlap and arrows never cross.</li>
+          </ol>
+          <p class="small text-muted mb-0">We copy the <em>style</em>, not the picture: the screenshot in <code>GAME-3-Geography/sample-map.jpg</code> is someone else's artwork, so it stays a local reference only and is not used in the game or committed to the repository.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. What "all countries" means -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">2</span>What "all countries" means</div>
+      <div class="now-box mb-3">
+        <div class="now-card now">
+          <div class="lbl">Core</div>
+          <div class="val">195 countries</div>
+          <div class="det">The <strong>193 UN member states</strong> plus the two UN observer states, <strong>Vatican City</strong> and <strong>Palestine</strong>. These are the "countries" the game quizzes on by default.</div>
+        </div>
+        <div class="now-card">
+          <div class="lbl">Also shown</div>
+          <div class="val">Other places on the map</div>
+          <div class="det"><strong>Taiwan, Kosovo and Western Sahara</strong>, and large territories that look like countries on a map, such as <strong>Greenland, French Guiana</strong> (it is on the reference picture), <strong>Puerto Rico, New Caledonia</strong> and the <strong>Falkland Islands</strong>. They are shown with their own colour and a label that says who governs them.</div>
+        </div>
+        <div class="now-card">
+          <div class="lbl">Tiny places</div>
+          <div class="val">Always visible and tappable</div>
+          <div class="det">Countries smaller than a few pixels on screen (Vatican City, Monaco, the Maldives, Tuvalu, the Caribbean islands) get a <strong>coloured ring marker</strong> so they can still be seen, labelled and tapped.</div>
+        </div>
+      </div>
+      <p class="small text-muted mb-0">Every country gets one record with: ISO code, short name, official name, capital, continent, region sheet, flag, label anchor point and map colour. A <strong>coverage check page</strong> (Phase 6) lists all records and flags any country that is missing a shape, a flag or a label.</p>
+    </div>
+  </div>
+
+  <!-- 3. Map data -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">3</span>Where the map data comes from</div>
+      <div class="table-responsive">
+        <table class="table table-sm plan mb-2">
+          <thead><tr><th>What</th><th>Source</th><th>Licence</th><th>How we use it</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Country shapes</strong></td><td>Natural Earth, <em>Admin 0 Map Units</em> at 1:50m scale (with 1:10m shapes for tiny countries), with borders taken from the <em>India point-of-view</em> version</td><td>Public domain</td><td>The "map units" file is used rather than plain "countries" because it splits overseas parts, so French Guiana is its own shape and not part of France.</td></tr>
+            <tr><td><strong>Relief (mountains, valleys)</strong></td><td>Natural Earth, <em>Shaded Relief</em> raster at 1:50m</td><td>Public domain</td><td>A grey hillshade picture. It is laid over the country colours to give the textured, raised look from the reference picture.</td></tr>
+            <tr><td><strong>Flags</strong></td><td><em>flag-icons</em> SVG set</td><td>MIT</td><td>Turned into one small picture strip (a sprite sheet) of every flag at label size during the build.</td></tr>
+            <tr><td><strong>Names and capitals</strong></td><td>Natural Earth attributes, checked against the UN country list</td><td>Public domain</td><td>Short English names suitable for children (for example "Ivory Coast" with "Côte d'Ivoire" as the official name).</td></tr>
+            <tr><td><strong>Build tools</strong></td><td>mapshaper, d3-geo, topojson, polylabel (Node.js)</td><td>MPL / ISC / MIT</td><td>Used <strong>only by the build script</strong> on the computer. The finished map page loads no outside scripts.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <span class="ctrl-label">The build pipeline (run once, and again only when the data changes)</span>
+      <div class="pipe">
+        <div class="st"><span class="n">Step A</span><b>Download</b>Natural Earth shapes and relief, and the flag SVGs, into <code>tools/raw/</code> (not committed).</div>
+        <div class="st"><span class="n">Step B</span><b>Clean and simplify</b>mapshaper fixes gaps between neighbours, keeps shared borders identical and simplifies shapes to a set size budget.</div>
+        <div class="st"><span class="n">Step C</span><b>Enrich</b>Add names, capitals and region sheets. Work out neighbours, pick colours and find a label point inside each country.</div>
+        <div class="st"><span class="n">Step D</span><b>Pack</b>Write compact data files: shapes as TopoJSON, flags as one sprite, relief as one compressed picture.</div>
+        <div class="st out"><span class="n">Result</span><b>Ready for the page</b><code>data/world-shapes.js</code>, <code>data/flags.js</code>, <code>data/relief.js</code></div>
+      </div>
+      <p class="small text-muted mt-2 mb-0">The data files are plain <code>.js</code> files loaded with <code>&lt;script src&gt;</code>, which works when the page is opened by double-click (<code>file:///</code>). Loading <code>.json</code> with <code>fetch()</code> would not.</p>
+    </div>
+  </div>
+
+  <!-- 4. Map sheets -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">4</span>The map sheets</div>
+      <p>The world is too crowded for one picture with a label for every country, so the map is split into <strong>sheets</strong>, each like one poster. Each region sheet has <strong>no more than about 20 labels</strong>, so the labels stay big and readable on a phone, as in the reference picture (which has 13).</p>
+      <div class="table-responsive">
+        <table class="table table-sm plan mb-2">
+          <thead><tr><th>Sheet</th><th>Countries (approx.)</th><th>Labels</th></tr></thead>
+          <tbody>
+            <tr><td><strong>World</strong> overview</td><td>All, coloured by continent</td><td>Continent names only. Tap a continent to open it.</td></tr>
+            <tr><td><strong>Continent</strong> overviews: Africa, Asia, Europe, North America, South America, Oceania</td><td>The whole continent</td><td>Names inside the large countries only. Tap a region to open its sheet.</td></tr>
+            <tr><td>South America</td><td>12 + French Guiana, Falklands</td><td rowspan="14" class="align-middle">Full flag labels with red arrows for every country</td></tr>
+            <tr><td>North America</td><td>Canada, USA, Mexico, Greenland</td></tr>
+            <tr><td>Central America</td><td>7</td></tr>
+            <tr><td>Caribbean</td><td>13 + territories</td></tr>
+            <tr><td>Northern Europe and the British Isles</td><td>10</td></tr>
+            <tr><td>Western and Central Europe</td><td>14</td></tr>
+            <tr><td>Eastern Europe</td><td>8</td></tr>
+            <tr><td>Southern Europe and the Balkans</td><td>17</td></tr>
+            <tr><td>Middle East</td><td>17</td></tr>
+            <tr><td>Central and South Asia</td><td>14</td></tr>
+            <tr><td>East and Southeast Asia</td><td>16</td></tr>
+            <tr><td>North and West Africa</td><td>2 sheets: 7 and 16</td></tr>
+            <tr><td>Central, East and Southern Africa</td><td>3 sheets: 9, 18 and 10</td></tr>
+            <tr><td>Oceania</td><td>14 + territories</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="small text-muted mb-0">Each sheet is a small settings entry: title, centre point, zoom, which countries get labels, and optional manual label nudges. Adding or rearranging a sheet means editing a list, not writing new code.</p>
+    </div>
+  </div>
+
+  <!-- 5. How the map is drawn -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">5</span>How each part of the look is drawn</div>
+      <div class="now-box mb-3">
+        <div class="now-card">
+          <div class="lbl">Projection</div>
+          <div class="val">Flat map from a round Earth</div>
+          <div class="det">The world sheet uses the <strong>Equal Earth</strong> projection (nicely rounded, true sizes). Region sheets use a <strong>Lambert azimuthal</strong> view centred on the region, like an atlas page. Both are about 60 lines of our own maths, with no library.</div>
+        </div>
+        <div class="now-card">
+          <div class="lbl">Colours</div>
+          <div class="val">Neighbours always differ</div>
+          <div class="det">The build script knows which countries touch and gives each one a colour from a six-colour palette so that no two neighbours match. Colours are fixed in the data, so Brazil is always the same green.
+            <div class="mt-1"><span class="sw" style="background:#2fb84a"></span><span class="sw" style="background:#ff8a1f"></span><span class="sw" style="background:#f6c82b"></span><span class="sw" style="background:#b43ee0"></span><span class="sw" style="background:#ff3fa4"></span><span class="sw" style="background:#2b8cff"></span></div>
+          </div>
+        </div>
+        <div class="now-card">
+          <div class="lbl">Relief</div>
+          <div class="val">Light and shade on the land</div>
+          <div class="det">The grey hillshade picture is re-projected to match each sheet, clipped to the land and blended over the colours with a "multiply and lighten" mix. A soft shadow under the coast makes the land look raised.</div>
+        </div>
+      </div>
+      <div class="now-box">
+        <div class="now-card">
+          <div class="lbl">Borders and coast</div>
+          <div class="val">White lines</div>
+          <div class="det">Thin white country borders. The coastline gets a thicker white line with a faint blue glow on the sea side, as in the picture.</div>
+        </div>
+        <div class="now-card">
+          <div class="lbl">Labels</div>
+          <div class="val">Flag pills around the edge</div>
+          <div class="det">Each country has a label point deep inside it. Labels are placed in columns on the left and right (and top or bottom when needed) of the land, sorted from top to bottom so arrows do not cross. A tidy-up pass pushes labels apart until none overlap.</div>
+        </div>
+        <div class="now-card">
+          <div class="lbl">Speed</div>
+          <div class="val">Draw once, reuse</div>
+          <div class="det">The coloured, shaded land is drawn once into a hidden canvas for each sheet and zoom level. Panning and tapping then only redraw the labels and highlights, so it stays smooth on phones.</div>
+        </div>
+      </div>
+      <span class="ctrl-label mt-3">Starting values (to be tuned by eye against the reference)</span>
+      <span class="stat-pill">sheet 1080 × 1350 (portrait 4:5)</span><span class="stat-pill">sea #0b1a4a</span><span class="stat-pill">border 1.2 px white</span><span class="stat-pill">coast 2.5 px white</span><span class="stat-pill">relief strength 55%</span><span class="stat-pill">label height 52 px</span><span class="stat-pill">arrow 5 px #e8262b</span><span class="stat-pill">tiny-country ring ≥ 10 px</span>
+    </div>
+  </div>
+
+  <!-- 6. Interaction -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">6</span>What players can do with the map</div>
+      <div class="row g-3">
+        <div class="col-lg-6">
+          <ul class="mb-0">
+            <li><strong>Pick a sheet</strong> from a menu, or tap a continent on the world sheet to fly in.</li>
+            <li><strong>Pan and zoom</strong> with drag, the mouse wheel or a two-finger pinch. Double-tap zooms in.</li>
+            <li><strong>Tap a country</strong> to highlight it (it glows and lifts) and open a card with its flag, name, capital and continent.</li>
+            <li><strong>Search</strong> by typing a country name. The map moves to that country and highlights it.</li>
+          </ul>
+        </div>
+        <div class="col-lg-6">
+          <ul class="mb-0">
+            <li><strong>Labels on or off</strong>: hiding the labels gives a blank map, which later becomes the quiz mode.</li>
+            <li><strong>Save as picture</strong>: download the current sheet as a PNG poster.</li>
+            <li><strong>Phones</strong>: portrait shows the whole sheet; landscape shows the sheet with the menu at the side. Tap targets are at least 44 px.</li>
+            <li><strong>Keyboard</strong>: arrow keys pan, <kbd>+</kbd>/<kbd>−</kbd> zoom, <kbd>L</kbd> toggles labels, <kbd>/</kbd> opens search.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. Deliverables -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">7</span>Deliverables and folder layout</div>
+      <div class="row g-3">
+        <div class="col-lg-6">
+<pre class="tree">C:\Daya\RAGchamp\GAMES\
+├── index.html                <span class="c">← portal: add a Geography card (Phase 6)</span>
+├── GAME-3-Geography\
+│   ├── WORLD-MAP.html        <span class="c">← the map viewer (?check runs the checks)</span>
+│   ├── data\
+│   │   ├── world-shapes.js   <span class="c">← generated shapes + country records</span>
+│   │   ├── flags.js          <span class="c">← generated flag sprite</span>
+│   │   ├── relief.js         <span class="c">← generated hillshade picture</span>
+│   │   └── sheets.js         <span class="c">← hand-written sheet settings</span>
+│   ├── tools\
+│   │   ├── download-data.mjs  <span class="c">← npm run download</span>
+│   │   ├── build-map-data.mjs <span class="c">← npm run build (shapes)</span>
+│   │   ├── build-images.py    <span class="c">← relief + flag sprite (Python, Chrome)</span>
+│   │   ├── check-map.mjs      <span class="c">← npm run check</span>
+│   │   └── raw\              <span class="c">← downloads, not committed</span>
+│   └── sample-map.jpg        <span class="c">← local reference, not committed</span>
+└── info\
+    └── GEOGRAPHY-MAP-PLAN.html <span class="c">← this page</span></pre>
+        </div>
+        <div class="col-lg-6">
+          <ul class="mb-2">
+            <li><strong>Opens with a double-click</strong> (<code>file:///</code>), with no server needed, like the other games.</li>
+            <li><strong>No outside scripts in the map page.</strong> Only the info pages use Bootstrap from the CDN.</li>
+            <li><strong>Size budget:</strong> shapes ≤ 1.5 MB, flags ≤ 0.5 MB, relief ≤ 1 MB, so the whole map is about 3 MB and opens in about a second.</li>
+            <li><strong>Data credits</strong> (Natural Earth, flag-icons) are shown in a small "About the map" box on the page.</li>
+            <li><strong>Same look as the portal</strong> on the info pages: navy sticky top nav with the logo, a pink "how AI plays a part" box, yellow numbered step cards and a navy footer.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8. Build phases -->
+  <h2 class="h5 fw-bold mt-4 mb-3">Build phases</h2>
+
+  <div class="card shadow-sm mb-3 phase">
+    <div class="card-body">
+      <h2 class="h6 fw-bold">Phase 1: Map data pipeline ✅ done 22 Nov 2026</h2>
+      <ul>
+        <li>Write <code>tools/build-map-data.mjs</code> (Node.js 24 is already installed): download, clean, simplify and pack the Natural Earth shapes as in step 3.</li>
+        <li>Build the country list (step 2) with names, capitals, continents and region sheets, and fix the known awkward cases: French Guiana, Kosovo, Western Sahara, Northern Cyprus, Somaliland and countries split by the date line (Russia, Fiji, Kiribati).</li>
+        <li>Work out neighbours, pick map colours and find each country's label point.</li>
+        <li><em>Built:</em> <code>tools/build-map-data.mjs</code> merges the two Natural Earth files at 1:10m and simplifies them to about 2 km detail. India's view is used for India, Pakistan, China, Ukraine, Russia, Israel, Lebanon, Sudan, Brazil, Colombia, Greenland and Kazakhstan. It is <em>not</em> used for Cyprus, Morocco, Serbia and Somalia, because there it would hide Northern Cyprus, Western Sahara, Kosovo and Somaliland, which were agreed to be shown. Result: 195 countries, 45 territories and 21 unlabelled areas in a 0.9 MB file. Every UN country is present, no neighbours share a colour, and the colours are used evenly (44/44/44/43/43/43).</li>
+      </ul>
+      <div class="accept"><b>Done when:</b> The script runs with one command, every one of the ~250 map units has a valid shape and a record, no two neighbours share a colour, and the shapes file is under 1.5 MB.</div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mb-3 phase p2">
+    <div class="card-body">
+      <h2 class="h6 fw-bold">Phase 2: Plain world map ✅ done 22 Nov 2026</h2>
+      <ul>
+        <li>The <code>WORLD-MAP.html</code> page with our own Equal Earth and Lambert projections.</li>
+        <li>Draw the world sheet: navy sea, coloured countries, white borders and coastline, sharp on high-resolution screens.</li>
+        <li>Pan, zoom and tap-to-highlight, with a simple name card. Tiny-country ring markers.</li>
+        <li><em>Built:</em> the sea, shadow and relief are drawn once per sheet into hidden canvases, so panning only redraws the coloured shapes, borders and labels. A sheet takes about 0.3–0.7 s to prepare.</li>
+      </ul>
+      <div class="accept"><b>Done when:</b> All countries are visible on the world sheet, every one can be tapped and shows the right name, and dragging stays smooth (30+ fps) on a phone.</div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mb-3 phase p3">
+    <div class="card-body">
+      <h2 class="h6 fw-bold">Phase 3: The poster look ✅ done 22 Nov 2026</h2>
+      <ul>
+        <li>Add the relief: re-project the hillshade, clip it to the land and blend it over the colours.</li>
+        <li>Raised-land shadow, coast glow and the yellow title banner.</li>
+        <li>Tune colours and relief strength side by side with the reference picture until it feels the same.</li>
+      </ul>
+      <div class="accept"><b>Done when:</b> A South America sheet placed next to the reference picture has the same feel: bright flat colours, visible Andes and Amazon texture, white borders and a raised look.</div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mb-3 phase p4">
+    <div class="card-body">
+      <h2 class="h6 fw-bold">Phase 4: Region sheets, flag labels and arrows ✅ done 22 Nov 2026</h2>
+      <ul>
+        <li>The flag sprite and the white flag labels with the light-blue rim.</li>
+        <li>Automatic label placement around the edge with red arrows, plus manual nudges in <code>sheets.js</code> where the automatic layout needs help.</li>
+        <li>All the sheets from step 4, the continent overviews and the sheet menu. The South America sheet is built first, as the test against the reference picture.</li>
+        <li><em>Built:</em> 22 sheets (the world, 4 continent overviews and 17 region sheets) in <code>data/sheets.js</code>. Labels hug the land, and a search that swaps label slots removes any crossing arrows. One manual nudge was needed (Serbia's arrow point on the Southern Europe sheet). Small territories such as Aruba get a ring marker but no label, so that no sheet has more than 20 labels. Somaliland and Northern Cyprus are not in the flag set, so their flags are drawn in code.</li>
+      </ul>
+      <div class="accept"><b>Done when:</b> Every sheet shows a label for each of its countries, with no overlapping labels, no crossing arrows and every arrow tip inside the right country.</div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mb-3 phase p5">
+    <div class="card-body">
+      <h2 class="h6 fw-bold">Phase 5: Country cards, search, phones and saving ✅ done 22 Nov 2026</h2>
+      <ul>
+        <li>Country card with flag, name, official name, capital and continent.</li>
+        <li>Search box, labels on/off, "Save as picture" (PNG).</li>
+        <li>Phone portrait and landscape layouts, pinch zoom and large tap targets.</li>
+      </ul>
+      <div class="accept"><b>Done when:</b> The map works with touch alone on a phone held either way, and a saved PNG looks like a finished poster.</div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mb-3 phase p6">
+    <div class="card-body">
+      <h2 class="h6 fw-bold">Phase 6: Coverage check and portal card (checks done, portal card to do)</h2>
+      <ul>
+        <li><code>map-check.html</code>: a grid of every country with its outline, flag, name, capital and sheet, and a red warning for anything missing. It also runs the automatic checks from step 9. <em>Changed:</em> instead of a separate page, <code>WORLD-MAP.html?check</code> runs the automatic checks on every sheet, and <code>tools/check-map.mjs</code> (<code>npm run check</code>) drives Chrome to run them. It also taps Brazil, Vatican City, San Marino, Kashmir, Aksai Chin, Crimea and Fiji, tries the search, and tests a phone screen held both ways. All pass with no page errors.</li>
+        <li>Add a Geography card to <code>GAMES/index.html</code> ("World Map", with the quiz game marked as coming next).</li>
+      </ul>
+      <div class="accept"><b>Done when:</b> The coverage page shows all countries in green with no warnings, and the map opens from the portal.</div>
+    </div>
+  </div>
+
+  <!-- 9. Scope + tests -->
+  <div class="card shadow-sm step-card mb-3 mt-4">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">8</span>Scope at a glance</div>
+      <div class="table-responsive">
+        <table class="table table-sm plan mb-0">
+          <thead><tr><th>Feature</th><th>Priority</th><th>Phase</th></tr></thead>
+          <tbody>
+            <tr><td>All countries with correct shapes, names and capitals</td><td><span class="tag tag-must">MUST</span></td><td>1</td></tr>
+            <tr><td>World sheet with pan, zoom and tap</td><td><span class="tag tag-must">MUST</span></td><td>2</td></tr>
+            <tr><td>Bright neighbour-safe colours and white borders</td><td><span class="tag tag-must">MUST</span></td><td>2</td></tr>
+            <tr><td>Relief texture and raised-land look</td><td><span class="tag tag-must">MUST</span></td><td>3</td></tr>
+            <tr><td>Region sheets with flag labels and red arrows</td><td><span class="tag tag-must">MUST</span></td><td>4</td></tr>
+            <tr><td>Country card, search, phone layouts</td><td><span class="tag tag-must">MUST</span></td><td>5</td></tr>
+            <tr><td>Save sheet as PNG poster</td><td><span class="tag tag-nice">NICE</span></td><td>5</td></tr>
+            <tr><td>Rivers and lakes on the relief</td><td><span class="tag tag-nice">NICE</span></td><td>3</td></tr>
+            <tr><td>Hindi country names as a second language</td><td><span class="tag tag-nice">NICE</span></td><td>later</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">9</span>Test checklist</div>
+      <div class="row">
+        <div class="col-md-6">
+          <ul class="mb-0">
+            <li><strong>Automatic:</strong> every country has a shape, a record, a flag and a sheet; no two neighbours share a colour; no labels overlap; no arrows cross; every arrow tip lies inside its country.</li>
+            <li>Opens from <code>file:///</code> in Chrome, Edge and Firefox with no console errors.</li>
+            <li>Countries crossing the date line (Russia, Fiji) draw without stray lines across the map.</li>
+          </ul>
+        </div>
+        <div class="col-md-6">
+          <ul class="mb-0">
+            <li>Tapping each tiny country (Vatican City, Monaco, Nauru, Tuvalu) selects it, not its neighbour or the sea.</li>
+            <li>The map stays sharp when zoomed in and when a phone is rotated.</li>
+            <li>Spot checks by a person: 20 random countries compared with an atlas for shape, name, capital and flag.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 10. Decisions -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">10</span>Decisions (agreed 22 Nov 2026)</div>
+      <ul class="mb-2">
+        <li><strong>Country list: 195 plus extras shown.</strong> The 195 countries from step 2 count as "countries" in quizzes. Taiwan, Kosovo, Western Sahara and the territories (Greenland, French Guiana and others) are drawn and labelled on the map but are optional in quizzes.</li>
+        <li><strong>Disputed borders: India's official view.</strong> Borders follow Natural Earth's India point-of-view version (for example, all of Jammu and Kashmir, including Ladakh, is shown as part of India). Overseas parts such as French Guiana are still split out as in step 3. The country card adds a short note where a border is disputed.</li>
+        <li><strong>Relief: the real hillshade picture</strong> (step 5), blended over the colours, because it looks most like the reference.</li>
+        <li><strong>Flags: the flag-icons set packed into one sprite.</strong> Flag emoji are not used, because Windows shows them as two letters instead of a flag.</li>
+        <li><strong>Data in separate files.</strong> The generated data lives in <code>data/*.js</code> next to the page, not inside one huge HTML file. This is unlike Car Race and Chintu, which are single files. The map still opens with a double-click.</li>
+        <li><strong>Names: short English.</strong> Labels use short, familiar English names ("Ivory Coast", "Czechia", "Myanmar"), and the country card shows the official name.</li>
+      </ul>
+      <p class="small text-muted mb-0"><strong>What comes after this plan:</strong> once the map is done, later phases turn it into the game. Ideas: "Tap the country" quizzes, dragging the flag labels onto the right arrows (the reference look suits this well), flag matching and a timed "fill the continent" challenge. They will get their own plan.</p>
+    </div>
+  </div>
+
+</main>
+
+<footer class="text-white py-4 mt-5">
+  <div class="container text-center small">AI Games Portal · Geography map plan · <a href="CHINTU-GAME-PLAN.html">🏃 Chintu plan</a> · <a href="CAR-RACE-PLAN.html">🏎️ Car Race plan</a> · <a href="../index.html">🏠 Games Home</a></div>
+</footer>
+
+</body>
+</html>
