@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How Billiards Works</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<!--
+  How Billiards works: the "How it works" page for Game 5 (Phase 6 of the Billiards plan).
+  Explains the table and sizes, how a ball slides then rolls (with top and screw), the 90° rule, side off a
+  cushion, how the referee reads a shot, how Rusty chooses his shot, the views and controls, and what Claude Code
+  built, with a dated timeline. The demos copy the formulas and constants from GAME-5-Billiards/billiards.html
+  (the "sim" script): MU_S, MU_R, E_BALL, E_CUSH, CUSH_KEEP, MU_CUSH, VMAX, TIP_MAX, the ball size, the referee
+  and the level wobbles. If those change, change them here too.
+-->
+<style>
+  :root{
+    --biz-blue:#0d6efd;
+    --biz-blue-dark:#084298;
+    --biz-yellow:#ffc107;
+    --biz-red:#dc3545;
+    --biz-green:#198754;
+    --nav-blue:#04264d;
+    --nav-yellow:#ffd60a;
+  }
+  body{ background:#f7f8fa; margin:0; }
+  .topnav{
+    position:sticky; top:0; z-index:1030;
+    background:var(--nav-blue); color:var(--nav-yellow);
+    padding:.9rem 1.5rem; display:flex; justify-content:space-between; align-items:center;
+    box-shadow:0 .15rem .5rem rgba(0,0,0,.25);
+  }
+  .topnav .brand{ display:inline-flex; align-items:center; text-decoration:none; }
+  .topnav .brand-logo{ height:44px; width:auto; display:block; }
+  .topnav .tagline{ font-weight:600; font-size:1.05rem; color:var(--nav-yellow); letter-spacing:.15em; word-spacing:.6em; font-style:italic; }
+  @media (max-width:576px){ .topnav{ flex-direction:column; text-align:center; gap:.4rem; padding:.75rem 1rem; } }
+
+  .step-num{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:1.9rem; height:1.9rem; border-radius:50%;
+    background:var(--biz-yellow); color:#2b2b2b; font-weight:800; font-size:.95rem; margin-right:.55rem; flex:none;
+  }
+  .step-title{ display:flex; align-items:center; font-weight:700; font-size:1.1rem; margin-bottom:.75rem; }
+  .step-card{ border:2px solid #c9d3e3; border-radius:.6rem; }
+  .ctrl-label{ font-size:.75rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#6c757d; margin-bottom:.25rem; display:block; }
+  .about-box{ background:#fde2ec; border:2px solid #f5a3c0; border-radius:.6rem; padding:.9rem 1.1rem; }
+  .about-box h2{ font-size:1.05rem; font-weight:700; color:#8a1f4a; margin-bottom:.4rem; }
+  .about-box p{ font-size:.92rem; color:#3b2a31; }
+  .facts{ display:flex; flex-wrap:wrap; gap:.6rem; }
+  .fact{ flex:1 1 140px; background:#fff; border:2px solid #dde3ec; border-radius:.6rem; padding:.5rem .75rem; }
+  .fact .val{ font-size:1.35rem; font-weight:800; line-height:1.15; color:var(--nav-blue); }
+  .fact .lbl{ font-size:.75rem; color:#5a6475; }
+  pre.code{ background:#0f1b2d; color:#d7e3f4; border-radius:.5rem; padding:.7rem .9rem; font-size:.8rem; margin:0; white-space:pre-wrap; }
+  pre.code .c{ color:#8fa7c7; }
+  table.ref th{ background:#eef3fb; font-size:.78rem; text-transform:uppercase; letter-spacing:.04em; }
+  table.ref td, table.ref th{ font-size:.88rem; vertical-align:top; }
+  .demo{ background:#fff; border:2px dashed #9ec5fe; border-radius:.6rem; padding:.75rem .9rem; }
+  .demo h3{ font-size:.95rem; font-weight:800; color:var(--biz-blue-dark); margin:0 0 .4rem; }
+  .demo canvas{ width:100%; display:block; border-radius:.45rem; background:#1c8a45; }
+  .demo label{ font-size:.8rem; font-weight:700; color:#3b4656; display:flex; justify-content:space-between; }
+  .demo input[type=range]{ width:100%; }
+  .read{ font-size:.9rem; font-weight:700; }
+  .flow{ display:flex; flex-wrap:wrap; align-items:stretch; gap:.4rem; }
+  .flow .box{ flex:1 1 130px; background:#eef3fb; border:2px solid #c9d3e3; border-radius:.5rem; padding:.45rem .6rem; font-size:.84rem; }
+  .flow .box b{ display:block; color:var(--nav-blue); }
+  .flow .arrow{ align-self:center; font-weight:800; color:#6c757d; }
+  @media (max-width:700px){ .flow .arrow{ display:none; } }
+  .timeline td:first-child{ white-space:nowrap; }
+  .tag{ border-radius:.3rem; padding:0 .35rem; font-size:.7rem; font-weight:700; color:#fff; background:#6c757d; white-space:nowrap; }
+  .tag.chg{ background:var(--biz-red); }
+  .tag.drop{ background:#6c757d; }
+  .shotbtns{ display:flex; flex-wrap:wrap; gap:.35rem; margin-bottom:.5rem; }
+  .shotbtns button{ border:2px solid #c9d3e3; background:#fff; border-radius:2rem; padding:.15rem .65rem; font-size:.8rem; font-weight:700; color:var(--nav-blue); }
+  .shotbtns button.on{ border-color:#c4161c; background:#fdecea; color:#c4161c; }
+  .evlist{ font-family:ui-monospace,Consolas,monospace; font-size:.8rem; background:#0f1b2d; color:#d7e3f4; border-radius:.5rem; padding:.55rem .75rem; margin:0; min-height:6.5em; white-space:pre-wrap; }
+  .verdict{ font-weight:800; font-size:1rem; margin-top:.5rem; }
+  .verdict.foul{ color:#b02a37; } .verdict.ok{ color:#146c43; }
+  kbd{ background:#04264d; }
+  footer{ background:var(--nav-blue); }
+  footer a{ color:#fff; }
+</style>
+</head>
+<body>
+
+<!-- STICKY TOP NAV -->
+<div class="topnav">
+  <a class="brand" href="../index.html"><img class="brand-logo" src="../logo.svg" alt="RAG Champ"></a>
+  <div class="tagline">AI Games Portal</div>
+</div>
+
+<main class="container my-4">
+
+  <div class="about-box mb-4">
+    <h2>What is this page and how does AI play a part?</h2>
+    <p class="mb-0">This page explains how <strong>Game 5: Billiards</strong> works inside: how a struck ball slides and then rolls, why screw brings it back, where two balls go when they meet, how side changes the angle off a cushion, how the referee scores a shot, and how Rusty, the computer, picks his shot. Claude Code (an AI coding agent) wrote the whole game from a <a href="BILLIARDS-GAME-PLAN.html">plan</a>, and a person tested every version on a computer and a phone. <strong>Players don't need any AI to play.</strong> The demos on this page use the same formulas and numbers as the game, so you can try them yourself.</p>
+  </div>
+
+  <h1 class="h3 fw-bold mb-1">🎱 How Billiards Works</h1>
+  <p class="text-muted mb-3"><a href="../GAME-5-Billiards/billiards.html">▶ Play Billiards</a> · <a href="BILLIARDS-GAME-PLAN.html">📋 The development plan</a> · <a href="../index.html">🏠 Games Home</a></p>
+
+  <div class="facts mb-4">
+    <div class="fact"><div class="val">1 file</div><div class="lbl"><code>billiards.html</code>: HTML, CSS and JavaScript together</div></div>
+    <div class="fact"><div class="val">≈ 2,050</div><div class="lbl">lines written for the game, in 3 scripts: rules, 3D eye view, screen</div></div>
+    <div class="fact"><div class="val">0</div><div class="lbl">image or sound files: the table, balls, hand, portraits and every sound are made with code</div></div>
+    <div class="fact"><div class="val">3</div><div class="lbl">balls: Archie's white, Rusty's yellow and the red</div></div>
+    <div class="fact"><div class="val">3</div><div class="lbl">levels for Rusty: Easy, Medium and Hard</div></div>
+    <div class="fact"><div class="val">600</div><div class="lbl">physics steps a second, with every hit timed exactly</div></div>
+  </div>
+
+  <!-- 1. The table -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">1</span>The table, in real sizes (nearly)</div>
+      <p>English billiards is played on a full-size snooker table: <b>3.57 m × 1.78 m</b> inside the cushions, about 12 ft × 6 ft. The game works in metres and seconds, so every distance is real: the baulk line is <b>73.7 cm</b> from the bottom cushion, the D has a radius of <b>29.2 cm</b>, and the red's spot is <b>32.4 cm</b> from the top cushion.</p>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <span class="ctrl-label">Two sizes changed after testing on a phone</span>
+          <ul class="small mb-0">
+            <li><b>The balls are twice real size</b> (10.5 cm across instead of 5.25 cm). Real-size balls on a whole table looked like dots on a phone.</li>
+            <li><b>The pockets are 1.6 times real size.</b> Doubling them with the balls made potting too easy: bigger balls and pockets on the same table look wider from where the ball is. At 2× a careful pot went in 63% of the time; at 1.6× it is 47%. The corner opening is about 1.8 balls wide, close to a real table.</li>
+          </ul>
+        </div>
+        <div class="col-md-6">
+          <span class="ctrl-label">The numbers (from billiards.html)</span>
+<pre class="code">L = 3.569, W = 1.778            <span class="c">// the playing area, metres</span>
+R = 0.02625 * SIZE              <span class="c">// ball radius; SIZE = 2</span>
+POCKET = 1.6                    <span class="c">// pockets against real size</span>
+MU_S = 0.2                      <span class="c">// sliding friction</span>
+MU_R = 0.01                     <span class="c">// rolling friction</span>
+E_BALL = 0.95, E_CUSH = 0.75    <span class="c">// how bouncy balls and cushions are</span>
+VMAX = 7.0                      <span class="c">// the white's speed at full power, m/s</span></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Slide then roll -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">2</span>A ball slides, then rolls: that is how top and screw work</div>
+      <p>When the cue hits the white in the middle, the white <b>slides</b> across the cloth without turning. Friction then grips its bottom and makes it turn, until it is <b>rolling</b> (turning exactly as fast as it moves). Rolling balls slow down very gently, so they run a long way.</p>
+      <p>Hit the white <b>high</b> (top) and it starts with forward spin; hit it <b>low</b> (screw) and it spins backwards. When the white hits another ball full on, the push goes almost all into that ball and the white nearly stops, <b>but its spin carries on</b>: forward spin makes it follow, backward spin pulls it back towards you. That is the whole secret of top and screw.</p>
+      <div class="row g-3">
+        <div class="col-lg-7">
+          <div class="demo">
+            <h3>Try it: a straight shot up the table at the red, 0.8 m away</h3>
+            <canvas id="rollCv" width="700" height="150" aria-label="A strip of table: the white rolls to the red, and its path after the hit is drawn"></canvas>
+            <div class="row g-2 mt-1">
+              <div class="col-6"><label>Power <span id="rollPowV"></span></label><input type="range" id="rollPow" min="10" max="100" value="45"></div>
+              <div class="col-6"><label>Spin <span id="rollSpinV"></span></label><input type="range" id="rollSpin" min="-100" max="100" value="-80"></div>
+            </div>
+            <p class="read mb-0 mt-1" id="rollRead"></p>
+          </div>
+        </div>
+        <div class="col-lg-5">
+          <span class="ctrl-label">Each tiny step, in code</span>
+<pre class="code"><span class="c">// v: speed; r: spin, as the speed it would roll at</span>
+slip = v - r;
+if (slip != 0) {                 <span class="c">// sliding</span>
+  v -= MU_S * g * dir(slip) * dt;
+  r += 2.5 * MU_S * g * dir(slip) * dt;
+} else {                         <span class="c">// rolling</span>
+  v -= MU_R * g * dir(v) * dt;  r = v;
+}
+<span class="c">// the cue hits h above the middle: spin r = 2.5 v h / R</span>
+<span class="c">// ball on ball: speeds swap along the line of centres
+// (95% kept); the spin is not touched</span></pre>
+          <p class="small mt-2 mb-0">The 2.5 comes from the shape of a solid ball. The game runs this 600 times a second for every ball, and finds the exact moment of every hit, so a fast ball never passes through another one.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. The 90 degree rule -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">3</span>Where two balls go: the 90° rule</div>
+      <p>When the white hits a ball off-centre (a <b>cut</b>), the other ball goes off along the line joining the two centres at the moment they touch. If the white is sliding (a <b>stun</b>), it goes off at <b>right angles</b> to that line. If it is rolling, its forward spin bends it further forward. The game's aim guide shows exactly this: the ring is where the balls touch (the <b>ghost ball</b>) and the yellow line is where the hit ball goes.</p>
+      <div class="row g-3">
+        <div class="col-lg-7">
+          <div class="demo">
+            <h3>Try it: change how thick the hit is</h3>
+            <canvas id="cutCv" width="700" height="300" aria-label="The white meets a red off-centre; the red's path and the white's paths (stun and rolling) are drawn"></canvas>
+            <label class="mt-2">Cut angle <span id="cutV"></span></label><input type="range" id="cut" min="0" max="80" value="30">
+            <p class="read mb-0 mt-1" id="cutRead"></p>
+          </div>
+        </div>
+        <div class="col-lg-5">
+          <span class="ctrl-label">Half-ball and full-ball</span>
+          <ul class="small">
+            <li>A <b>full-ball</b> hit (0°) sends the red straight on. A stunned white stops dead; a rolling one follows.</li>
+            <li>A <b>half-ball</b> hit (the white's middle aimed at the red's edge) is a cut of 30°. A rolling white then goes off about 32° from its first path in the game (players learn about 34° on a real table): the angle used for in-offs and cannons.</li>
+            <li>The thinner the cut, the less the red moves and the more the white keeps going.</li>
+          </ul>
+<pre class="code"><span class="c">// the hit: the white keeps its speed across the line of centres
+// and 2.5% along it (E_BALL = 0.95); its spin is not touched</span>
+after = v - 0.975 * (v · n) * n
+<span class="c">// then the cloth turns slide into roll:</span>
+rolling = (5 * after + 2 * spin) / 7</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Side -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">4</span>Side: changing the angle off a cushion</div>
+      <p>Hit the white to one side of its middle and it spins about an upright axis, like a top. That does nothing on the open cloth, but when the white touches a cushion its spinning surface <b>grips the rubber</b> and drags it along. Side the same way the ball is running (<b>running side</b>) widens the angle it comes off at; side the other way (<b>check side</b>) narrows it. Without side, a ball comes off a cushion with 75% of its speed across the cushion and 96% of its speed along it.</p>
+      <div class="row g-3">
+        <div class="col-lg-7">
+          <div class="demo">
+            <h3>Try it: the white comes into the top cushion at 45°</h3>
+            <canvas id="sideCv" width="700" height="260" aria-label="The white comes into a cushion and leaves it; the path with no side is grey, with your side in colour"></canvas>
+            <label class="mt-2">Side <span id="sideV"></span></label><input type="range" id="side" min="-100" max="100" value="60">
+            <p class="read mb-0 mt-1" id="sideRead"></p>
+          </div>
+        </div>
+        <div class="col-lg-5">
+          <span class="ctrl-label">At the cushion, in code</span>
+<pre class="code">out_across = 0.75 * in_across        <span class="c">// E_CUSH</span>
+grip = clamp(side_spin * 2/7,
+             ±0.25 * 1.75 * in_across) <span class="c">// MU_CUSH</span>
+out_along = (in_along + grip) * 0.96 <span class="c">// CUSH_KEEP</span>
+side_spin -= 2.5 * grip              <span class="c">// side is used up</span></pre>
+          <p class="small mt-2 mb-0">In the game you choose spin by tapping a spot on a big picture of the white: above the middle for top, below for screw, to one side for side (keys <kbd>I</kbd> <kbd>K</kbd> <kbd>J</kbd> <kbd>L</kbd>). The cloth slowly wears side away, so it matters most on the first cushion. The <b>Spin school</b> has five set-up shots, each placed (by a computer search) where only the right spin leaves the white in the target circle.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. The referee -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">5</span>How the referee reads a shot</div>
+      <p>While the balls run, the game writes down everything that happens, in order: which ball hit which, which cushions were touched, which balls dropped into which pocket, and when the white crossed the baulk line. When everything is still, a <b>referee</b> function reads only that list and works out the score. Because it never looks at the picture, every rule can be tested with a list of made-up events.</p>
+      <div class="row g-3">
+        <div class="col-lg-7">
+          <div class="demo">
+            <h3>Try it: pick a shot by Archie (white) and see the referee's decision</h3>
+            <div class="shotbtns" id="shotBtns"></div>
+            <pre class="evlist" id="evList"></pre>
+            <div class="verdict" id="verdict"></div>
+          </div>
+        </div>
+        <div class="col-lg-5">
+          <table class="table table-sm table-bordered ref mb-2">
+            <thead><tr><th>Score</th><th>Points</th></tr></thead>
+            <tbody>
+              <tr><td>Red pot</td><td>3</td></tr>
+              <tr><td>Pot of the other player's ball</td><td>2</td></tr>
+              <tr><td>In-off red (white goes in after hitting the red first)</td><td>3</td></tr>
+              <tr><td>In-off the other ball</td><td>2</td></tr>
+              <tr><td>Cannon (white hits both other balls)</td><td>2</td></tr>
+              <tr><td><b>Fouls</b> (to the other player): miss 2, white in without hitting a ball 3, hitting a ball in baulk from hand 2</td><td></td></tr>
+            </tbody>
+          </table>
+          <p class="small mb-0">Scores in one shot add up, up to 10. You keep playing while every shot scores; the run is your <b>break</b>. A potted red goes back on its spot; a potted white or yellow waits off the table until its owner's turn, then is played from the D.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. Rusty -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">6</span>How Rusty chooses his shot</div>
+      <p>Rusty isn't an AI that learned billiards. He is a short, plain program that <b>tries shots in the game's own physics</b> before he plays one, so his plans always match what will really happen.</p>
+      <div class="flow mb-3">
+        <div class="box"><b>1. Make a list</b>From where his ball lies (or the best spots in the D): a pot of each ball into each pocket it lines up with, and hits from thick to thin for cannons and in-offs, at a few paces, with spin on Medium and Hard.</div>
+        <div class="arrow">→</div>
+        <div class="box"><b>2. Try each one</b>Play it in the sim, ask the referee for the points, and look at where the balls stop: an easy next shot for him is good; on Hard, an easy shot for Archie is bad.</div>
+        <div class="arrow">→</div>
+        <div class="box"><b>3. Look ahead (Hard)</b>For his best two scoring shots, search again from where the balls stop, and add the best follow-up.</div>
+        <div class="arrow">→</div>
+        <div class="box"><b>4. Play it, with a wobble</b>His aim and pace are a little off, by a random amount that shrinks with the level.</div>
+      </div>
+      <div class="row g-3">
+        <div class="col-lg-7">
+          <div class="demo">
+            <h3>Try it: Rusty's wobble on a 2 m pot</h3>
+            <canvas id="wobCv" width="700" height="200" aria-label="Lines spreading from the white towards a pocket 2 m away show how far Rusty's aim strays at each level"></canvas>
+            <div class="shotbtns mt-2" id="wobBtns"></div>
+            <p class="read mb-0" id="wobRead"></p>
+          </div>
+        </div>
+        <div class="col-lg-5">
+          <table class="table table-sm table-bordered ref mb-2">
+            <thead><tr><th>Level</th><th>Aim wobble</th><th>Shots tried</th><th>Plays safe</th></tr></thead>
+            <tbody>
+              <tr><td>Easy</td><td>±1.4°</td><td>up to 70</td><td>no</td></tr>
+              <tr><td>Medium</td><td>±0.45°</td><td>up to 150</td><td>no</td></tr>
+              <tr><td>Hard</td><td>±0.12°</td><td>up to 120, plus look-ahead</td><td>yes</td></tr>
+            </tbody>
+          </table>
+          <p class="small mb-0">Rusty thinks a few shots each frame, so the screen never freezes while his cue drifts across what he is considering. On a laptop Hard decides in about a third of a second; after 1.5 s of thinking he plays his best shot so far, so a slow phone never keeps you waiting. In 50 computer-v-computer games, <b>Hard scored 6.8 times as many points as Easy</b> and won all 50; <b>Medium beat Easy 50 times out of 51</b>.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. Views and controls -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">7</span>Two views, and how you play</div>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <span class="ctrl-label">Top view (the default)</span>
+          <ul class="small mb-3">
+            <li>The table from above, drawn once and kept, so each frame only draws the balls, the cue and the guide: smooth on phones.</li>
+            <li><b>Aim</b> by pressing on the cue stick and swinging it round the white; fine aim with ◀ ▶.</li>
+            <li><b>Shoot</b> by pulling the power cue on the right down and letting go: the further you pull, the harder the shot (push it back up to cancel).</li>
+            <li>In a game, Archie's and Rusty's portraits (drawn in code) sit beside the table, and the one whose turn it is is framed in yellow.</li>
+          </ul>
+        </div>
+        <div class="col-md-6">
+          <span class="ctrl-label">Eye view (the Top / Eye switch, or V)</span>
+          <ul class="small mb-3">
+            <li>Low behind the white, looking along the shot, with the cue resting on a bridge hand. Drag left or right to aim, up or down to raise your eye; Power slider and SHOOT.</li>
+            <li>Drawn in 3D with <b>three.js</b> (an open-source WebGL library): the table under a lamp, shiny balls with soft shadows, and a 3D hand. The guide and spin hint are drawn on top through the same camera.</li>
+            <li>three.js is kept inside the game file and started only the first time you open the Eye view, so the game still works with no internet. Without WebGL it falls back to a hand-drawn eye view.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8. What Claude Code built -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">8</span>What Claude Code built, and how it was checked</div>
+      <p class="small">Claude Code wrote the game from the plan. The only borrowed code is the three.js library for the Eye view. The game file has three scripts, plus three.js as plain text:</p>
+      <div class="flow mb-3">
+        <div class="box"><b>sim: the rules</b>The table, the ball physics, the referee, the Spin school and Rusty. It draws nothing, so test programs can play whole games without a browser.</div>
+        <div class="arrow">→</div>
+        <div class="box"><b>eye3d: the 3D view</b>Builds the table, balls, cue and hand in three.js, and moves them each frame from the game.</div>
+        <div class="arrow">→</div>
+        <div class="box"><b>game-ui: the screen</b>The Top view, controls, menus, sound and saving. It asks the rules what happened and shows it.</div>
+      </div>
+
+      <span class="ctrl-label">Timeline</span>
+      <p class="small mb-2"><span class="tag chg">changed</span> marks changes that came from a person testing the game.</p>
+      <table class="table table-sm table-bordered ref timeline mb-3">
+        <thead><tr><th>When</th><th>What was built</th></tr></thead>
+        <tbody>
+          <tr><td>23 Nov 2026</td><td><b>The plan:</b> English billiards with white, yellow and red, Archie against Rusty, scoring, two views and 6 build phases.</td></tr>
+          <tr><td>23 Nov 2026</td><td><b>Phases 1 and 2, the table, the physics and the rules:</b> sliding and rolling, exact hits, pockets with jaws, the aim guide, the Practice table, the referee, turns, breaks and a stand-in Rusty. A simple card on the portal.</td></tr>
+          <tr><td>23 Nov 2026</td><td><span class="tag chg">changed</span> After phone testing: the balls made twice real size, then the pockets cut back to 1.6× because potting had become too easy.</td></tr>
+          <tr><td>23 Nov 2026</td><td><b>Phase 3, spin and the Eye view:</b> top, screw and side, the spin hint, the Spin school, and an eye view behind the white. <span class="tag chg">changed</span> A Top / Eye switch; the bridge hand redrawn from a photo; then the eye view rebuilt in 3D with three.js after a test page showed how it would look; the first finger turned and joined on.</td></tr>
+          <tr><td>23 Nov 2026</td><td><span class="tag chg">changed</span> Aim by grabbing the cue stick; shoot by pulling a power cue down; bigger scores; portraits of Archie and Rusty beside the table; the power cue moved to the right; no portraits on the Practice table or in the Spin school.</td></tr>
+          <tr><td>23 Nov 2026</td><td><b>Phase 4, Rusty:</b> Easy, Medium and Hard, the shot search, look-ahead and safety play. The physics made about 4 times faster (with exactly the same results) so he can try enough shots.</td></tr>
+          <tr><td>23 Nov 2026</td><td><span class="tag drop">dropped</span> <b>Phase 5:</b> Archie and Rusty drawn from above, walking to the table and cueing, plus a shot replay and applause. Seen from above they looked as if they were walking on the table, so it was taken out before it went live.</td></tr>
+          <tr><td>23 Nov 2026</td><td><b>Phase 6:</b> this page and the full portal card.</td></tr>
+        </tbody>
+      </table>
+
+      <span class="ctrl-label">How it was checked</span>
+      <ul class="small mb-0">
+        <li><b>Node tests</b> play shots with the real rules: screw brings the white back, top makes it follow, side changes the cushion angle by more than 5°, the same shot always gives the same result, and balls never overlap or leave the table.</li>
+        <li><b>The Spin school</b> was built by a search over thousands of shots: no plain middle-of-the-ball hit makes any of the five, and the spin each one teaches does.</li>
+        <li><b>Computer-v-computer games</b> in Node (50 Hard v Easy, 51 Medium v Easy) checked that each level is stronger than the one below, and how long Rusty takes to choose.</li>
+        <li><b>A test browser</b> opened the game, aimed, pulled the power cue, played drills and matches in both views, and took screenshots, checking for errors.</li>
+        <li><b>People</b> played it on a laptop and a phone, which led to the bigger balls, the 1.6× pockets, the 3D eye view, the hand, the cue-stick aiming, the power cue and the portraits, and to dropping Phase 5.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="text-center my-4">
+    <a class="btn btn-lg fw-bold text-white px-4" style="background:#04264d;border:3px solid #ffd60a;border-radius:2rem;color:#ffd60a!important" href="../GAME-5-Billiards/billiards.html">▶ Play Billiards</a>
+    <a class="btn btn-lg fw-bold px-4 ms-2" style="border:2px solid #04264d;color:#04264d;border-radius:2rem" href="../index.html">🏠 Games Home</a>
+  </div>
+  <p class="small text-muted text-center">Eye view: three.js by the three.js authors (MIT licence). Everything else written with Claude Code.</p>
+
+</main>
+
+<footer class="text-white py-4 mt-5">
+  <div class="container text-center small">AI Games Portal · How Billiards works · <a href="../GAME-5-Billiards/billiards.html">🎱 Play Billiards</a> · <a href="BILLIARDS-GAME-PLAN.html">📋 Billiards plan</a> · <a href="HOW-JAVELIN-WORKS.html">💡 How Javelin works</a> · <a href="HOW-CHINTU-WORKS.html">💡 How Chintu works</a> · <a href="HOW-CAR-RACE-WORKS.html">💡 How Car Race works</a> · <a href="../index.html">🏠 Games Home</a></div>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const DEG = Math.PI / 180;
+
+  /* ---------- The game's numbers (copied from the sim script in billiards.html) ---------- */
+  const G = 9.81, MU_S = 0.2, MU_R = 0.01, E_BALL = 0.95, E_CUSH = 0.75, CUSH_KEEP = 0.96, MU_CUSH = 0.25;
+  const VMAX = 7.0, TIP_MAX = 0.5, R = 0.02625 * 2, BAULK = 0.737;
+
+  // a canvas drawn at the screen's sharpness
+  function ctxOf(cv) {
+    const w = cv.width, h = cv.height, dpr = Math.min(window.devicePixelRatio || 1, 2);
+    if (!cv.dataset.w) { cv.dataset.w = w; cv.dataset.h = h; cv.width = w * dpr; cv.height = h * dpr; }
+    const c = cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0); return [c, +cv.dataset.w, +cv.dataset.h];
+  }
+  function ball(c, x, y, r, col) {
+    const g = c.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.1, x, y, r * 1.05);
+    const cols = { white: ['#fff', '#f2efe4', '#a9a493'], red: ['#ff8a80', '#c4161c', '#5c0a0d'], yellow: ['#fff3a8', '#f2c300', '#8a6a00'] }[col];
+    g.addColorStop(0, cols[0]); g.addColorStop(0.45, cols[1]); g.addColorStop(1, cols[2]);
+    c.fillStyle = 'rgba(0,0,0,.3)'; c.beginPath(); c.ellipse(x + r * 0.25, y + r * 0.3, r, r * 0.9, 0, 0, 7); c.fill();
+    c.fillStyle = g; c.beginPath(); c.arc(x, y, r, 0, 7); c.fill();
+  }
+  function cloth(c, w, h) {
+    const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#22a052'); g.addColorStop(1, '#17803d');
+    c.fillStyle = g; c.fillRect(0, 0, w, h);
+  }
+  const arrowLine = (c, x0, y0, x1, y1, col, w, dash) => {
+    c.strokeStyle = col; c.lineWidth = w; c.setLineDash(dash || []); c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y1); c.stroke(); c.setLineDash([]);
+    const a = Math.atan2(y1 - y0, x1 - x0); c.fillStyle = col; c.beginPath(); c.moveTo(x1, y1);
+    c.lineTo(x1 - 10 * Math.cos(a - 0.4), y1 - 10 * Math.sin(a - 0.4)); c.lineTo(x1 - 10 * Math.cos(a + 0.4), y1 - 10 * Math.sin(a + 0.4)); c.fill();
+  };
+
+  /* ---------- Demo: slide then roll (a straight shot, the game's friction and ball-on-ball rules in one line) ---------- */
+  function rollDemo() {
+    const pow = $('rollPow').value / 100, sp = $('rollSpin').value / 100;
+    $('rollPowV').textContent = Math.round(pow * 100) + '%';
+    $('rollSpinV').textContent = sp > 0.05 ? 'top ' + Math.round(sp * 100) + '%' : sp < -0.05 ? 'screw ' + Math.round(-sp * 100) + '%' : 'middle';
+    // the whole length of the table: the white starts 0.6 m from the bottom cushion; the red drops off at the top
+    const D = 0.8, dt = 1 / 600, BACK = -0.6 + R, TOP = 3.569 - 0.6 - R, RED_OFF = 3.2 - 0.6;
+    let x = 0, v = VMAX * pow, r = 2.5 * TIP_MAX * v * sp, ox = D, ov = 0, orr = 0, hit = false, t = 0, offTop = false, offBack = false;
+    const path = [[0, 0]], opath = [];
+    function fric(v, r, k) {   // one small step of the cloth's friction on one ball
+      const u = v - r;
+      if (Math.abs(u) > 1e-6) {
+        const a = MU_S * G * k, s = Math.sign(u);
+        let nv = v - s * a, nr = r + s * 2.5 * a;
+        if (Math.sign(nv - nr) !== s) { const m = (2.5 * v + r) / 3.5; nv = m; nr = m; }   // has started to roll
+        return [nv, nr];
+      }
+      if (v === 0) return [0, 0];
+      const nv = Math.abs(v) <= MU_R * G * k ? 0 : v - Math.sign(v) * MU_R * G * k;
+      return [nv, nv];
+    }
+    while (t < 20 && (Math.abs(v) > 1e-4 || Math.abs(r) > 1e-4 || Math.abs(ov) > 1e-4)) {
+      [v, r] = fric(v, r, dt); [ov, orr] = fric(ov, orr, dt);
+      x += v * dt; ox += ov * dt; t += dt;
+      if (!hit && x >= D - 2 * R) { hit = true; x = D - 2 * R; const vo = (1 + E_BALL) / 2 * v; ov = vo; v = (1 - E_BALL) / 2 * v; }
+      if (x <= BACK && v < 0) { x = BACK; v = -E_CUSH * v; r = 0.6 * v; offBack = true; }   // off a cushion (as in the game)
+      if (x >= TOP && v > 0) { x = TOP; v = -E_CUSH * v; r = 0.6 * v; offTop = true; }
+      if (ox > RED_OFF) ov = 0;
+      if (Math.round(t / dt) % 6 === 0) { path.push([t, x]); if (hit) opath.push(ox); }
+    }
+    const [c, w, h] = ctxOf($('rollCv'));
+    cloth(c, w, h);
+    const sx = m => 20 + (m + 0.6) * (w - 40) / 3.569, cy = h / 2, rp = R * (w - 40) / 3.569;
+    c.fillStyle = '#0d5f2e'; c.fillRect(0, 0, sx(-0.6), h); c.fillRect(sx(2.969), 0, w, h);
+    c.fillStyle = '#5a3820'; c.fillRect(0, 0, sx(-0.6) - 8, h); c.fillRect(sx(2.969) + 8, 0, w, h);
+    c.strokeStyle = 'rgba(255,255,255,.25)'; c.lineWidth = 1;
+    for (let m = 0; m <= 2.4; m += 0.2) { c.beginPath(); c.moveTo(sx(m), h - 12); c.lineTo(sx(m), h - 6); c.stroke(); }
+    c.fillStyle = 'rgba(255,255,255,.6)'; c.font = '11px system-ui'; c.fillText('0', sx(0) - 3, h - 14); c.fillText('1 m', sx(1) - 8, h - 14); c.fillText('2 m', sx(2) - 8, h - 14);
+    // the white's path: before the hit (dashed) and after it (solid, offset a little so it shows)
+    c.strokeStyle = 'rgba(255,255,255,.5)'; c.setLineDash([4, 5]); c.lineWidth = 2; c.beginPath(); c.moveTo(sx(0), cy); c.lineTo(sx(D - 2 * R), cy); c.stroke(); c.setLineDash([]);
+    const end = x, contact = D - 2 * R;
+    c.strokeStyle = end < contact ? '#9fe0ff' : '#ffd60a'; c.lineWidth = 3; c.beginPath(); c.moveTo(sx(contact), cy + 16); c.lineTo(sx(end), cy + 16); c.stroke();
+    if (Math.abs(end - contact) > 0.02) arrowLine(c, sx(contact), cy + 16, sx(end), cy + 16, end < contact ? '#9fe0ff' : '#ffd60a', 3);
+    if (ox < RED_OFF) ball(c, sx(ox), cy, rp, 'red'); else { c.fillStyle = 'rgba(255,255,255,.8)'; c.fillText('red off the table', sx(2.969) - 100, cy - 20); }
+    ball(c, sx(end), cy, rp, 'white');
+    c.fillStyle = 'rgba(255,255,255,.8)'; c.fillText('the red was here', sx(D) - 30, cy - rp - 8);
+    const moved = end - contact;
+    const via = offTop ? ' (after following the red up to the top cushion and coming back off it)' : offBack ? ' (after coming back into the bottom cushion)' : '';
+    $('rollRead').textContent = Math.abs(moved) < 0.03 && !offTop && !offBack ? 'Stun: the white stops dead where it hit the red.'
+      : 'The white stopped ' + Math.abs(moved).toFixed(2) + ' m ' + (moved < 0 ? 'back towards you from' : 'past') + ' the spot where it hit the red' + via + '.';
+  }
+  for (const id of ['rollPow', 'rollSpin']) $(id).addEventListener('input', rollDemo);
+
+  /* ---------- Demo: the 90 degree rule ---------- */
+  function cutDemo() {
+    const a = $('cut').value * DEG;
+    $('cutV').textContent = $('cut').value + '°';
+    const [c, w, h] = ctxOf($('cutCv'));
+    cloth(c, w, h);
+    const s = 150, rp = R * s * 2.2;   // pixels per metre (balls drawn a little bigger for clarity)
+    const red = [w * 0.5, h * 0.5];
+    // the red goes off along the line of centres, at angle a to the white's path (white comes in from the left)
+    const objDir = [Math.cos(-a), Math.sin(-a)];
+    const ghost = [red[0] - objDir[0] * 2 * rp, red[1] - objDir[1] * 2 * rp];
+    const start = [ghost[0] - 2.2 * s, ghost[1]];
+    arrowLine(c, start[0], start[1], ghost[0] - rp, ghost[1], 'rgba(255,255,255,.7)', 2, [5, 5]);
+    // the white's paths: stun (at right angles) and rolling (bent forward)
+    // a rolling white (spin = its speed, along its path) after the hit, as in the game: see the code beside this demo
+    const n = [Math.sin(a), Math.cos(a)], vn = n[1], k = (1 + E_BALL) / 2 * vn;
+    const after = [-k * n[0], 1 - k * n[1]], fin = [(5 * after[0]) / 7, (5 * after[1] + 2) / 7];
+    const turn = Math.atan2(-fin[0], fin[1]);
+    if (a > 0.01) {
+      const stun = [Math.cos(Math.PI / 2 - a), Math.sin(Math.PI / 2 - a)];
+      arrowLine(c, ghost[0], ghost[1], ghost[0] + stun[0] * 105, ghost[1] + stun[1] * 105, '#9fe0ff', 3);
+      arrowLine(c, ghost[0], ghost[1], ghost[0] + Math.cos(turn) * 150, ghost[1] + Math.sin(turn) * 150, '#ffffff', 3, [7, 5]);
+    }
+    arrowLine(c, red[0], red[1], red[0] + objDir[0] * 130, red[1] + objDir[1] * 130, '#ffd60a', 3);
+    c.strokeStyle = 'rgba(255,255,255,.8)'; c.lineWidth = 1.5; c.beginPath(); c.arc(ghost[0], ghost[1], rp, 0, 7); c.stroke();
+    ball(c, red[0], red[1], rp, 'red');
+    ball(c, start[0], start[1], rp, 'white');
+    c.font = '12px system-ui'; c.fillStyle = '#ffd60a'; c.fillText('red', red[0] + objDir[0] * 135 + 4, red[1] + objDir[1] * 135);
+    if (a > 0.01) {
+      c.fillStyle = '#9fe0ff'; c.fillText('white, stunned', clamp(ghost[0] + Math.cos(Math.PI / 2 - a) * 108 - 30, 4, w - 110), clamp(ghost[1] + Math.sin(Math.PI / 2 - a) * 108 + 14, 14, h - 6));
+      c.fillStyle = '#fff'; c.fillText('white, rolling', clamp(ghost[0] + Math.cos(turn) * 150 + 8, 4, w - 100), clamp(ghost[1] + Math.sin(turn) * 150, 14, h - 6));
+    }
+    c.fillStyle = 'rgba(255,255,255,.7)'; c.fillText('ghost ball', ghost[0] - 28, ghost[1] - rp - 6);
+    $('cutRead').textContent = a < 0.01 ? 'Full-ball: the red goes straight on; a stunned white stops dead, a rolling white follows.'
+      : 'The red goes ' + Math.round(a / DEG) + '° to the right of the white\'s path; a stunned white goes off ' + Math.round(90 - a / DEG) + '° to the left, a rolling one ' + Math.round(turn / DEG) + '° to the left.';
+  }
+  $('cut').addEventListener('input', cutDemo);
+
+  /* ---------- Demo: side off a cushion (the game's cushion rule) ---------- */
+  function sideDemo() {
+    const sd = $('side').value / 100;
+    $('sideV').textContent = Math.abs(sd) < 0.05 ? 'none' : (sd > 0 ? 'running ' : 'check ') + Math.round(Math.abs(sd) * 100) + '%';
+    const v = 2, vn = v * Math.SQRT1_2, vt = v * Math.SQRT1_2;
+    const out = s => {
+      const sz = 2.5 * TIP_MAX * v * s, lim = MU_CUSH * (1 + E_CUSH) * vn, dv = clamp(sz * 2 / 7, -lim, lim);
+      return [(vt + dv) * CUSH_KEEP, E_CUSH * vn];
+    };
+    const [c, w, h] = ctxOf($('sideCv'));
+    cloth(c, w, h);
+    c.fillStyle = '#0d5f2e'; c.fillRect(0, 0, w, 22); c.fillStyle = '#5a3820'; c.fillRect(0, 0, w, 12);
+    const hitP = [w * 0.42, 22 + R * 170], s = 140;
+    const inStart = [hitP[0] - vt / v * 190, hitP[1] + vn / v * 190];
+    arrowLine(c, inStart[0], inStart[1], hitP[0], hitP[1], 'rgba(255,255,255,.8)', 3);
+    const plain = out(0), mine = out(sd);
+    const draw = (o, col, dash) => { const l = Math.hypot(o[0], o[1]); arrowLine(c, hitP[0], hitP[1], hitP[0] + o[0] / l * 230, hitP[1] + o[1] / l * 230, col, 3, dash); };
+    draw(plain, 'rgba(255,255,255,.45)', [6, 6]);
+    if (Math.abs(sd) >= 0.05) draw(mine, sd > 0 ? '#ffd60a' : '#9fe0ff');
+    ball(c, inStart[0], inStart[1], R * s * 1.6, 'white');
+    const ang = o => Math.round(Math.atan2(o[0], o[1]) / DEG);
+    c.font = '12px system-ui'; c.fillStyle = 'rgba(255,255,255,.8)'; c.fillText('in at 45°', inStart[0] + 14, inStart[1] - 6);
+    $('sideRead').textContent = 'It comes in at 45° from straight on. With no side it leaves at ' + ang(plain) + '°' +
+      (Math.abs(sd) < 0.05 ? '.' : '; with ' + (sd > 0 ? 'running' : 'check') + ' side at ' + ang(mine) + '° (' + (ang(mine) > ang(plain) ? 'wider' : 'narrower') + ').');
+  }
+  $('side').addEventListener('input', sideDemo);
+
+  /* ---------- Demo: the referee (the same function as in billiards.html) ---------- */
+  const OTHER = { white: 'yellow', yellow: 'white' };
+  const VALUE = { cannon: 2, potRed: 3, potOpp: 2, inoffRed: 3, inoffOpp: 2, inoffSplit: 2 };
+  const PENALTY = { miss: 2, coup: 3, baulk: 2 };
+  function referee(striker, events, start, fromHand) {
+    const opp = OTHER[striker];
+    const res = { striker, points: 0, parts: [], foul: null, penalty: 0, first: null, split: false };
+    const cueHits = [];
+    for (const e of events) if (e.type === 'hit' && (e.a === striker || e.b === striker)) cueHits.push({ t: e.t, id: e.a === striker ? e.b : e.a });
+    const potted = id => events.some(e => e.type === 'pot' && e.ball === id);
+    const foul = k => { res.foul = k; res.penalty = PENALTY[k]; return res; };
+    if (!cueHits.length) return foul(potted(striker) ? 'coup' : 'miss');
+    const first = cueHits[0];
+    res.first = first.id;
+    res.split = cueHits.some(h => h.id !== first.id && h.t - first.t < 1e-9);
+    if (fromHand) {
+      const ob = start.find(b => b.id === first.id);
+      const out = events.some(e => e.type === 'cross' && e.ball === striker && e.t <= first.t);
+      if (ob && ob.y <= BAULK && !out) return foul('baulk');
+    }
+    const add = k => { res.parts.push({ k, pts: VALUE[k] }); res.points += VALUE[k]; };
+    const touched = new Set(cueHits.map(h => h.id));
+    if (touched.has('red') && touched.has(opp)) add('cannon');
+    if (potted('red')) add('potRed');
+    if (potted(opp)) add('potOpp');
+    if (potted(striker)) add(res.split ? 'inoffSplit' : first.id === 'red' ? 'inoffRed' : 'inoffOpp');
+    return res;
+  }
+  const NAMES = { cannon: 'Cannon', potRed: 'Red pot', potOpp: 'Yellow pot', inoffRed: 'In-off red', inoffOpp: 'In-off yellow', inoffSplit: 'In-off (split)' };
+  const FOULS = { miss: 'Foul: missed both balls', coup: 'Foul: in-off without hitting a ball', baulk: 'Foul: hit a ball in baulk from hand' };
+  const far = [{ id: 'red', y: 3.2 }, { id: 'yellow', y: 2.0 }];
+  const SHOTS = [
+    { name: 'Red pot', ev: [['strike', 'white'], [0.42, 'hit', 'white', 'red'], [0.9, 'cushion', 'white'], [1.31, 'pot', 'red', 'top-right']] },
+    { name: 'Cannon + red pot', ev: [['strike', 'white'], [0.40, 'hit', 'white', 'red'], [1.12, 'hit', 'white', 'yellow'], [1.6, 'pot', 'red', 'top-left']] },
+    { name: 'In-off yellow', ev: [['strike', 'white'], [0.55, 'hit', 'white', 'yellow'], [1.05, 'pot', 'white', 'bottom middle']] },
+    { name: 'The 10-pointer', ev: [['strike', 'white'], [0.38, 'hit', 'white', 'red'], [0.95, 'hit', 'white', 'yellow'], [1.2, 'pot', 'red', 'top-right'], [1.4, 'pot', 'yellow', 'top middle'], [1.9, 'pot', 'white', 'bottom-right']] },
+    { name: 'Miss', ev: [['strike', 'white'], [0.7, 'cushion', 'white'], [1.4, 'cushion', 'white']] },
+    { name: 'Coup', ev: [['strike', 'white'], [0.8, 'pot', 'white', 'top-left']] },
+    { name: 'From hand, into baulk', hand: true, start: [{ id: 'red', y: 0.5 }, { id: 'yellow', y: 2.0 }], ev: [['strike', 'white'], [0.3, 'hit', 'white', 'red'], [0.9, 'cushion', 'red']] }
+  ];
+  function showShot(i) {
+    const s = SHOTS[i], events = [], lines = [];
+    for (const e of s.ev) {
+      if (e[0] === 'strike') { lines.push('t 0.00  the cue strikes the White'); continue; }
+      const [t, type, a, b] = e;
+      if (type === 'hit') { events.push({ t, type, a, b }); lines.push('t ' + t.toFixed(2) + '  ' + a + ' hits ' + b); }
+      else if (type === 'cushion') { events.push({ t, type, ball: a }); lines.push('t ' + t.toFixed(2) + '  ' + a + ' hits a cushion'); }
+      else if (type === 'pot') { events.push({ t, type, ball: a, pocket: b }); lines.push('t ' + t.toFixed(2) + '  ' + a + ' drops into the ' + b + ' pocket'); }
+    }
+    const r = referee('white', events, s.start || far, !!s.hand);
+    $('evList').textContent = (s.hand ? '(the white is in hand, played from the D)\n' : '') + lines.join('\n');
+    const v = $('verdict');
+    if (r.foul) { v.className = 'verdict foul'; v.textContent = FOULS[r.foul] + ': ' + r.penalty + ' points to Rusty'; }
+    else { v.className = 'verdict ok'; v.textContent = r.parts.map(p => NAMES[p.k] + ' ' + p.pts).join(' + ') + (r.parts.length > 1 ? ' = ' + r.points : '') + ' points to Archie'; }
+    [...$('shotBtns').children].forEach((b, k) => b.classList.toggle('on', k === i));
+  }
+  $('shotBtns').innerHTML = SHOTS.map((s, i) => '<button type="button" data-i="' + i + '">' + s.name + '</button>').join('');
+  $('shotBtns').addEventListener('click', e => { const b = e.target.closest('button'); if (b) showShot(+b.dataset.i); });
+
+  /* ---------- Demo: Rusty's wobble (aim error spread over a 2 m pot) ---------- */
+  const LV = { Easy: 1.4, Medium: 0.45, Hard: 0.12 };
+  let lv = 'Medium';
+  function wobDemo() {
+    const sig = LV[lv];
+    const [c, w, h] = ctxOf($('wobCv'));
+    cloth(c, w, h);
+    const x0 = 50, y0 = h / 2, px = (w - 110) / 2;   // 2 m across the canvas
+    // the pocket, 2 m away (its opening, 1.6 times real size, about 0.13 m)
+    const pw = 0.13 * px;
+    c.fillStyle = '#0b0b0b'; c.fillRect(x0 + 2 * px, y0 - pw / 2, 26, pw);
+    // 40 shots with Rusty's wobble (a bell-shaped spread with this size)
+    let seed = 7, inside = 0;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    for (let i = 0; i < 40; i++) {
+      const g = Math.sqrt(-2 * Math.log(rnd() + 1e-12)) * Math.cos(2 * Math.PI * rnd()), a = g * sig * DEG;
+      const yEnd = y0 + Math.tan(a) * 2 * px, ok = Math.abs(yEnd - y0) <= pw / 2;
+      if (ok) inside++;
+      c.strokeStyle = ok ? 'rgba(255,214,10,.55)' : 'rgba(255,120,110,.55)'; c.lineWidth = 1.2;
+      c.beginPath(); c.moveTo(x0, y0); c.lineTo(x0 + 2 * px, yEnd); c.stroke();
+    }
+    ball(c, x0, y0, 8, 'white');
+    c.font = '12px system-ui'; c.fillStyle = 'rgba(255,255,255,.85)';
+    c.fillText('2 m', x0 + px - 8, h - 10); c.fillText('pocket', x0 + 2 * px - 6, y0 - pw / 2 - 6);
+    const spread = Math.tan(2 * sig * DEG) * 200;
+    $('wobRead').textContent = lv + ': 95% of his aims stray less than ' + spread.toFixed(1) + ' cm over 2 m; here ' + inside + ' of 40 straight shots would find the pocket.';
+    [...$('wobBtns').children].forEach(b => b.classList.toggle('on', b.textContent === lv));
+  }
+  $('wobBtns').innerHTML = Object.keys(LV).map(k => '<button type="button">' + k + '</button>').join('');
+  $('wobBtns').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { lv = b.textContent; wobDemo(); } });
+
+  rollDemo(); cutDemo(); sideDemo(); showShot(1); wobDemo();
+})();
+</script>
+</body>
+</html>

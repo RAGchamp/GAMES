@@ -180,10 +180,8 @@
     .btn-go{ padding:.32rem .9rem; font-size:.9rem; }
   }
 
-  .help{ max-width:960px; margin:1rem auto 0; display:flex; flex-wrap:wrap; gap:.75rem; }
-  .help > div{ flex:1 1 260px; background:#fff; border:2px solid #dde3ec; border-radius:.6rem; padding:.6rem .9rem; font-size:.88rem; }
-  .help h3{ font-size:.75rem; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:#6c757d; margin:0 0 .3rem; }
-  .help ul{ margin:0; padding-left:1.1rem; }
+  /* the instructions under the game: plain text, as in Car Race */
+  .keys{ max-width:960px; font-size:.85rem; color:#5a6475; text-align:center; margin:.8rem auto 0; line-height:1.6; }
 
   /* Spin: a small cue-ball button in the deck, and a big picker over the table */
   .sbtn.spin{ padding:.15rem .3rem; line-height:0; }
@@ -254,11 +252,6 @@
 </div>
 
 <main>
-  <div class="about-box">
-    <h2>How does AI play a part?</h2>
-    <p>This game is being written by an AI coding agent (Claude Code) from a <a href="../info/BILLIARDS-GAME-PLAN.html">build plan</a>. It reuses ideas from <a href="../GAME-4-Golf/golf.html">Golf</a>, and everything you see and hear is made with code. <strong>You don't need any AI to play.</strong></p>
-  </div>
-
   <div class="title-row">
     <h1>🎱 Billiards</h1>
     <span class="phase-pill">Game 5 · Archie v Rusty</span>
@@ -369,36 +362,31 @@
     </div>
   </div>
 
-  <div class="help">
-    <div>
-      <h3>How to play</h3>
-      <ul>
-        <li><b>Aim:</b> press on the cue stick and swing it round the white, at any angle; the stick stays under your finger or mouse. Use ◀ ▶ (or <kbd>←</kbd> <kbd>→</kbd>) for fine aim.</li>
-        <li><b>Read the guide:</b> the dotted line runs to the first ball; the ring is where your ball will touch it (the <b>ghost ball</b>), the yellow line is where that ball will go, and the light blue dotted line is where your white runs after it (it bends with spin; in a game against Rusty, on Easy only).</li>
-        <li><b>Spin:</b> tap the small white ball in the controls, then tap where the cue tip should hit it: above the middle for <b>top</b> (the white follows on), below for <b>screw</b> (it comes back), to one side for <b>side</b> (it changes the angle off a cushion). Keys: <kbd>I</kbd> <kbd>K</kbd> <kbd>J</kbd> <kbd>L</kbd>, <kbd>O</kbd> for the middle. Spin goes back to the middle after each shot.</li>
-        <li><b>Shoot:</b> from above, pull the <b>cue on the left</b> down (the further, the harder) and let go; push it back to the top to cancel. In the Eye view, set the <b>Power</b> and press <b>SHOOT</b>. <kbd>Space</kbd> shoots in either view.</li>
-        <li>The <b>Top / Eye</b> switch (or <kbd>V</kbd>) changes between the table from above and the <b>Eye view</b>, low behind the cue ball. In the Eye view drag left or right to aim, and up or down to raise or lower your eye.</li>
-        <li><b>Rusty</b> plays at <b>Easy</b>, <b>Medium</b> or <b>Hard</b> (choose on the first screen). On Easy his aim wobbles a lot, and you get the light blue line showing where your white runs; on Hard he plans his next shot and plays safe when he cannot score.</li>
-        <li><b>Spin school:</b> five set-up shots. Pot the red and leave the white in the yellow circle; each one needs top, screw or side.</li>
-        <li><b>Ball in hand:</b> when your white is off the table it comes back into the <b>D</b> (the half-circle on the left); drag it anywhere inside the D. You must then play out of baulk: you may not hit a ball that is in baulk (left of the line) until your ball has crossed the line.</li>
-        <li><b>Practice table:</b> no rules; drag any ball anywhere, and <b>Cue</b> switches the cue ball.</li>
-      </ul>
-    </div>
-    <div>
-      <h3>Scoring</h3>
-      <ul>
-        <li><b>Red pot</b> 3 · <b>in-off red</b> 3 (your ball goes in after hitting the red first).</li>
-        <li><b>Pot of the other white/yellow</b> 2 · <b>in-off</b> it 2 · <b>cannon</b> 2 (your ball hits both other balls).</li>
-        <li>Scores in one shot add up (up to 10). Keep playing while you score; the run is your <b>break</b>.</li>
-        <li><b>Fouls</b> give points to the other player: missing both balls 2, going in-off without hitting a ball 3, hitting a ball in baulk from hand 2.</li>
-        <li>A potted red goes back on its spot. A potted cue ball stays off until its owner's turn, then is played from the D.</li>
-      </ul>
-    </div>
+  <p class="keys">
+    <b>Aim:</b> press on the cue stick and swing it round the white (fine aim ◀ ▶ or <kbd>←</kbd> <kbd>→</kbd>) ·
+    <b>Shoot:</b> pull the cue on the right down and let go (the further, the harder; push it back up to cancel) ·
+    <b>Spin:</b> tap the small white ball, then where the tip should hit it: high for top, low for screw, to one side for side
+    (<kbd>I</kbd> <kbd>K</kbd> <kbd>J</kbd> <kbd>L</kbd>, <kbd>O</kbd> middle) ·
+    <b>Top / Eye</b> switch <kbd>V</kbd> (in the Eye view drag to aim and to raise your eye; Power and SHOOT) ·
+    Shoot <kbd>Space</kbd> · Pause <kbd>P</kbd> / <kbd>Esc</kbd> · Full screen <kbd>F</kbd> · Sound <kbd>M</kbd> · Home <kbd>H</kbd>
+    <br><b>Scoring:</b> red pot 3 · in-off red 3 · pot of the other ball 2 · in-off it 2 · cannon (your ball hits both others) 2.
+    Scores in one shot add up (up to 10) and you keep playing while you score. Fouls give the other player 2 (missing both balls,
+    or hitting a ball in baulk from hand) or 3 (going in-off without hitting a ball).
+    <br><span style="font-size:.8rem">Tips: the dotted line runs to the first ball, the ring is where your ball touches it and the
+    yellow line is where that ball goes; on Easy a light blue line shows where your white runs after. When your white is in hand,
+    drag it anywhere in the D and play out of baulk. A potted red goes back on its spot; a potted cue ball comes back in the D on
+    its owner's turn. Rusty plays at Easy, Medium or Hard; the Spin school has five set-up shots that need top, screw or side;
+    on the Practice table you can drag any ball anywhere.</span>
+  </p>
+
+  <div class="about-box" style="margin-top:1.5rem">
+    <h2>How does AI play a part?</h2>
+    <p>This game was written by an AI coding agent (Claude Code) from a <a href="../info/BILLIARDS-GAME-PLAN.html">build plan</a>. It reuses ideas from <a href="../GAME-4-Golf/golf.html">Golf</a>, and everything you see and hear is made with code. <strong>You don't need any AI to play.</strong></p>
   </div>
 </main>
 
 <footer>
-  AI Games Portal · Billiards · <a href="../info/BILLIARDS-GAME-PLAN.html">📋 Game plan</a> · <a href="../GAME-4-Golf/golf.html">⛳ Golf</a> · <a href="../GAME-3-Javelin/javelin.html">🎯 Javelin</a> · <a href="../GAME-2-Chintu/chintu.html">🏃 Chintu</a> · <a href="../GAME1-CAR-RACE/car-race.html">🏎️ Car Race</a> · <a href="../index.html">🏠 Games Home</a>
+  AI Games Portal · Billiards · <a href="../info/BILLIARDS-GAME-PLAN.html">📋 Game plan</a> · <a href="../info/HOW-BILLIARDS-WORKS.html">💡 How it works</a> · <a href="../GAME-4-Golf/golf.html">⛳ Golf</a> · <a href="../GAME-3-Javelin/javelin.html">🎯 Javelin</a> · <a href="../GAME-2-Chintu/chintu.html">🏃 Chintu</a> · <a href="../GAME1-CAR-RACE/car-race.html">🏎️ Car Race</a> · <a href="../index.html">🏠 Games Home</a>
   <div class="credit">Written with Claude Code. The table, balls, cue and every sound are made with code.</div>
 </footer>
 

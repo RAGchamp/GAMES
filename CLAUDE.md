@@ -9,7 +9,7 @@ Games written with Claude Code, linked from the portal page `index.html`. Each g
 | Game 2: Chintu | `GAME-2-Chintu/` | `info/CHINTU-GAME-PLAN.html`, `info/HOW-CHINTU-WORKS.html` |
 | Game 3: Javelin | `GAME-3-Javelin/` | `info/JAVELIN-GAME-PLAN.html`, `info/HOW-JAVELIN-WORKS.html` |
 | Game 4: Golf | `GAME-4-Golf/` | `info/GOLF-PLAN.html` (explainer `HOW-GOLF-WORKS.html` not written yet) |
-| Game 5: Billiards | `GAME-5-Billiards/` | `info/BILLIARDS-GAME-PLAN.html` (in progress: Phases 1–4 built; on the portal as a simple card, full description in Phase 6) |
+| Game 5: Billiards | `GAME-5-Billiards/` | `info/BILLIARDS-GAME-PLAN.html`, `info/HOW-BILLIARDS-WORKS.html` |
 
 Javelin's tower physics is Matter.js 0.19.0 (MIT), pasted as one long line in the last `<script id="matter">` of
 `javelin.html`; edit the `sim` and `game-ui` scripts above it, not that line. The `sim` script has no DOM code so
@@ -27,6 +27,15 @@ view is first opened; edit the scripts above it, not that line. If WebGL is miss
 hand-drawn Eye view in `game-ui`. The Top view uses no library. Build it phase by phase from its plan, whose decisions
 (section 11) are agreed: computer opponent only (Rusty, yellow), you are Archie (white), 50 up by default, no pro
 rules, Top view plus an Eye view (3D, three.js).
+
+**Billiards Phase 5 dropped (23 Nov 2026).** Phase 5 was built (Archie and Rusty drawn from above at the table,
+walking in and cueing, see-through over the cloth; a turning mark on the balls; a slow shot replay with ball paths;
+applause for a big break) and then removed before it was committed: the owner tested it and found the players seen
+from above confusing, as if they were walking on the table, so it was not practical. Do not add players at the
+table again unless the owner asks. The portraits beside the table (Top view, in a game) stay. Phase 6 (the full
+portal card and `info/HOW-BILLIARDS-WORKS.html`) is done. The explainer's demos copy constants and the referee from
+the `sim` script of `billiards.html` (friction, bounce, cushion grip, VMAX, TIP_MAX, ball size, level wobbles); change
+them there too if those change.
 
 ## Abandoned: Geography game (22 Nov 2026)
 

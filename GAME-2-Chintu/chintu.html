@@ -344,9 +344,15 @@
   }
   .tbtn:hover{ border-color:var(--nav-blue); }
 
-  .help{ background:#fff; border:2px solid #c9d3e3; border-radius:.6rem; padding:.9rem 1.1rem; margin-bottom:1rem; }
-  .help h2{ font-size:1.05rem; margin:0 0 .4rem; }
-  .help ul{ margin:.2rem 0 .3rem; padding-left:1.2rem; font-size:.92rem; }
+  /* the instructions under the game: plain text with no boxes, as in Car Race. Each section reads as one paragraph:
+     its heading, then its points separated by dots */
+  .help{ max-width:960px; margin:.8rem auto 0; padding:0; background:none; border:0; text-align:center; color:#5a6475; font-size:.85rem; line-height:1.6; }
+  .help > div{ display:block; background:none; border:0; padding:0; margin:0 0 .5rem; font-size:inherit; }
+  .help h2, .help h3{ display:inline; font-size:inherit; font-weight:800; color:#3b4656; text-transform:none; letter-spacing:0; margin:0; }
+  .help h2::after, .help h3::after{ content:': '; }
+  .help ul{ display:inline; margin:0; padding:0; list-style:none; font-size:inherit; }
+  .help li{ display:inline; }
+  .help li + li::before{ content:' · '; }
 
   footer{ background:var(--nav-blue); color:#fff; text-align:center; font-size:.85rem; padding:1.3rem 16px; margin-top:2rem; }
   footer a{ color:#fff; }
@@ -360,11 +366,6 @@
 </div>
 
 <main>
-  <div class="about-box">
-    <h2>What is this and how does AI play a part?</h2>
-    <p>This is <strong>Game 2: Chintu</strong>, a running and jumping game written by Claude Code (an AI coding agent) as one HTML file with plain JavaScript. Chintu, the goons and everything around them are drawn with code, with no image files. This is the finished version (all 6 phases) of the <a href="../info/CHINTU-GAME-PLAN.html">development plan</a>: the whole story from the village to Dr. Andhera's island fortress, with four worlds, eleven stages and a final showdown in his formula vault, now with sound effects and music that are also made by code, and an Easy mode for younger players. <a href="../info/HOW-CHINTU-WORKS.html">See how it works</a>. <strong>You don't need any AI to play.</strong></p>
-  </div>
-
   <div class="title-row">
     <h1>🏃 Chintu</h1>
     <span class="phase-pill">All 6 phases · The whole game</span>
@@ -519,6 +520,11 @@
       <li><strong>Gamepad:</strong> left stick or d-pad to run, <strong>A</strong> or <strong>B</strong> to jump, down to slide, <strong>Start</strong> to pause. <strong>A</strong> also works the menus.</li>
       <li><strong>Score:</strong> laddoo 10 · stomp 100 · formula page 500 · time bonus and heart bonus at the finish gate.</li>
     </ul>
+  </div>
+
+  <div class="about-box" style="margin-top:1.5rem">
+    <h2>What is this and how does AI play a part?</h2>
+    <p>This is <strong>Game 2: Chintu</strong>, a running and jumping game written by Claude Code (an AI coding agent) as one HTML file with plain JavaScript. Chintu, the goons and everything around them are drawn with code, with no image files. This is the finished version (all 6 phases) of the <a href="../info/CHINTU-GAME-PLAN.html">development plan</a>: the whole story from the village to Dr. Andhera's island fortress, with four worlds, eleven stages and a final showdown in his formula vault, now with sound effects and music that are also made by code, and an Easy mode for younger players. <a href="../info/HOW-CHINTU-WORKS.html">See how it works</a>. <strong>You don't need any AI to play.</strong></p>
   </div>
 </main>
 

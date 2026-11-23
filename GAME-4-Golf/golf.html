@@ -208,10 +208,15 @@
     .sym{ width:1.2rem; height:1.2rem; }
   }
 
-  .help{ max-width:960px; margin:1rem auto 0; display:flex; flex-wrap:wrap; gap:.75rem; }
-  .help > div{ flex:1 1 260px; background:#fff; border:2px solid #dde3ec; border-radius:.6rem; padding:.6rem .9rem; font-size:.88rem; }
-  .help h3{ font-size:.75rem; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:#6c757d; margin:0 0 .3rem; }
-  .help ul{ margin:0; padding-left:1.1rem; }
+  /* the instructions under the game: plain text with no boxes, as in Car Race. Each section reads as one paragraph:
+     its heading, then its points separated by dots */
+  .help{ max-width:960px; margin:.8rem auto 0; padding:0; background:none; border:0; text-align:center; color:#5a6475; font-size:.85rem; line-height:1.6; }
+  .help > div{ display:block; background:none; border:0; padding:0; margin:0 0 .5rem; font-size:inherit; }
+  .help h2, .help h3{ display:inline; font-size:inherit; font-weight:800; color:#3b4656; text-transform:none; letter-spacing:0; margin:0; }
+  .help h2::after, .help h3::after{ content:': '; }
+  .help ul{ display:inline; margin:0; padding:0; list-style:none; font-size:inherit; }
+  .help li{ display:inline; }
+  .help li + li::before{ content:' · '; }
 
   #dbg{ position:absolute; left:6px; top:74px; z-index:4; background:rgba(0,0,0,.6); color:#9f9; font:11px/1.3 monospace; padding:4px 6px; border-radius:4px; pointer-events:none; white-space:pre; }
   #dbg[hidden]{ display:none; }
@@ -229,11 +234,6 @@
 </div>
 
 <main>
-  <div class="about-box">
-    <h2>How does AI play a part?</h2>
-    <p>This game was written by an AI coding agent (Claude Code) from a <a href="../info/GOLF-PLAN.html">short plan</a> and one picture of Willy. It reuses ideas from <a href="../GAME-3-Javelin/javelin.html">Javelin</a>, and everything you see and hear is made with code. <strong>You don't need any AI to play.</strong></p>
-  </div>
-
   <div class="title-row">
     <h1>⛳ Golf</h1>
     <span class="phase-pill">Game 4 · Willy's 18 Holes</span>
@@ -368,6 +368,11 @@
         <li>A ball that stops very close to the cup is tapped in for one more stroke. A hole ends after 10 strokes.</li>
       </ul>
     </div>
+  </div>
+
+  <div class="about-box" style="margin-top:1.5rem">
+    <h2>How does AI play a part?</h2>
+    <p>This game was written by an AI coding agent (Claude Code) from a <a href="../info/GOLF-PLAN.html">short plan</a> and one picture of Willy. It reuses ideas from <a href="../GAME-3-Javelin/javelin.html">Javelin</a>, and everything you see and hear is made with code. <strong>You don't need any AI to play.</strong></p>
   </div>
 </main>
 
