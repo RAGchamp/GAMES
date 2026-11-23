@@ -118,10 +118,81 @@ once, so sound may play twice; mute one in the game. Saved game settings (localS
     if (q && q[0] !== '?' && q[0] !== '#') q = '?' + q;
     return GAMES[$('game').value].path + q;
   }
+  /* ---- Game full screen inside the phone ----
+     A real full screen from inside an iframe always fills the laptop's whole screen. So in each phone the game's
+     full screen calls are replaced by a fake one: the element is pinned over the phone's screen, the game's own
+     :fullscreen CSS rules are copied onto it, and the usual fullscreenchange event is sent. This needs the
+     simulator and the game on the same origin (GitHub Pages or a local web server); with file:// the browser
+     blocks it and the game keeps its normal full screen. */
+  let blocked = false;
+  function fakeFullscreen(w) {
+    const d = w.document;
+    if (d.__simFs) return;
+    d.__simFs = true;
+    let cur = null, copied = false;
+    const fire = () => d.dispatchEvent(new w.Event('fullscreenchange'));
+    function copyRules() {   // copy every ":fullscreen" rule as a "[data-sim-fs]" rule
+      if (copied) return; copied = true;
+      const out = [];
+      const walk = (rules, wrapOpen, wrapClose) => {
+        for (const r of rules) {
+          if (r.selectorText && /:(-webkit-)?full-?screen/.test(r.selectorText)) {
+            out.push(wrapOpen + r.cssText.replace(/:-webkit-full-screen|:fullscreen/g, '[data-sim-fs]') + wrapClose);
+          } else if (r.cssRules && r.media) walk(r.cssRules, wrapOpen + '@media ' + r.media.mediaText + '{', '}' + wrapClose);
+        }
+      };
+      for (const sh of d.styleSheets) { try { walk(sh.cssRules, '', ''); } catch (e) {} }
+      const st = d.createElement('style');
+      st.textContent = '[data-sim-fs]{position:fixed!important;inset:0!important;width:100%!important;height:100%!important;' +
+        'min-width:0!important;min-height:0!important;max-width:none!important;max-height:none!important;margin:0!important;' +
+        'box-sizing:border-box!important;transform:none!important;z-index:2147483647!important;}' +
+        'html:has([data-sim-fs]),html:has([data-sim-fs]) body{overflow:hidden!important;}\n' + out.join('\n');
+      d.head.appendChild(st);
+    }
+    function enter(el) {
+      copyRules();
+      if (cur) cur.removeAttribute('data-sim-fs');
+      cur = el; el.setAttribute('data-sim-fs', ''); fire();
+      return w.Promise.resolve();
+    }
+    function exit() {
+      if (cur) { cur.removeAttribute('data-sim-fs'); cur = null; fire(); }
+      return w.Promise.resolve();
+    }
+    const get = v => ({ get: v, configurable: true });
+    for (const k of ['fullscreenEnabled', 'webkitFullscreenEnabled']) Object.defineProperty(d, k, get(() => true));
+    for (const k of ['fullscreenElement', 'webkitFullscreenElement']) Object.defineProperty(d, k, get(() => cur));
+    w.Element.prototype.requestFullscreen = w.Element.prototype.webkitRequestFullscreen = function () { return enter(this); };
+    d.exitFullscreen = d.webkitExitFullscreen = exit;
+    d.addEventListener('keydown', e => { if (e.key === 'Escape' && cur) exit(); }, true);
+  }
+  function watch(frame) {   // patch the game's page as soon as it exists, before its scripts run
+    let n = 0, old = null;
+    try { old = frame.contentWindow.document; } catch (e) {}
+    const tick = () => {
+      try {
+        const w = frame.contentWindow, d = w.document, fresh = d !== old && d.URL !== 'about:blank';
+        if (fresh) fakeFullscreen(w);
+        if (fresh && d.readyState !== 'loading') return;
+      } catch (e) { blocked = true; showUrl(); return; }
+      if (++n < 2000) setTimeout(tick, 2);
+    };
+    tick();
+  }
+  for (const k of ['P', 'L']) $('frame' + k).addEventListener('load', () => {
+    try { fakeFullscreen($('frame' + k).contentWindow); } catch (e) { blocked = true; showUrl(); }
+  });
+  function showUrl() {
+    const s = src();
+    $('url').innerHTML = 'Opening <a href="' + s + '" target="_blank" rel="noopener">' + s + '</a>' +
+      (blocked ? ' · <b title="Open the simulator from GitHub Pages or a local web server (python -m http.server in the GAMES folder) so the game\'s Full screen stays inside the phone">⚠ game full screen not in phone (file://)</b>' : '');
+  }
+
   function load() {
     const s = src();
     $('frameP').src = s; $('frameL').src = s;
-    $('url').innerHTML = 'Opening <a href="' + s + '" target="_blank" rel="noopener">' + s + '</a>';
+    watch($('frameP')); watch($('frameL'));
+    showUrl();
   }
   function layout() {
     const d = DEVICES[$('device').value], bars = $('bars').checked;
