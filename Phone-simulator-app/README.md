@@ -1,8 +1,7 @@
 # Phone Simulator (Flask app)
 
 A testing tool for the owner: shows a RAG Champ game at a phone's screen size on the laptop. Not for players and
-not linked from the portal. It is the faster version of `../phone-simulator.html`, because only one phone
-(Landscape or Portrait) is loaded at a time.
+not linked from the portal. Only one phone (Landscape or Portrait) is loaded at a time, which keeps it fast.
 
 ## Run
 
