@@ -635,8 +635,10 @@ function makeJSIM(Matter) {
         Composite.add(world, body);
         maxX = Math.max(maxX, it.x + 1); maxY = Math.max(maxY, it.y + 1);
       } else if (it.t === 'balloon') {
+        // level balloons fly: they rise slowly on a slight slant through the spot the level puts them (see step)
         W.balloons.push({ x0: it.x, y0: it.y, x: it.x, y: it.y, r: 0.5, drift: !!it.drift, popped: false,
-                          layer: it.layer || 1, ph: W.balloons.length * 1.7 });
+                          layer: it.layer || 1, ph: W.balloons.length * 1.7, fly: true, yb: it.y, tilt: 0,
+                          lift: 0.8 + W.rng() * 0.4, slope: (W.rng() * 2 - 1) * 0.25 });
         maxX = Math.max(maxX, it.x + 1); maxY = Math.max(maxY, it.y + 0.6);
       } else if (it.t === 'mover') {
         const [w, h] = SIZE[it.kind], m = MAT[it.kind];
@@ -853,7 +855,7 @@ function makeJSIM(Matter) {
       return false;
     });
   }
-  const RISE_MIN = 0.45, RISE_MAX = 0.85;            // m/s
+  const RISE_MIN = 0.9, RISE_MAX = 1.7;              // m/s (doubled 22 Nov 2026)
   /* Where a rising balloon is at time t, like a real one let go: it speeds up for the first second, climbs on a
      slant of its own (vx: up to about 30 degrees either side), wanders a little, and the wind carries it more
      and more. Also used to test throws that lead a balloon. */
@@ -861,7 +863,7 @@ function makeJSIM(Matter) {
     const u = Math.max(0, t - bl.born), climb = u - 0.7 * (1 - Math.exp(-u / 0.7));
     return {
       x: bl.x0 + bl.vx * climb + 0.6 * Math.sin(0.5 * u + bl.ph) - 0.6 * Math.sin(bl.ph) + 0.25 * Math.sin(1.3 * u + 2 * bl.ph) - 0.25 * Math.sin(2 * bl.ph)
-         + (wind || 0) * 0.12 * climb,
+         + (wind || 0) * 0.24 * climb,
       y: bl.y0 + bl.rise * climb
     };
   }
@@ -1007,6 +1009,16 @@ function makeJSIM(Matter) {
         bl.x = q.x; bl.y = q.y;
         // gone off the top (or a side) of the picture: a new balloon comes up from the grass
         if (bl.y - bl.r * 1.2 > (W.skyTop || W.viewTop) || bl.x + bl.r < (W.skyL || -10) || bl.x - bl.r > (W.skyR || W.viewR + 2)) relaunch(W, bl);
+        continue;
+      }
+      if (bl.fly) {    // a level balloon: rises on its line, floats out of the top, comes back up from the grass
+        if (!bl.born || W.t >= bl.born) bl.yb += bl.lift * DT;
+        const nx = bl.x0 + bl.slope * (bl.yb - bl.y0) + Math.sin(W.t * 0.5 + bl.ph) * 0.4
+                 + (bl.drift ? Math.sin(W.t * 0.7 + bl.ph) * 1.0 + W.wind * 0.35 : 0);
+        const dx = nx - bl.x, dy = bl.yb - bl.y;
+        if (dy > 1e-6 && dy < 1) bl.tilt += (Math.atan2(dx, dy) * 0.6 - bl.tilt) * 0.05;
+        bl.x = nx; bl.y = bl.yb;
+        if (bl.y - bl.r * 1.2 > (W.skyTop || W.viewTop)) { bl.yb = 0.9; bl.born = W.t + 0.4; }
         continue;
       }
       bl.x = bl.x0 + (bl.drift ? Math.sin(W.t * 0.7 + bl.ph) * 1.0 + W.wind * 0.35 : 0);
