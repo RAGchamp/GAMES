@@ -22,7 +22,7 @@
     - tower physics: Matter.js 0.19.0 by Liam Brummitt (MIT licence), pasted in at the end of this file.
       The javelin's own flight, breaking, targets and scoring are written by hand (the "sim" script).
 
-  Test hooks: ?level=2-3 starts a level; ?practice opens the practice field; ?debug shows a readout
+  Test hooks: ?level=2-3 starts a level; ?practice opens the practice field; ?balloons opens Just Balloons; ?debug shows a readout
   and adds window.__jav; ?unlock opens every level.
 -->
 <style>
@@ -212,12 +212,20 @@
   @keyframes roll{ from{ transform:translateY(128px); } to{ transform:translateY(-100%); } }
   @media (prefers-reduced-motion:reduce){ .roll-in{ animation:none; position:static; } .roll{ height:auto; } }
 
+  @media (max-height:500px){
+    #ovTitle p.small{ display:none; }
+    #ovTitle .logo{ font-size:2rem; }
+    #ovTitle .panel{ padding:.5rem .8rem; }
+    #ovTitle .panel p{ font-size:.85rem; margin:.3rem 0; }
+    #ovTitle .btn-go{ padding:.35rem 1rem; }
+  }
   @media (max-width:520px){
     .panel{ padding:.55rem .65rem; }
     .panel h2{ font-size:1.05rem; }
     .panel p{ font-size:.8rem; }
     .btn-go{ font-size:.88rem; padding:.35rem .9rem; }
     .logo{ font-size:2rem; }
+    #ovTitle p.small{ display:none; }   /* keyboard keys: not needed on a phone, and it makes room for 3 buttons */
     .wband{ flex-direction:column; gap:.1rem; padding:.25rem .4rem; }
     .wband > b{ flex:none; text-align:center; }
     .wpath{ width:100%; }
@@ -261,6 +269,7 @@
     <div class="game-wrap" id="wrap">
       <canvas id="game" aria-label="Javelin game"></canvas>
       <div class="corner-btns" id="corner">
+        <button class="cbtn" id="homeBtn" aria-label="Home" title="Home (H)" hidden>🏠<span class="wide"> Home</span></button>
         <button class="cbtn" id="fsBtn" aria-label="Full screen" title="Full screen (F)">⛶<span class="wide"> Full screen</span></button>
         <button class="cbtn" id="sndBtn" aria-label="Sound on or off">🔊</button>
         <button class="cbtn" id="pauseBtn" aria-label="Pause">⏸<span class="wide"> Pause</span></button>
@@ -276,13 +285,14 @@
           <div>
             <button class="btn-go" id="btnPlay">▶ Play</button>
             <button class="btn-go alt" id="btnPractice">Practice field</button>
+            <button class="btn-go green" id="btnBalloons">🎈 Just Balloons</button>
           </div>
           <div class="opts">
             <button class="opt" id="optSound">Sound</button>
             <button class="opt" id="optMusic">Music</button>
             <button class="opt" id="optEasy">Easy</button>
           </div>
-          <p class="small">Keys: <kbd>↑</kbd><kbd>↓</kbd> angle · <kbd>←</kbd><kbd>→</kbd> pace · <kbd>Space</kbd> throw · <kbd>1</kbd>–<kbd>4</kbd> javelin · <kbd>R</kbd> restart · <kbd>P</kbd> pause · <kbd>F</kbd> full screen</p>
+          <p class="small">Keys: <kbd>↑</kbd><kbd>↓</kbd> angle · <kbd>←</kbd><kbd>→</kbd> pace · <kbd>Space</kbd> throw · <kbd>1</kbd>–<kbd>4</kbd> javelin · <kbd>R</kbd> restart · <kbd>P</kbd> pause · <kbd>H</kbd> home · <kbd>F</kbd> full screen</p>
         </div>
       </div>
 
@@ -376,6 +386,8 @@
         <li><strong>Angle</strong> tilts Rocky's javelin. <strong>Pace</strong> is how fast he runs up, so how hard he throws.</li>
         <li>The dotted line shows only the start of the flight. The faint line is your last throw: change a little and try again.</li>
         <li>Clear every target: hit the boards, pop the balloons, knock the trophy cups to the ground.</li>
+        <li><b>Just Balloons</b> (on the start screen): pop 4 balloons in as few javelins as you can. They rise into the sky, so aim where a balloon will be when the javelin gets there. One that floats away comes back up somewhere new.</li>
+        <li><b>Wind</b> (Practice field and Just Balloons): tap the windsock at the top right, or press <kbd>N</kbd>, to switch between no wind, light, strong and random wind (a new wind after every throw).</li>
         <li>Javelins left over at the end earn bonus points and stars.</li>
       </ul>
     </div>
@@ -405,7 +417,7 @@ function makeJSIM(Matter) {
   'use strict';
   const { Engine, Bodies, Body, Composite, Events, Sleeping, Query, Constraint } = Matter;
   const U = 20, FPS = 60, DT = 1 / FPS, STEP_MS = 1000 / FPS, DSQ = STEP_MS * STEP_MS;
-  const G = 9.8, V_MIN = 8, V_MAX = 22, JLEN = 2.6, REL = { x: 0.3, y: 2.1 };
+  const G = 9.8, V_MIN = 8, V_MAX = 22, JLEN = 2.6, REL = { x: 0.1, y: 3.5 };   // REL: where the javelin leaves Rocky's raised hand (overarm, he is drawn 1.6x)
   const DRAG = 0.0035, WIND_K = 0.3;
 
   const TYPES = {
@@ -537,6 +549,8 @@ function makeJSIM(Matter) {
         b.balloon(26, 11.5, { layer: 3 }); b.balloon(34, 11.5, { layer: 3 }); } }
   ];
   const PRACTICE = { id: 'P', w: 0, practice: true, name: 'Practice Field', jav: Infinity, build: () => {} };
+  // Just Balloons: 4 balloons pop up at random spots; pop them all and a new round starts somewhere else
+  const BALLOONS = { id: 'B', w: 0, balloonGame: true, name: 'Just Balloons', jav: Infinity, build: () => {} };
 
   /* ---------- small helpers ---------- */
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -652,15 +666,30 @@ function makeJSIM(Matter) {
     for (const bl of W.balloons) W.maxLayer = Math.max(W.maxLayer, bl.layer);
     for (const body of Composite.allBodies(world)) if (!body.isStatic && !(body.plugin && body.plugin.swing)) Sleeping.set(body, true);
 
-    W.viewR = level.practice ? 55 : Math.max(22, maxX + 4);
-    W.viewTop = level.practice ? 12 : Math.max(10, maxY + 3);
-    newWind(W);
+    W.viewR = level.practice ? 55 : level.balloonGame ? 44 : Math.max(22, maxX + 4);
+    W.viewTop = level.practice ? 12 : level.balloonGame ? 15 : Math.max(10, maxY + 3);
+    if (opts.windMode && (level.practice || level.balloonGame)) setWindMode(W, opts.windMode, opts.rnd);
+    else newWind(W);
+    if (level.balloonGame) { W.round = 1; spawnBalloons(W, opts.rnd); }
 
     Events.on(engine, 'collisionStart', ev => onCollide(W, ev.pairs));
     return W;
   }
 
+  /* Wind the player picks in Practice and Just Balloons (tap the windsock): off, light, strong, or random
+     (a new wind after every throw). Light and strong keep the speed and direction picked on the tap. */
+  const WIND_MODES = ['off', 'light', 'strong', 'random'];
+  function pickWind(mode, rnd) {
+    const r = rnd(), sign = rnd() < 0.5 ? -1 : 1;
+    const v = mode === 'light' ? 1 + r : mode === 'strong' ? 3 + r * 1.5 : mode === 'random' ? r * 4.5 : 0;
+    return Math.round(sign * v * 10) / 10;
+  }
+  function setWindMode(W, mode, rnd) {
+    W.windMode = WIND_MODES.includes(mode) ? mode : 'off';
+    W.wind = pickWind(W.windMode, rnd || Math.random);
+  }
   function newWind(W) {
+    if (W.windMode) { if (W.windMode === 'random') W.wind = pickWind('random', Math.random); return; }
     const L = W.level;
     let w = L.gust ? L.gust[0] + W.rng() * (L.gust[1] - L.gust[0]) : (L.wind || 0);
     if (W.easy) w *= 0.5;
@@ -770,8 +799,11 @@ function makeJSIM(Matter) {
     });
   }
 
+  /* JSPEED: the javelin flies this many times faster than real time, on exactly the same path (so it lands in
+     the same place). Only the javelin's clock runs fast; towers, balloons and movers keep their normal speed. */
+  const JSPEED = 2;
   function flyJav(W, j) {
-    const T = TYPES[j.type], SUB = 4, h = DT / SUB;
+    const T = TYPES[j.type], SUB = 4 * JSPEED, h = DT / 4;
     let list = hitList(W, j);
     for (let s = 0; s < SUB && j.state === 'fly'; s++) {
       const tx0 = j.x + Math.cos(j.a) * JLEN / 2, ty0 = j.y + Math.sin(j.a) * JLEN / 2;
@@ -800,12 +832,66 @@ function makeJSIM(Matter) {
 
   function popBalloons(W, x0, y0, x1, y1) {
     for (const bl of W.balloons) {
-      if (bl.popped || bl.layer > W.layer) continue;
+      if (bl.popped || bl.layer > W.layer || (bl.born && W.t < bl.born)) continue;
       if (segDist(bl.x, bl.y, x0, y0, x1, y1) < bl.r) {
-        bl.popped = true; W.score += 300; W.stats.balloons++; W.stats.targets++;
+        bl.popped = true; W.score += 300; W.stats.balloons++; W.stats.targets++; W.lastPop = W.thrown;
         ev(W, 'pop', { x: bl.x, y: bl.y, n: 300 });
       }
     }
+  }
+
+  /* Just Balloons: 4 balloons rising into the sky. Each one starts at a random spot that some standard throw
+     can reach in the current wind, at least 5 m from the others, and floats up at its own speed. One that
+     floats out of the top of the picture comes back: it pops up from the grass somewhere new and rises again.
+     `born` makes a balloon grow in (it can't be popped before then). */
+  const REACH = {};
+  function reachable(x, y, wind) {
+    const key = (wind || 0).toFixed(1);
+    if (!REACH[key]) { const R = REACH[key] = []; for (let a = 8; a <= 78; a += 5) for (let p = 0.15; p <= 1.001; p += 0.085) R.push(predict(a, p, 'standard', wind || 0)); }
+    return REACH[key].some(pts => {
+      for (let i = 1; i < pts.length; i++) if (segDist(x, y, pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1]) < 0.3) return true;
+      return false;
+    });
+  }
+  const RISE_MIN = 0.45, RISE_MAX = 0.85;            // m/s
+  /* Where a rising balloon is at time t, like a real one let go: it speeds up for the first second, climbs on a
+     slant of its own (vx: up to about 30 degrees either side), wanders a little, and the wind carries it more
+     and more. Also used to test throws that lead a balloon. */
+  function balloonPos(bl, t, wind) {
+    const u = Math.max(0, t - bl.born), climb = u - 0.7 * (1 - Math.exp(-u / 0.7));
+    return {
+      x: bl.x0 + bl.vx * climb + 0.6 * Math.sin(0.5 * u + bl.ph) - 0.6 * Math.sin(bl.ph) + 0.25 * Math.sin(1.3 * u + 2 * bl.ph) - 0.25 * Math.sin(2 * bl.ph)
+         + (wind || 0) * 0.12 * climb,
+      y: bl.y0 + bl.rise * climb
+    };
+  }
+  const newDrift = (rnd, rise) => (rnd() * 2 - 1) * rise * 0.6;
+  function spawnBalloons(W, rnd) {
+    rnd = W.bRnd = rnd || W.bRnd || Math.random;
+    W.balloons = [];
+    for (let i = 0; i < 4; i++) {
+      for (let tries = 0; tries < 400; tries++) {
+        const x = 8 + rnd() * 32, y = 1.5 + rnd() * 7.5;
+        if (W.balloons.some(b => Math.hypot(b.x0 - x, b.y0 - y) < 5) || !reachable(x, y, W.wind)) continue;
+        W.balloons.push({ x0: x, y0: y, x, y, r: 0.8, drift: false, popped: false, layer: 1, ph: rnd() * 6,
+                          born: W.t + 0.2 + i * 0.25, rise: RISE_MIN + rnd() * (RISE_MAX - RISE_MIN) });
+        const b = W.balloons[W.balloons.length - 1]; b.vx = newDrift(rnd, b.rise); b.tilt = 0;
+        break;
+      }
+    }
+    W.roundStart = W.thrown;
+  }
+  // a balloon that floated away comes back up from the grass at a new spot, away from the other balloons
+  function relaunch(W, bl) {
+    const rnd = W.bRnd || Math.random;
+    let x = 8 + rnd() * 32;
+    for (let tries = 0; tries < 200; tries++) {
+      x = 8 + rnd() * 32;
+      const clash = W.balloons.some(b => b !== bl && !b.popped && Math.abs(b.x - x) < 4 && b.y < 6);
+      if (!clash && reachable(x, 3, W.wind)) break;
+    }
+    bl.x0 = bl.x = x; bl.y0 = bl.y = 0.9; bl.born = W.t + 0.3 + rnd() * 0.8;
+    bl.rise = RISE_MIN + rnd() * (RISE_MAX - RISE_MIN); bl.ph = rnd() * 6; bl.vx = newDrift(rnd, bl.rise); bl.tilt = 0;
   }
 
   function ringOf(b, x, y) {
@@ -915,6 +1001,14 @@ function makeJSIM(Matter) {
     }
     for (const bl of W.balloons) {
       if (bl.popped) continue;
+      if (bl.rise) {   // Just Balloons: rising on a slanted, wandering path (see balloonPos)
+        const q = balloonPos(bl, W.t, W.wind), dx = q.x - bl.x, dy = q.y - bl.y;
+        if (dy > 1e-6) bl.tilt += (Math.atan2(dx, dy) * 0.6 - bl.tilt) * 0.05;   // leans the way it drifts
+        bl.x = q.x; bl.y = q.y;
+        // gone off the top (or a side) of the picture: a new balloon comes up from the grass
+        if (bl.y - bl.r * 1.2 > (W.skyTop || W.viewTop) || bl.x + bl.r < (W.skyL || -10) || bl.x - bl.r > (W.skyR || W.viewR + 2)) relaunch(W, bl);
+        continue;
+      }
       bl.x = bl.x0 + (bl.drift ? Math.sin(W.t * 0.7 + bl.ph) * 1.0 + W.wind * 0.35 : 0);
       bl.y = bl.y0 + Math.sin(W.t * 1.8 + bl.ph) * 0.15;
     }
@@ -973,8 +1067,9 @@ function makeJSIM(Matter) {
   function clearedCount(W) { return W.targets.filter(b => b.plugin.cleared).length + W.balloons.filter(b => b.popped).length; }
 
   return {
-    U, DT, FPS, G, JLEN, REL, V_MIN, V_MAX, TYPES, TYPE_ORDER, MAT, LEVELS, PRACTICE,
-    create, step, predict, speedOf, throwJav, split, newWind, posM,
+    U, DT, FPS, G, JLEN, REL, V_MIN, V_MAX, TYPES, TYPE_ORDER, MAT, LEVELS, PRACTICE, BALLOONS,
+    create, step, predict, speedOf, throwJav, split, newWind, JSPEED, setWindMode, WIND_MODES, posM, spawnBalloons,
+    balloonsLeft: W => W.balloons.filter(b => !b.popped).length, balloonPos,
     flying: W => W.javs.some(j => j.state === 'fly'),
     canSplit: W => W.javs.some(j => j.state === 'fly' && !j.split),
     turnOver: W => !W.javs.some(j => j.state === 'fly') && (W.calm > 0.8 || W.turnT > 14),
@@ -1010,7 +1105,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
   /* ---------------- Saving (guarded: works in private windows) ---------------- */
   const SAVE_KEY = 'javelin.save.v1';
-  const save = { stars: {}, best: {}, pb: 0, sound: true, music: true, easy: false, seen: {}, type: 'standard', angle: 40, pace: 60 };
+  const save = { stars: {}, best: {}, pb: 0, sound: true, music: true, easy: false, windMode: 'off', seen: {}, type: 'standard', angle: 40, pace: 60 };
   try { const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); if (s && typeof s === 'object') Object.assign(save, s); } catch (e) {}
   function store() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) {} }
   const unlockAll = Q.has('unlock');
@@ -1159,12 +1254,12 @@ window.addEventListener('DOMContentLoaded', () => {
   function availableTypes() {
     const L = game.level;
     if (!L) return ['standard'];
-    return JSIM.typesFor(L.practice ? maxWorldReached() : L.w);
+    return JSIM.typesFor(L.practice || L.balloonGame ? maxWorldReached() : L.w);
   }
 
   function startLevel(L, idx) {
     game.level = L; game.idx = idx;
-    game.W = JSIM.create(L, { easy: save.easy });
+    game.W = JSIM.create(L, { easy: save.easy, windMode: save.windMode });
     game.phase = 'aim'; game.pt = 0; game.rockyX = ROCKY_START; game.released = false;
     game.ghost = null; game.guideKey = ''; game.parts = []; game.texts = []; game.shake = 0; game.mood = 'idle';
     game.ended = false; game.banner = null; game.resultTimer = 0;
@@ -1172,6 +1267,7 @@ window.addEventListener('DOMContentLoaded', () => {
     buildTypeButtons();
     showScreen('play');
     if (L.practice) banner('Practice Field', 'Throw for distance. Tip: try 35° to 45° at full pace.');
+    else if (L.balloonGame) banner('Just Balloons', 'Pop all 4 balloons before they float away!');
     else if (L.final) banner('The Championship Tower', 'Only the lit targets count. Clear it layer by layer!');
     else banner(L.id + '  ' + L.name, game.W.totalJav + ' javelins · ' + JSIM.targetCount(game.W) + ' targets');
     updateControls();
@@ -1189,6 +1285,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const inGame = name === 'play' || name === 'pause' || name === 'result';
     controls.hidden = !(name === 'play' || name === 'pause');
     $('sndBtn').hidden = $('pauseBtn').hidden = name !== 'play';
+    $('homeBtn').hidden = name === 'title';
     paused = name === 'pause';
     resize();
     if (name === 'map') buildMap();
@@ -1272,11 +1369,39 @@ window.addEventListener('DOMContentLoaded', () => {
 
   $('btnPlay').onclick = () => { SFX.click(); showScreen('map'); };
   $('btnPractice').onclick = () => { SFX.click(); startLevel(JSIM.PRACTICE, -1); };
+  $('btnBalloons').onclick = () => { SFX.click(); startLevel(JSIM.BALLOONS, -1); };
   $('btnMapBack').onclick = () => { SFX.click(); showScreen('title'); };
   $('btnResMap').onclick = $('btnPauseMap').onclick = $('btnEndMap').onclick = () => { SFX.click(); showScreen('map'); };
   $('btnRetry').onclick = $('btnRestart').onclick = () => { SFX.click(); restart(); };
   $('btnResume').onclick = () => { SFX.click(); showScreen('play'); };
   $('pauseBtn').onclick = () => pause();
+  /* Wind button (Practice and Just Balloons): tap the windsock (or N) to go off -> light -> strong -> random.
+     In Just Balloons a new wind brings new balloons, so every one can still be reached. */
+  function canvasPt(e) { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) * LW / r.width, y: (e.clientY - r.top) * LH / r.height }; }
+  function onWind(e) {
+    const R = game.windRect; if (!R || screen !== 'play') return false;
+    const p = canvasPt(e);
+    return p.x >= R.x - 10 && p.x <= R.x + R.w + 10 && p.y >= R.y - 12 && p.y <= R.y + R.h + 12;   // a bigger tap area for fingers
+  }
+  function cycleWind() {
+    const W = game.W, L = game.level;
+    if (!W || !(L.practice || L.balloonGame) || game.phase !== 'aim' || screen !== 'play') return;
+    const M = JSIM.WIND_MODES, mode = M[(M.indexOf(W.windMode || 'off') + 1) % M.length];
+    save.windMode = mode; store();
+    JSIM.setWindMode(W, mode);
+    game.guideKey = ''; SFX.click();
+    if (L.balloonGame) { JSIM.clearJavs(W); JSIM.spawnBalloons(W); game.ghost = null; }
+    const name = { off: 'No wind', light: 'Light wind', strong: 'Strong wind', random: 'Random wind' }[mode];
+    const sub = mode === 'off' ? 'Tap the windsock to add wind' : mode === 'random' ? 'A new wind after every throw'
+      : (W.wind > 0 ? 'Blowing your way →' : '← Blowing against you');
+    banner(name, sub, 1.6);
+  }
+  cv.addEventListener('pointerdown', e => { if (onWind(e)) { e.preventDefault(); cycleWind(); } });
+  cv.addEventListener('pointermove', e => { cv.style.cursor = onWind(e) ? 'pointer' : ''; });
+
+  /* Home: from any screen (a level, practice, balloons, the map, a menu) back to the title screen */
+  function goHome() { SFX.click(); showScreen('title'); $('homeBtn').blur(); }
+  $('homeBtn').onclick = goHome;
 
   /* Full screen: the whole stage (picture and controls) goes full screen. F or the ⛶ button toggles it;
      Esc leaves it. Hidden where the browser can't do it (for example iPhone Safari). */
@@ -1355,7 +1480,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const W = game.W; if (!W || screen !== 'play') return;
     if (JSIM.canSplit(W) && game.type === 'triple') { JSIM.split(W); return; }
     if (game.phase !== 'aim' || game.ended || JSIM.left(W) <= 0) return;
-    if (game.level.practice) JSIM.clearJavs(W);   // one javelin on the field at a time
+    if (game.level.practice || game.level.balloonGame) JSIM.clearJavs(W);   // one javelin on the field at a time
     game.phase = 'run'; game.pt = 0; game.released = false; game.mood = 'idle';
     game.runDur = lerp(1.2, 0.7, game.pace / 100);
     store();
@@ -1377,11 +1502,14 @@ window.addEventListener('DOMContentLoaded', () => {
         case 'KeyP': case 'Escape': pause(); break;
         case 'KeyM': $('sndBtn').click(); break;
         case 'KeyF': toggleFull(); break;
+        case 'KeyH': goHome(); break;
+        case 'KeyN': cycleWind(); break;
         default: return;
       }
       e.preventDefault();
     } else if (screen === 'pause' && (e.code === 'KeyP' || e.code === 'Escape')) { showScreen('play'); e.preventDefault(); }
     else if (e.code === 'KeyF') { toggleFull(); e.preventDefault(); }
+    else if (e.code === 'KeyH' && screen !== 'title') { goHome(); e.preventDefault(); }
   });
 
   /* ---------------- Turn flow ---------------- */
@@ -1428,6 +1556,19 @@ window.addEventListener('DOMContentLoaded', () => {
         else { SFX.mark(); g.mood = 'idle'; }
       } else if (land) { floatText(land.x, 1.2, 'Flat landing: no mark', '#ffd0d0', 1.6); g.mood = 'sad'; }
       else { g.mood = 'sad'; }
+      JSIM.newWind(W); g.guideKey = '';
+      g.phase = 'back'; g.pt = 0; g.backFrom = g.rockyX;
+      updateControls(); return;
+    }
+    if (L.balloonGame) {
+      JSIM.newWind(W); g.guideKey = '';
+      if (JSIM.balloonsLeft(W) === 0) {
+        const n = W.thrown - W.roundStart, best = !save.balloonBest || n < save.balloonBest;
+        if (best) { save.balloonBest = n; store(); }
+        banner('Round ' + W.round + ' cleared!', 'All 4 in ' + n + (n === 1 ? ' javelin' : ' javelins') + (best ? ' · new best!' : ''), 2.4);
+        SFX.layer(); SFX.cheer(); g.mood = 'cheer';
+        W.round++; JSIM.clearJavs(W); JSIM.spawnBalloons(W); g.ghost = null;
+      } else g.mood = W.lastPop === W.thrown ? 'cheer' : 'idle';
       g.phase = 'back'; g.pt = 0; g.backFrom = g.rockyX;
       updateControls(); return;
     }
@@ -1593,6 +1734,8 @@ window.addEventListener('DOMContentLoaded', () => {
     const gy = LH - groundPx, availH = gy - 64;
     const z = Math.min(LW / (R - L), availH / top);
     cam = { L, z, gy };
+    // tell the sim how much sky the picture really shows, so rising balloons leave at the real top edge
+    if (W) { W.skyTop = gy / z; W.skyL = L; W.skyR = L + LW / z; }
   }
   const sx = x => (x - cam.L) * cam.z, sy = y => cam.gy - y * cam.z;
 
@@ -1614,9 +1757,10 @@ window.addEventListener('DOMContentLoaded', () => {
     drawBalloons(W, t);
     drawRack(W);
     drawGuide(W);
-    for (const j of W.javs) if (j.state !== 'fly') drawJav(j.x, j.y, j.a, j.type);
+    const JV = javS();
+    for (const j of W.javs) if (j.state !== 'fly') drawJav(j.x, j.y, j.a, j.type, JV, 1);
     drawRockyNow(t);
-    for (const j of W.javs) if (j.state === 'fly') drawJav(j.x, j.y, j.a, j.type);
+    for (const j of W.javs) if (j.state === 'fly') drawJav(j.x, j.y, j.a, j.type, JV, tipFrac(j));
     drawParts();
     ctx.restore();
     drawTexts();
@@ -1923,6 +2067,13 @@ window.addEventListener('DOMContentLoaded', () => {
   function drawBalloons(W, t) {
     W.balloons.forEach((bl, i) => {
       if (bl.popped) return;
+      // Just Balloons: each balloon pops up (grows with a little overshoot) when its round starts
+      const age = bl.born ? (W.t - bl.born) / 0.4 : 1;
+      if (age <= 0) return;
+      const k = age >= 1 ? 1 : 1 + 2.2 * Math.pow(age - 1, 3) + 1.2 * Math.pow(age - 1, 2);
+      ctx.save();
+      if (k !== 1) { ctx.translate(bl.x, bl.y); ctx.scale(k, k); ctx.translate(-bl.x, -bl.y); }
+      if (bl.tilt) { const ky = bl.y - bl.r; ctx.translate(bl.x, ky); ctx.rotate(-bl.tilt); ctx.translate(-bl.x, -ky); }
       const lockedB = bl.layer > W.layer;
       ctx.globalAlpha = lockedB ? 0.45 : 1;
       ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineWidth = px(1.2);
@@ -1934,13 +2085,25 @@ window.addEventListener('DOMContentLoaded', () => {
       ctx.beginPath(); ctx.moveTo(bl.x - 0.08, bl.y - bl.r * 1.12); ctx.lineTo(bl.x + 0.08, bl.y - bl.r * 1.12); ctx.lineTo(bl.x, bl.y - bl.r * 1.0); ctx.fill();
       ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.beginPath(); ctx.ellipse(bl.x - 0.15, bl.y + 0.2, 0.08, 0.16, -0.4, 0, 7); ctx.fill();
       ctx.globalAlpha = 1;
+      ctx.restore();
     });
   }
 
   const JAV_COL = { standard: ['#cfd6de', '#9aa3ad'], heavy: ['#59616b', '#2f353c'], feather: ['#f4f1e6', '#c9c2a8'], triple: ['#e6b422', '#a87800'] };
-  function drawJav(x, y, a, type) {
+  // Drawing sizes, bigger when the camera is zoomed out (long levels, small phones). Physics is unchanged.
+  // Rocky is drawn 1.6x life size. His overarm throw lets go of the javelin exactly at the physics release
+  // point JSIM.REL (3.5 m up: his raised hand), so the drawn flight is the true flight. If you change this
+  // size, move REL in the sim to match his raised hand.
+  const rockyS = () => 1.6;
+  const javS = () => 1.25;
+  const THROW_REL = 0.1 / 0.22;     // throw progress at the moment of release (see update: pt 0.1 of 0.22)
+  // A thrown javelin is drawn grown around its middle (where the hand let go), then the grow point slides to
+  // its tip over the first 4 m, so a javelin that sticks in or lands shows its point exactly where it hit.
+  const tipFrac = j => clamp(Math.hypot(j.x - JSIM.REL.x, j.y - JSIM.REL.y) / 4, 0, 1);
+  function drawJav(x, y, a, type, k = 1, tip = 0) {
     const L = JSIM.JLEN, [c1, c2] = JAV_COL[type] || JAV_COL.standard;
     ctx.save(); ctx.translate(x, y); ctx.rotate(a);
+    if (k !== 1) { const o = tip * L / 2; ctx.translate(o, 0); ctx.scale(k, k); ctx.translate(-o, 0); }
     ctx.lineCap = 'round';
     ctx.strokeStyle = c2; ctx.lineWidth = Math.max(0.07, px(3.2)); ctx.beginPath(); ctx.moveTo(-L / 2, 0); ctx.lineTo(L / 2 - 0.25, 0); ctx.stroke();
     ctx.strokeStyle = c1; ctx.lineWidth = Math.max(0.045, px(2)); ctx.beginPath(); ctx.moveTo(-L / 2, 0); ctx.lineTo(L / 2 - 0.25, 0); ctx.stroke();
@@ -2009,7 +2172,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const mood = P.mood;
     ctx.save(); ctx.translate(X, 0);
     if (P.backwards) { ctx.scale(-1, 1); }
-    const S = 1.05;           // Rocky is a cartoon: a little bigger than life
+    const S = rockyS();       // Rocky is a cartoon: bigger than life, more so when the camera is far out
     ctx.scale(S, S);
     const hip = { x: 0, y: 1.0 + bob };
     const up = (o, len, a) => ({ x: o.x + Math.sin(a) * len, y: o.y + Math.cos(a) * len });
@@ -2063,16 +2226,26 @@ window.addEventListener('DOMContentLoaded', () => {
     leg(ph, nearBase, true);
 
     // near arm (right) with the javelin
-    let hand;
+    let hand, grip = 0.15;    // grip: how far the javelin's middle sits in front of the hand
     if (P.throwK > 0) {
-      const k = P.throwK, a = lerp(Math.PI * 0.92, Math.PI * 0.15, k);
-      hand = { x: sh.x + Math.cos(a) * 0.62, y: sh.y + 0.12 + Math.sin(a) * 0.45 };
+      // The arm whips from behind the head to the real release point (in Rocky's own units), lets go
+      // there at THROW_REL, then follows through forward and down.
+      const k = P.throwK, rel = { x: (JSIM.REL.x - X) / S, y: JSIM.REL.y / S };
+      const from = { x: sh.x - 0.52, y: sh.y + 0.24 }, to = { x: sh.x + 0.45, y: sh.y - 0.5 };
+      if (k <= THROW_REL) {
+        const u = k / THROW_REL;
+        hand = { x: lerp(from.x, rel.x, u), y: lerp(from.y, rel.y, u) + Math.sin(u * Math.PI) * 0.18 };
+        grip = 0.15 * (1 - u);
+      } else {
+        const u = (k - THROW_REL) / (1 - THROW_REL);
+        hand = { x: lerp(rel.x, to.x, u), y: lerp(rel.y, to.y, u) };
+      }
     } else if (mood === 'cheer' && !P.holding) hand = { x: sh.x + 0.1, y: sh.y + 0.68 };
     else if (run && !P.holding) hand = { x: sh.x - Math.sin(ph) * 0.35, y: sh.y - 0.45 };
     else hand = { x: sh.x - 0.52, y: sh.y + 0.24 + (run ? Math.sin(ph * 2) * 0.03 : 0) };
     if (P.holding) {
-      const ja = P.backwards ? Math.PI - 1.2 : P.throwK > 0 ? lerp(P.aim, P.aim + 0.05, P.throwK) : P.aim;
-      drawJav(hand.x + Math.cos(ja) * 0.15, hand.y + Math.sin(ja) * 0.15, ja, game.type);
+      const ja = P.backwards ? Math.PI - 1.2 : P.aim;
+      drawJav(hand.x + Math.cos(ja) * grip, hand.y + Math.sin(ja) * grip, ja, game.type, javS() / S);
     }
     // head
     ctx.save(); ctx.translate(head.x, head.y);
@@ -2162,12 +2335,14 @@ window.addEventListener('DOMContentLoaded', () => {
     const L = game.level;
     ctx.font = '800 14px system-ui,sans-serif'; ctx.textBaseline = 'middle';
     // left: level
-    const name = L.practice ? 'Practice Field' : (L.final ? 'Final' : L.id) + '  ' + L.name;
+    const name = L.practice ? 'Practice Field' : L.balloonGame ? 'Just Balloons  ·  Round ' + W.round : (L.final ? 'Final' : L.id) + '  ' + L.name;
     const nw = ctx.measureText(name).width + 24;
     pill(8, 8, nw, 26); ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.fillText(name, 20, 21);
     // second row: javelins and targets
     let row2;
     if (L.practice) row2 = 'Best ' + (save.pb ? save.pb.toFixed(1) + ' m' : '–') + (W.lastLand && !W.lastLand.flat ? '   Last ' + Math.max(0, W.lastLand.x).toFixed(1) + ' m' : '');
+    else if (L.balloonGame) row2 = 'Popped ' + (4 - JSIM.balloonsLeft(W)) + '/4   Javelins ' + (W.thrown - W.roundStart) +
+      '   Best ' + (save.balloonBest ? save.balloonBest : '–');
     else row2 = 'Javelins ' + JSIM.left(W) + '   Targets ' + JSIM.clearedCount(W) + '/' + JSIM.targetCount(W);
     ctx.font = '700 12px system-ui,sans-serif';
     const rw = ctx.measureText(row2).width + 24;
@@ -2179,7 +2354,8 @@ window.addEventListener('DOMContentLoaded', () => {
       ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.fillText(s, LW / 2, 22);
     }
     // right: wind (leaves room for the corner buttons)
-    windWidget(LW - 8, cornerPx, W.wind, t);
+    const pickW = L.practice || L.balloonGame;
+    game.windRect = windWidget(LW - 8, cornerPx, W.wind, t, pickW ? W.windMode || 'off' : null, pickW && game.phase === 'aim');
     // layer hint for the final
     if (L.final && W.maxLayer > 1) {
       ctx.font = '700 12px system-ui,sans-serif'; const s = 'Layer ' + Math.min(W.layer, W.maxLayer) + ' of ' + W.maxLayer;
@@ -2200,11 +2376,15 @@ window.addEventListener('DOMContentLoaded', () => {
     }
     ctx.textBaseline = 'alphabetic';
   }
-  function windWidget(xr, y, wind, t) {
-    const txt = Math.abs(wind) < 0.05 ? 'No wind' : (wind > 0 ? '→ ' : '← ') + Math.abs(wind).toFixed(1) + ' m/s';
+  /* mode: the picked wind in Practice / Just Balloons (the pill is then a button: tap to change), else null */
+  function windWidget(xr, y, wind, t, mode, tappable) {
+    let txt = Math.abs(wind) < 0.05 ? 'No wind' : (wind > 0 ? '→ ' : '← ') + Math.abs(wind).toFixed(1) + ' m/s';
+    if (mode && mode !== 'off') txt = { light: 'Light ', strong: 'Strong ', random: 'Random ' }[mode] + txt;
+    if (mode) txt += '  ▸';
     ctx.font = '800 13px system-ui,sans-serif';
     const w = ctx.measureText(txt).width + 64;
     const x0 = pill(xr, y, w, 28, 'right');
+    if (mode) { ctx.strokeStyle = tappable ? '#ffd60a' : 'rgba(255,214,10,.4)'; ctx.lineWidth = 2; rr(x0, y, w, 28, 14); ctx.stroke(); }
     // windsock
     const px0 = x0 + 16, py0 = y + 6;
     ctx.strokeStyle = '#d5dbe3'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(px0, y + 24); ctx.lineTo(px0, py0); ctx.stroke();
@@ -2214,6 +2394,7 @@ window.addEventListener('DOMContentLoaded', () => {
     for (let i = 0; i < 4; i++) { ctx.fillStyle = i % 2 ? '#fff' : '#ff6a3d'; ctx.fillRect(i * 6, -3 + i * 0.6, 6, 6 - i * 1.2); }
     ctx.restore();
     ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.fillText(txt, x0 + 40, y + 15);
+    return mode && tappable ? { x: x0, y, w, h: 28 } : null;
   }
 
   /* ---------- Title background: Rocky practising ---------- */
@@ -2257,10 +2438,11 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   /* ---------------- Start ---------------- */
-  if (DEBUG) window.__jav = { JSIM, game, startLevel, LEVELS, save };
+  if (DEBUG) window.__jav = { JSIM, game, startLevel, LEVELS, save, view: () => ({ LW, LH }) };
   const qLevel = Q.get('level');
   if (qLevel) { const i = LEVELS.findIndex(L => L.id === qLevel); if (i >= 0) startLevel(LEVELS[i], i); }
   else if (Q.has('practice')) startLevel(JSIM.PRACTICE, -1);
+  else if (Q.has('balloons')) startLevel(JSIM.BALLOONS, -1);
   resize();
   requestAnimationFrame(frame);
 });
