@@ -67,6 +67,7 @@
     </select>
   </label>
   <button id="reload" type="button">⟳ Reload</button>
+  <button id="full" type="button" title="Full screen for the simulator (F)">⛶ Full screen</button>
   <span class="url" id="url"></span>
 </header>
 
@@ -149,6 +150,21 @@ once, so sound may play twice; mute one in the game. Saved game settings (localS
   $('reload').addEventListener('click', load);
   for (const id of ['device', 'bars', 'zoom']) $(id).addEventListener('change', () => { save(); layout(); });
   window.addEventListener('resize', layout);
+
+  // Full screen for the simulator page itself (the phones re-fit to the bigger width)
+  const fsEl = () => document.fullscreenElement || document.webkitFullscreenElement;
+  function toggleFull() {
+    const de = document.documentElement;
+    if (fsEl()) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+    else (de.requestFullscreen || de.webkitRequestFullscreen).call(de);
+  }
+  const fsLabel = () => { $('full').textContent = fsEl() ? '⛶ Exit full screen' : '⛶ Full screen'; layout(); };
+  $('full').addEventListener('click', toggleFull);
+  document.addEventListener('fullscreenchange', fsLabel);
+  document.addEventListener('webkitfullscreenchange', fsLabel);
+  document.addEventListener('keydown', e => {   // F toggles full screen, unless typing in the Query box
+    if ((e.key === 'f' || e.key === 'F') && !e.ctrlKey && !e.metaKey && !e.altKey && e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT') toggleFull();
+  });
   layout(); load();
 })();
 </script>
