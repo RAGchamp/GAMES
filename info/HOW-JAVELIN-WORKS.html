@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How Javelin Works</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<!--
+  How Javelin works: the "Learn more" page for Game 3 (Phase 6 of the Javelin plan).
+  Explains how a throw becomes a flight path (with a live demo that uses the game's own flight step and numbers),
+  the four javelins, how towers fall and break, wind, worlds and Just Balloons, drawing and sound, and what
+  Claude Code built, with a dated timeline. The demos copy the formulas and constants from
+  GAME-3-Javelin/javelin.html (the "sim" script): if those change, change them here too.
+-->
+<style>
+  :root{
+    --biz-blue:#0d6efd;
+    --biz-blue-dark:#084298;
+    --biz-yellow:#ffc107;
+    --biz-red:#dc3545;
+    --biz-green:#198754;
+    --nav-blue:#04264d;
+    --nav-yellow:#ffd60a;
+  }
+  body{ background:#f7f8fa; margin:0; }
+  .topnav{
+    position:sticky; top:0; z-index:1030;
+    background:var(--nav-blue); color:var(--nav-yellow);
+    padding:.9rem 1.5rem; display:flex; justify-content:space-between; align-items:center;
+    box-shadow:0 .15rem .5rem rgba(0,0,0,.25);
+  }
+  .topnav .brand{ display:inline-flex; align-items:center; text-decoration:none; }
+  .topnav .brand-logo{ height:44px; width:auto; display:block; }
+  .topnav .tagline{ font-weight:600; font-size:1.05rem; color:var(--nav-yellow); letter-spacing:.15em; word-spacing:.6em; font-style:italic; }
+  @media (max-width:576px){ .topnav{ flex-direction:column; text-align:center; gap:.4rem; padding:.75rem 1rem; } }
+
+  .step-num{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:1.9rem; height:1.9rem; border-radius:50%;
+    background:var(--biz-yellow); color:#2b2b2b; font-weight:800; font-size:.95rem; margin-right:.55rem; flex:none;
+  }
+  .step-title{ display:flex; align-items:center; font-weight:700; font-size:1.1rem; margin-bottom:.75rem; }
+  .step-card{ border:2px solid #c9d3e3; border-radius:.6rem; }
+  .ctrl-label{ font-size:.75rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#6c757d; margin-bottom:.25rem; display:block; }
+  .about-box{ background:#fde2ec; border:2px solid #f5a3c0; border-radius:.6rem; padding:.9rem 1.1rem; }
+  .about-box h2{ font-size:1.05rem; font-weight:700; color:#8a1f4a; margin-bottom:.4rem; }
+  .about-box p{ font-size:.92rem; color:#3b2a31; }
+  .facts{ display:flex; flex-wrap:wrap; gap:.6rem; }
+  .fact{ flex:1 1 140px; background:#fff; border:2px solid #dde3ec; border-radius:.6rem; padding:.5rem .75rem; }
+  .fact .val{ font-size:1.35rem; font-weight:800; line-height:1.15; color:var(--nav-blue); }
+  .fact .lbl{ font-size:.75rem; color:#5a6475; }
+  pre.code{ background:#0f1b2d; color:#d7e3f4; border-radius:.5rem; padding:.7rem .9rem; font-size:.8rem; margin:0; white-space:pre-wrap; }
+  pre.code .c{ color:#8fa7c7; }
+  table.ref th{ background:#eef3fb; font-size:.78rem; text-transform:uppercase; letter-spacing:.04em; }
+  table.ref td, table.ref th{ font-size:.88rem; vertical-align:top; }
+  .demo{ background:#fff; border:2px dashed #9ec5fe; border-radius:.6rem; padding:.75rem .9rem; }
+  .demo h3{ font-size:.95rem; font-weight:800; color:var(--biz-blue-dark); margin:0 0 .4rem; }
+  .demo canvas{ width:100%; display:block; border-radius:.45rem; }
+  .read{ font-size:.9rem; font-weight:700; }
+  .diagram{ width:100%; height:auto; display:block; background:#fff; border:2px solid #dde3ec; border-radius:.5rem; }
+  .flow{ display:flex; flex-wrap:wrap; align-items:stretch; gap:.4rem; }
+  .flow .box{ flex:1 1 130px; background:#eef3fb; border:2px solid #c9d3e3; border-radius:.5rem; padding:.45rem .6rem; font-size:.84rem; }
+  .flow .box b{ display:block; color:var(--nav-blue); }
+  .flow .arrow{ align-self:center; font-weight:800; color:#6c757d; }
+  @media (max-width:700px){ .flow .arrow{ display:none; } }
+  .timeline td:first-child{ white-space:nowrap; }
+  .tag{ border-radius:.3rem; padding:0 .35rem; font-size:.7rem; font-weight:700; color:#fff; background:#6c757d; white-space:nowrap; }
+  .tag.chg{ background:var(--biz-red); }
+  .res{ display:flex; flex-wrap:wrap; gap:.4rem; }
+  .res .m{ flex:1 1 120px; border-radius:.45rem; padding:.35rem .5rem; font-size:.82rem; border:2px solid #dde3ec; background:#fff; }
+  .res .m b{ display:block; }
+  .res .m.ok{ border-color:#198754; background:#e8f6ee; }
+  .res .m.mid{ border-color:#e6a700; background:#fff6dc; }
+  .res .m.no{ border-color:#b02a37; background:#fbe9eb; }
+  kbd{ background:#04264d; }
+  footer{ background:var(--nav-blue); }
+  footer a{ color:#fff; }
+</style>
+</head>
+<body>
+
+<!-- STICKY TOP NAV -->
+<div class="topnav">
+  <a class="brand" href="../index.html"><img class="brand-logo" src="../logo.svg" alt="RAG Champ"></a>
+  <div class="tagline">AI Games Portal</div>
+</div>
+
+<main class="container my-4">
+
+  <div class="about-box mb-4">
+    <h2>What is this page and how does AI play a part?</h2>
+    <p class="mb-0">This page explains how <strong>Game 3: Javelin</strong> works inside: how two sliders turn into a javelin flying along a real arc, how the towers wobble, break and fall, how the wind and the rising balloons work, and what Claude Code (an AI coding agent) built. Claude Code wrote the whole game from a <a href="JAVELIN-GAME-PLAN.html">short plan</a> and one picture of Rocky, and a person tested every version on a computer and a phone. <strong>Players don't need any AI to play.</strong> The demos on this page use the same formulas and numbers as the game, so you can try them yourself.</p>
+  </div>
+
+  <h1 class="h3 fw-bold mb-1">🎯 How Javelin Works</h1>
+  <p class="text-muted mb-3"><a href="../GAME-3-Javelin/javelin.html">▶ Play Javelin</a> · <a href="JAVELIN-GAME-PLAN.html">📋 The development plan</a> · <a href="../index.html">🏠 Games Home</a></p>
+
+  <div class="facts mb-4">
+    <div class="fact"><div class="val">1 file</div><div class="lbl"><code>javelin.html</code>: HTML, CSS and JavaScript together</div></div>
+    <div class="fact"><div class="val">≈ 2,450</div><div class="lbl">lines written for the game, in 3 scripts: rules, screen, physics library</div></div>
+    <div class="fact"><div class="val">0</div><div class="lbl">image or sound files: Rocky, the towers and every sound are made with code</div></div>
+    <div class="fact"><div class="val">31</div><div class="lbl">levels in 4 worlds, plus Practice field and Just Balloons</div></div>
+    <div class="fact"><div class="val">4</div><div class="lbl">javelins: Standard, Heavy, Feather and Triple</div></div>
+    <div class="fact"><div class="val">60</div><div class="lbl">physics steps a second, the same on every computer and phone</div></div>
+  </div>
+
+  <!-- 1. The flight -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">1</span>How a throw becomes a flight path</div>
+      <p>When you press THROW, Rocky runs up and lets go of the javelin from his raised hand, <b>3.5 m</b> above the ground. The two sliders decide how it leaves his hand: <b>Angle</b> is the direction (5° is nearly flat, 85° nearly straight up) and <b>Pace</b> is the speed, from <b>8 m/s</b> at 0% to <b>22 m/s</b> at 100%. After that, Rocky can't change anything: three forces decide where it goes.</p>
+
+      <div class="row g-3 mb-3">
+        <div class="col-lg-6">
+          <span class="ctrl-label">The three forces on a flying javelin</span>
+          <svg class="diagram" viewBox="0 0 520 250" role="img" aria-label="A javelin flying up and to the right. Gravity pulls it straight down, drag pulls it backwards along its path, and wind pushes it sideways.">
+            <title>Gravity, drag and wind acting on a javelin in flight</title>
+            <path d="M30 220 Q 230 -40 500 210" fill="none" stroke="#9ec5fe" stroke-width="3" stroke-dasharray="6 7"/>
+            <text x="470" y="236" text-anchor="end" font-size="12" fill="#5a6475" font-family="system-ui">the path (an arc)</text>
+            <g transform="translate(200 78) rotate(-17)">
+              <rect x="-62" y="-3" width="124" height="6" rx="3" fill="#c9a36a"/>
+              <polygon points="62,-4 80,0 62,4" fill="#5a6475"/>
+              <rect x="-14" y="-4" width="20" height="8" fill="#04264d"/>
+            </g>
+            <line x1="200" y1="82" x2="200" y2="168" stroke="#dc3545" stroke-width="4"/>
+            <polygon points="192,164 208,164 200,180" fill="#dc3545"/>
+            <text x="210" y="160" font-size="13" font-weight="700" fill="#dc3545" font-family="system-ui">gravity: 9.8 m/s² down</text>
+            <line x1="196" y1="80" x2="128" y2="101" stroke="#6f42c1" stroke-width="4"/>
+            <polygon points="130,93 116,105 134,108" fill="#6f42c1"/>
+            <text x="24" y="128" font-size="13" font-weight="700" fill="#6f42c1" font-family="system-ui">drag: air slows it</text>
+            <line x1="262" y1="36" x2="332" y2="36" stroke="#198754" stroke-width="4"/>
+            <polygon points="330,28 346,36 330,44" fill="#198754"/>
+            <text x="352" y="41" font-size="13" font-weight="700" fill="#198754" font-family="system-ui">wind</text>
+          </svg>
+          <p class="small mt-2 mb-0"><b>Gravity</b> pulls it down all the time, so the path bends into an arc. <b>Drag</b> is the air pushing back; it grows with speed and points backwards along the path, so fast throws lose more. <b>Wind</b> pushes sideways: a tailwind (→) carries the javelin further, a headwind (←) blows it back.</p>
+        </div>
+        <div class="col-lg-6">
+          <span class="ctrl-label">The flight in code (from javelin.html)</span>
+<pre class="code"><span class="c">// Pace 0..100% becomes 8..22 m/s (Heavy x0.88, Feather x1.12)</span>
+speed = (8 + pace * (22 - 8)) * type.speed;
+vx = speed * cos(angle);  vy = speed * sin(angle);
+
+<span class="c">// every 1/240 of a second (4 small steps per frame):</span>
+sp  = Math.hypot(vx, vy);
+vx += (-0.0035 * drag * sp * vx + 0.3 * windEffect * wind) * h;
+vy += (-9.8    - 0.0035 * drag * sp * vy) * h;
+x  += vx * h;   y += vy * h;</pre>
+          <p class="small mt-2 mb-0">That's the whole flight. Each small step nudges the speed (gravity, drag, wind), then moves the javelin a little. The javelin always points along its path, so it flies nose-first and comes down tip-first. If it lands too flat (less than about 11° downwards), it skids and doesn't leave a mark.</p>
+        </div>
+      </div>
+
+      <div class="flow mb-3">
+        <div class="box"><b>Aim guide</b>The dotted line in front of Rocky uses this same step to look ahead. It shows the first quarter of the path (half with Easy on), so you still have to judge the rest.</div>
+        <div class="arrow">·</div>
+        <div class="box"><b>2× flight speed</b>On screen the javelin flies twice as fast as real time, on exactly the same path. Only its own clock runs fast; the towers and balloons keep their normal speed.</div>
+        <div class="arrow">·</div>
+        <div class="box"><b>Hits</b>Every small step, the line from the tip's old place to its new place is checked against every block, target, bell and balloon, so even a fast javelin can't jump through a thin board.</div>
+        <div class="arrow">·</div>
+        <div class="box"><b>Slow motion</b>When the javelin's tip comes within about 2 m of a target, the picture slows down to a third of its speed so you can see the hit.</div>
+      </div>
+
+      <div class="demo">
+        <h3>🧪 Try it: throw, then find the angle that goes furthest</h3>
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="ctrl-label" for="fAng">Angle: <span id="fAngV"></span>°</label>
+            <input type="range" class="form-range" id="fAng" min="5" max="85" step="1" value="40">
+            <label class="ctrl-label" for="fPace">Pace: <span id="fPaceV"></span>%</label>
+            <input type="range" class="form-range" id="fPace" min="0" max="100" step="1" value="100">
+            <label class="ctrl-label" for="fWind">Wind: <span id="fWindV"></span></label>
+            <input type="range" class="form-range" id="fWind" min="-4.5" max="4.5" step="0.5" value="0">
+            <label class="ctrl-label" for="fType">Javelin</label>
+            <select class="form-select form-select-sm mb-2" id="fType">
+              <option value="standard">Standard</option>
+              <option value="heavy">Heavy</option>
+              <option value="feather">Feather</option>
+            </select>
+            <div class="d-flex flex-wrap gap-2">
+              <button type="button" class="btn btn-sm btn-danger fw-bold" id="fThrow">THROW</button>
+              <button type="button" class="btn btn-sm btn-outline-primary" id="fBest">Find the best angle</button>
+              <button type="button" class="btn btn-sm btn-outline-secondary" id="fClear">Clear</button>
+            </div>
+          </div>
+          <div class="col-md-8">
+            <canvas id="fCanvas" width="960" height="440" aria-label="The javelin's flight path for the chosen angle, pace, wind and javelin"></canvas>
+            <div class="read mt-2" id="fRead"></div>
+            <div class="small text-muted">The faint dashed line shows where the javelin will go with the sliders as they are now. Press THROW to watch it fly; each throw leaves a coloured path and stays stuck where it landed, so you can compare.</div>
+          </div>
+        </div>
+        <div class="mt-3" id="fBestBox" hidden>
+          <span class="ctrl-label">Distance for every angle (same pace, wind and javelin)</span>
+          <canvas id="fChart" width="960" height="230" aria-label="Chart of how far the javelin goes for each angle from 5 to 85 degrees"></canvas>
+          <div class="small mt-1" id="fBestRead"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. The four javelins -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">2</span>Four javelins, four numbers each</div>
+      <p class="small">Every javelin uses the same flight code. They differ only by a few numbers that multiply the speed, the drag, the wind's push, and how hard they hit. A new javelin joins the rack in each world.</p>
+      <div class="table-responsive">
+        <table class="table table-sm table-bordered ref mb-0">
+          <thead><tr><th>Javelin</th><th>From</th><th>Speed</th><th>Drag</th><th>Wind</th><th>Push</th><th>Damage</th><th>What it's good for</th></tr></thead>
+          <tbody>
+            <tr><td><b>Standard</b></td><td>World 1</td><td>× 1</td><td>× 1</td><td>× 1</td><td>× 1</td><td>× 1</td><td>Everything; the one to learn with.</td></tr>
+            <tr><td><b>Heavy</b></td><td>World 2</td><td>× 0.88</td><td>× 0.5</td><td>× 0.35</td><td>× 2.6</td><td>× 3</td><td>The only javelin that can break stone. Shoves towers hard and hardly notices the wind, but drops sooner.</td></tr>
+            <tr><td><b>Feather</b></td><td>World 3</td><td>× 1.12</td><td>× 1.6</td><td>× 3</td><td>× 0.45</td><td>× 0.6</td><td>Long, light throws and reaching high places; the wind loves it.</td></tr>
+            <tr><td><b>Triple</b></td><td>World 4</td><td>× 1</td><td>× 1</td><td>× 1</td><td>× 0.8</td><td>× 0.8</td><td>Press THROW again in the air: it splits into three javelins that spread out a little, to hit several targets at once.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Towers -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">3</span>Towers that wobble, break and fall</div>
+      <div class="row g-3 mb-3">
+        <div class="col-lg-6">
+          <p class="small">The towers are built with <b>Matter.js</b>, a free open-source 2D physics library (MIT licence). Every crate, post, slab, target and trophy cup is a solid <b>body</b> with a weight, friction and bounce. Matter.js works out how they push on each other, slide, tip over and fall 60 times a second. Its code is pasted into the game as one long line, so the game needs no internet connection to play.</p>
+          <p class="small">The javelin itself isn't a Matter.js body while it flies; it uses the flight code from section 1. When its tip touches something, the game decides what happens:</p>
+          <ul class="small mb-0">
+            <li><b>Glass</b> always shatters, and the javelin flies on, a little slower.</li>
+            <li><b>Wood</b> loses strength: damage = <i>speed × 3.5 × the javelin's damage</i>. Out of strength, it splinters and the javelin goes through; otherwise the javelin sticks in it and gives it a shove.</li>
+            <li><b>Stone</b> only the Heavy javelin can break. Other javelins bounce off.</li>
+            <li><b>Steel-rim boards</b> can't break. They need 2 hits, or you knock them over.</li>
+            <li>A <b>shove</b> is a push at the exact point that was hit, so hitting high on a tower tips it over and hitting low slides it.</li>
+          </ul>
+        </div>
+        <div class="col-lg-6">
+          <table class="table table-sm table-bordered ref mb-2">
+            <thead><tr><th>Material</th><th>Weight</th><th>Strength</th><th>Points</th></tr></thead>
+            <tbody>
+              <tr><td>🪵 Wood</td><td>light</td><td>90</td><td>50</td></tr>
+              <tr><td>🪟 Glass</td><td>light</td><td>breaks on any hit</td><td>30</td></tr>
+              <tr><td>🪨 Stone</td><td>3 × wood</td><td>320, Heavy only</td><td>100</td></tr>
+              <tr><td>🔩 Steel rim</td><td>heavy</td><td>can't break</td><td>600 after 2 hits</td></tr>
+            </tbody>
+          </table>
+          <table class="table table-sm table-bordered ref mb-0">
+            <thead><tr><th>Target</th><th>Cleared when</th><th>Points</th></tr></thead>
+            <tbody>
+              <tr><td>🎯 Bullseye board</td><td>hit, broken or knocked down</td><td>400 · 700 · 1,000 in the middle</td></tr>
+              <tr><td>🏆 Trophy cup</td><td>it falls over or reaches the ground</td><td>400</td></tr>
+              <tr><td>🎈 Balloon</td><td>the javelin passes through it</td><td>300</td></tr>
+              <tr><td>🔔 Bell (bonus)</td><td>rung</td><td>250</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="demo mb-3">
+        <h3>🧪 Try it: what breaks?</h3>
+        <p class="small mb-2">Pick a javelin and how fast it is going when it hits. One hit is shown, using the game's strength and damage numbers.</p>
+        <div class="row g-3 align-items-center">
+          <div class="col-md-4">
+            <label class="ctrl-label" for="bType">Javelin</label>
+            <select class="form-select form-select-sm mb-2" id="bType">
+              <option value="standard">Standard</option>
+              <option value="heavy">Heavy</option>
+              <option value="feather">Feather</option>
+              <option value="triple">Triple (one of the three)</option>
+            </select>
+            <label class="ctrl-label" for="bSpeed">Speed at the hit: <span id="bSpeedV"></span> m/s</label>
+            <input type="range" class="form-range" id="bSpeed" min="6" max="25" step="1" value="16">
+          </div>
+          <div class="col-md-8"><div class="res" id="bRes"></div></div>
+        </div>
+      </div>
+
+      <p class="small mb-2"><b>No falling before you throw.</b> When a level starts, every piece is put to <b>sleep</b>: Matter.js leaves it alone until something touches it. A test program also wakes every piece of every level and checks that each tower still stands on its own.</p>
+      <p class="small mb-0"><b>Stars.</b> Clear every target to win. You get ★ for clearing the level, ★★ with 1 javelin left, and ★★★ with 2 left or a high enough score. Each javelin left over adds 2,000 points.</p>
+    </div>
+  </div>
+
+  <!-- 4. Levels, wind and Just Balloons -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">4</span>Levels, wind and Just Balloons</div>
+      <div class="row g-3 mb-3">
+        <div class="col-lg-6">
+          <p class="small">Every level is a short <b>recipe</b> with distances in metres from Rocky. Small helpers build the parts: <code>box</code>, <code>frame</code> (two posts and a slab), <code>board</code>, <code>cup</code>, <code>balloon</code>, <code>bell</code>, <code>mover</code> (a target that slides on a rail) and <code>swing</code> (a sign on a rope).</p>
+<pre class="code mb-2"><span class="c">// level 2-4 "High Wind" (from javelin.html)</span>
+{ id: '2-4', name: 'High Wind', jav: 4, wind: 4, build: b => {
+  let t = b.frame(34, 0, 2.4, 2);       <span class="c">// posts + slab at 34 m</span>
+  t = b.frame(34, t, 2.4, 2, 'glass');  <span class="c">// a glass floor on top</span>
+  b.board(34, t);                       <span class="c">// the target on the top</span>
+  b.balloon(26, 9, { drift: 1 }); } }</pre>
+          <p class="small mb-0"><b>Wind</b> in the levels is fixed per ground (World 2), changes after every throw (World 3's gusts), or is light (World 4). <b>Easy</b> halves it. In <b>Practice field</b> and <b>Just Balloons</b> you choose: tap the windsock, or press <kbd>N</kbd>, for no wind, light (1 to 2 m/s), strong (3 to 4.5 m/s) or random (a new wind after every throw).</p>
+        </div>
+        <div class="col-lg-6">
+          <table class="table table-sm table-bordered ref mb-2">
+            <thead><tr><th>World</th><th>What's new</th></tr></thead>
+            <tbody>
+              <tr><td>1 · School ground</td><td>8 levels, no wind: learn angle and pace on wood, boards, cups and balloons.</td></tr>
+              <tr><td>2 · City stadium</td><td>8 levels: steady wind, glass, steel rims and stone; the Heavy javelin.</td></tr>
+              <tr><td>3 · Hilltop camp</td><td>8 levels: gusts, ledges and bells; the Feather javelin.</td></tr>
+              <tr><td>4 · Night stadium</td><td>6 levels: targets on rails and swinging signs; the Triple javelin.</td></tr>
+              <tr><td>🏆 The final</td><td>The Championship Tower, cleared one lit layer at a time.</td></tr>
+            </tbody>
+          </table>
+          <p class="small mb-0"><b>Just Balloons</b> has no tower. 4 balloons rise into the sky like real ones let go: each one speeds up for its first second, climbs at its own speed (0.45 to 0.85 m/s) on its own slant (up to about 30° either way), wanders a little, tilts on its string, and drifts further and further with the wind. One that floats out of the picture comes back up from the grass somewhere new. Each balloon starts at a spot that some throw can reach in the current wind, so every round can be won, but you have to aim where it <i>will be</i>.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. Drawing and sound -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">5</span>Rocky, drawing and sound, all with code</div>
+      <div class="row g-3">
+        <div class="col-lg-6">
+          <p class="small"><b>Rocky</b> is drawn with canvas shapes from one picture of him: swept-up brown hair, a vest and shorts, socks and shoes. His arms and legs are moved by a few angles each frame for standing, the run-up, the throw and the follow-through. He is drawn 1.6 times life size so he's easy to see on a phone. The throw is <b>overarm</b>: his hand draws the javelin back behind his head, whips it up and forward, and lets go at the exact point (3.5 m up) where the flight starts, so the javelin never jumps.</p>
+          <p class="small mb-0"><b>The picture</b> fits any screen. The camera fits the whole level in, from Rocky to the furthest target, and a taller screen just shows more sky. There are distance markers every 5 m, wood splinters, glass shards, dust, confetti, screen shake, and a last-throw "ghost" path to help you adjust.</p>
+        </div>
+        <div class="col-lg-6">
+          <p class="small"><b>Sound.</b> No sound files: everything is made with the browser's Web Audio. Each of the 24 sounds (footsteps, the whoosh, the thunk of a javelin sticking in, glass, wood, stone, steel, bells, balloon pops, the crowd cheer and more) is a short mix of tones and noise, shaped by filters and volume curves. A small stadium music loop is played from a list of notes. Nothing sounds until the first click or tap, and Sound and Music can be switched off.</p>
+          <p class="small mb-0"><b>Controls</b> work with a mouse, a finger or the keys: <kbd>↑</kbd><kbd>↓</kbd> angle, <kbd>←</kbd><kbd>→</kbd> pace, <kbd>Space</kbd> throw, <kbd>1</kbd>–<kbd>4</kbd> javelin, <kbd>R</kbd> restart, <kbd>P</kbd> pause, <kbd>F</kbd> full screen, <kbd>H</kbd> home, <kbd>N</kbd> wind. Stars, best scores and settings are saved in the browser.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. What Claude Code built -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">6</span>What Claude Code built, and how it was checked</div>
+      <p class="small">Unlike Car Race, Javelin didn't start from someone else's example. Claude Code wrote it from a plan and one picture. The only borrowed code is the Matter.js physics library. The game file has three scripts:</p>
+      <div class="flow mb-3">
+        <div class="box"><b>sim: the rules</b>Flight, levels, breaking, scoring, wind and balloons. It draws nothing, so a test program can play every level without a browser.</div>
+        <div class="arrow">→</div>
+        <div class="box"><b>game-ui: the screen</b>Drawing, Rocky, menus, sliders, keys, sound and saving. It asks the rules what happened and shows it.</div>
+        <div class="arrow">←</div>
+        <div class="box"><b>matter: the physics library</b>Matter.js 0.19.0, pasted in unchanged, which moves and stacks the tower pieces.</div>
+      </div>
+
+      <span class="ctrl-label">Timeline</span>
+      <p class="small mb-2"><span class="tag chg">changed</span> marks changes that came from a person testing the game.</p>
+      <table class="table table-sm table-bordered ref timeline mb-3">
+        <thead><tr><th>When</th><th>What was built</th></tr></thead>
+        <tbody>
+          <tr><td>22 Nov 2026</td><td><b>The plan:</b> the idea, Rocky, the controls, the physics, 4 worlds, scoring and 6 build phases.</td></tr>
+          <tr><td>22 Nov 2026</td><td><b>Phase 1, Rocky and the throw:</b> Rocky drawn in code, the sliders, the flight and the Practice field with a personal best.</td></tr>
+          <tr><td>22 Nov 2026</td><td><b>Phase 2, towers, targets and scoring:</b> Matter.js, wood, glass and stone, targets, stars, the aim guide and World 1.</td></tr>
+          <tr><td>22 Nov 2026</td><td><b>Phase 3, wind and new javelins:</b> the windsock, Heavy and Feather, Worlds 2 and 3.</td></tr>
+          <tr><td>22 Nov 2026</td><td><b>Phase 4, the ending:</b> World 4 with moving and swinging targets, the Championship Tower, Coach Asha's scenes, the map and the podium. <span class="tag chg">changed</span> The final got 6 javelins instead of 8, because the solver needed only 3.</td></tr>
+          <tr><td>22 Nov 2026</td><td><b>Phase 5, sound, polish and phones:</b> sound and music, slow motion, effects, phone layouts and Easy. The portal card. <span class="tag chg">changed</span> Full screen, and the distance markers made deep blue so they're easy to read.</td></tr>
+          <tr><td>22 Nov 2026</td><td><span class="tag chg">changed</span> After phone testing: Rocky and the javelin drawn bigger. The release point moved up to his raised hand, so the throw looks overarm and the flight starts exactly where he lets go.</td></tr>
+          <tr><td>22 Nov 2026</td><td><span class="tag chg">changed</span> <b>Just Balloons</b> on the start screen, a <b>Home</b> button on every screen, and the <b>wind button</b> in Practice and Just Balloons.</td></tr>
+          <tr><td>22 Nov 2026</td><td><span class="tag chg">changed</span> The balloons rise on slanted, wandering paths and float right out of the top of the picture; the javelin flies twice as fast on the same path.</td></tr>
+          <tr><td>22 Nov 2026</td><td><b>This page.</b></td></tr>
+        </tbody>
+      </table>
+
+      <span class="ctrl-label">How it was checked</span>
+      <ul class="small mb-0">
+        <li><b>A computer solver</b> plays every level with the real rules, trying angles, paces, javelins and (for moving targets) waiting times. After every change to the flight it was run again: all 31 levels can be cleared within their javelin limits.</li>
+        <li><b>A tower test</b> wakes every piece of every level and checks nothing falls over on its own.</li>
+        <li><b>A balloon test</b> plays rounds of Just Balloons in every wind and pops each balloon with one real throw, aimed where the balloon will be.</li>
+        <li><b>A test browser</b> opens the game, throws, and takes pictures frame by frame (for example, to check the throw looks overarm), and checks there are no errors.</li>
+        <li><b>People</b> played it on a laptop and on a phone, which led to the bigger Rocky, the overarm throw, Home, the wind button and the rising balloons.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="text-center my-4">
+    <a class="btn btn-lg fw-bold text-white px-4" style="background:#04264d;border:3px solid #ffd60a;border-radius:2rem;color:#ffd60a!important" href="../GAME-3-Javelin/javelin.html">▶ Play Javelin</a>
+    <a class="btn btn-lg fw-bold px-4 ms-2" style="border:2px solid #04264d;color:#04264d;border-radius:2rem" href="../index.html">🏠 Games Home</a>
+  </div>
+  <p class="small text-muted text-center">Tower physics: Matter.js by Liam Brummitt (MIT licence). Everything else written with Claude Code.</p>
+
+</main>
+
+<footer class="text-white py-4 mt-5">
+  <div class="container text-center small">AI Games Portal · How Javelin works · <a href="../GAME-3-Javelin/javelin.html">🎯 Play Javelin</a> · <a href="JAVELIN-GAME-PLAN.html">📋 Javelin plan</a> · <a href="HOW-CHINTU-WORKS.html">💡 How Chintu works</a> · <a href="HOW-CAR-RACE-WORKS.html">💡 How Car Race works</a> · <a href="../index.html">🏠 Games Home</a></div>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+  const $ = id => document.getElementById(id);
+
+  /* ---------- The game's numbers (copied from the sim script in javelin.html) ---------- */
+  const G = 9.8, V_MIN = 8, V_MAX = 22, JLEN = 2.6, REL = { x: 0.1, y: 3.5 }, DRAG = 0.0035, WIND_K = 0.3, DT = 1 / 60, JSPEED = 2;
+  const TYPES = {
+    standard: { speed: 1, drag: 1, wind: 1, dmg: 1, stone: false },
+    heavy:    { speed: 0.88, drag: 0.5, wind: 0.35, dmg: 3, stone: true },
+    feather:  { speed: 1.12, drag: 1.6, wind: 3, dmg: 0.6, stone: false },
+    triple:   { speed: 1, drag: 1, wind: 1, dmg: 0.8, stone: false }
+  };
+  function flight(s, T, wind, h) {
+    const sp = Math.hypot(s.vx, s.vy), c = DRAG * T.drag;
+    s.vx += (-c * sp * s.vx + WIND_K * T.wind * wind) * h;
+    s.vy += (-G - c * sp * s.vy) * h;
+    s.x += s.vx * h; s.y += s.vy * h;
+  }
+  /* One throw: the centre's path, where the tip lands, how high it went, the time and whether it landed flat */
+  function throwPath(angle, pace, type, wind) {
+    const T = TYPES[type], v = (V_MIN + pace * (V_MAX - V_MIN)) * T.speed, a = angle * Math.PI / 180;
+    const s = { x: REL.x, y: REL.y, vx: v * Math.cos(a), vy: v * Math.sin(a) };
+    const pts = [[s.x, s.y]];
+    let top = s.y, t = 0;
+    const tip = () => { const ja = Math.atan2(s.vy, s.vx); return [s.x + Math.cos(ja) * JLEN / 2, s.y + Math.sin(ja) * JLEN / 2]; };
+    let prev = tip();
+    for (let i = 0; i < 4000; i++) {
+      flight(s, T, wind, DT / 4); t += DT / 4;
+      if (i % 4 === 3) pts.push([s.x, s.y]);
+      top = Math.max(top, s.y);
+      const cur = tip();
+      if (cur[1] <= 0) {
+        const f = prev[1] / (prev[1] - cur[1]), land = prev[0] + (cur[0] - prev[0]) * f;
+        const flat = !(s.vy < 0 && Math.atan2(-s.vy, Math.abs(s.vx)) > 0.2);
+        pts.push([s.x, s.y]);
+        return { pts, land, top, t, flat, v };
+      }
+      prev = cur;
+    }
+    return { pts, land: s.x, top, t, flat: true, v };
+  }
+
+  /* ---------- Demo 1: the flight ---------- */
+  const cv = $('fCanvas'), cx = cv.getContext('2d'), chart = $('fChart'), ch = chart.getContext('2d');
+  const COLS = ['#dc3545', '#0d6efd', '#198754', '#e6a700', '#6f42c1', '#fd7e14'];
+  let shots = [];
+  const val = () => ({ angle: +$('fAng').value, pace: +$('fPace').value / 100, type: $('fType').value, wind: +$('fWind').value });
+  const VIEW = { L: -3, R: 65, T: 28 };
+  const JDRAW = JLEN * 1.7;   // the javelin is drawn bigger than life so it's easy to follow
+  function px(x, y) { const w = cv.width, h = cv.height - 44, k = Math.min(w / (VIEW.R - VIEW.L), h / VIEW.T); return [(x - VIEW.L) * k, h - y * k]; }
+  function drawField() {
+    const w = cv.width, h = cv.height, gy = h - 44;
+    const sky = cx.createLinearGradient(0, 0, 0, gy); sky.addColorStop(0, '#8fd0ff'); sky.addColorStop(1, '#e8f7ff');
+    cx.fillStyle = sky; cx.fillRect(0, 0, w, gy);
+    cx.fillStyle = '#6fb83f'; cx.fillRect(0, gy, w, h - gy);
+    cx.font = 'bold 22px system-ui,sans-serif'; cx.textAlign = 'center';
+    for (let m = 10; m <= 60; m += 10) { const [x] = px(m, 0); cx.fillStyle = '#04264d'; cx.fillRect(x - 1, gy, 3, 10); cx.fillText(m + ' m', x, gy + 34); }
+    for (let m = 5; m <= 25; m += 5) { const [, y] = px(0, m); cx.fillStyle = 'rgba(4,38,77,.25)'; cx.fillRect(0, y, w, 1); cx.fillStyle = 'rgba(4,38,77,.6)'; cx.textAlign = 'left'; cx.font = 'bold 20px system-ui,sans-serif'; cx.fillText(m + ' m', 6, y - 5); cx.textAlign = 'center'; }
+    drawThrower();
+    // wind arrow
+    const wv = val().wind;
+    if (wv) {
+      cx.fillStyle = '#198754'; cx.font = 'bold 24px system-ui,sans-serif'; cx.textAlign = 'right';
+      cx.fillText((wv > 0 ? 'wind → ' : 'wind ← ') + Math.abs(wv).toFixed(1) + ' m/s', w - 12, 24);
+    }
+  }
+  /* Rocky, drawn to scale in metres like the game (1.6 x life size, so his raised hand is at the release point).
+     Before a throw he holds the javelin over his shoulder; while it flies his arm has followed through. */
+  const kPx = () => px(1, 0)[0] - px(0, 0)[0];
+  function limb(pts, col, wM) {
+    cx.strokeStyle = col; cx.lineWidth = Math.max(3, wM * kPx()); cx.lineCap = 'round'; cx.lineJoin = 'round';
+    cx.beginPath(); pts.forEach((q, i) => { const [x, y] = px(q[0], q[1]); i ? cx.lineTo(x, y) : cx.moveTo(x, y); }); cx.stroke();
+  }
+  function drawThrower() {
+    const holding = !anim, aim = +$('fAng').value * Math.PI / 180;
+    const hip = [-0.75, 1.45], sh = [-0.6, 2.55], head = [-0.5, 3.0];
+    limb([hip, [-1.25, 0.75], [-1.6, 0.05]], '#f0c08f', 0.2);            // back leg
+    limb([hip, [-0.2, 0.75], [-0.05, 0.05]], '#f0c08f', 0.2);            // front leg
+    limb([[-1.75, 0.05], [-1.45, 0.05]], '#ffffff', 0.22); limb([[-0.15, 0.05], [0.18, 0.05]], '#ffffff', 0.22);   // shoes
+    limb([hip, [-0.95, 1.05]], '#1d4fa3', 0.34); limb([hip, [-0.45, 1.05]], '#1d4fa3', 0.34);                      // shorts
+    limb([hip, sh], '#1d6fd6', 0.5);                                     // vest
+    limb([sh, [-0.1, 2.25], [0.35, 2.45]], '#f0c08f', 0.16);             // front arm, pointing the way
+    const hand = holding ? [REL.x, REL.y] : [0.55, 1.9];
+    limb([sh, holding ? [-0.35, 3.25] : [0.05, 2.2], hand], '#f0c08f', 0.17);   // throwing arm: raised, or followed through
+    const [hx, hy] = px(head[0], head[1]), r = 0.36 * kPx();
+    cx.fillStyle = '#f0c08f'; cx.beginPath(); cx.arc(hx, hy, r, 0, 7); cx.fill();
+    cx.fillStyle = '#6b3b1a'; cx.beginPath(); cx.moveTo(hx - r, hy);                // spiky hair, swept back
+    for (let i = 0; i <= 5; i++) { const a = Math.PI + i * Math.PI / 5; cx.lineTo(hx + Math.cos(a) * r * 1.35 - r * 0.25, hy + Math.sin(a) * r * 1.35); cx.lineTo(hx + Math.cos(a + 0.3) * r * 0.9, hy + Math.sin(a + 0.3) * r * 0.9); }
+    cx.closePath(); cx.fill();
+    if (holding) drawJav(REL.x, REL.y, aim, false);
+  }
+  /* The javelin: a long shaft with a dark grip and a metal point. Flying, it trails a short jet streak. */
+  function drawJav(x, y, a, jet) {
+    const [X, Y] = px(x, y), L = JDRAW * kPx();
+    cx.save(); cx.translate(X, Y); cx.rotate(-a);
+    if (jet) {
+      const g = cx.createLinearGradient(-L / 2, 0, -L * 1.6, 0);
+      g.addColorStop(0, 'rgba(255,200,60,.95)'); g.addColorStop(0.4, 'rgba(255,120,40,.55)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+      cx.fillStyle = g; cx.beginPath(); cx.moveTo(-L / 2, -4); cx.lineTo(-L * 1.6, 0); cx.lineTo(-L / 2, 4); cx.closePath(); cx.fill();
+    }
+    cx.fillStyle = '#c9a36a'; cx.fillRect(-L / 2, -3, L * 0.88, 6);                          // shaft
+    cx.fillStyle = '#04264d'; cx.fillRect(-L * 0.06, -4.5, L * 0.14, 9);                       // grip
+    cx.fillStyle = '#5a6475'; cx.beginPath(); cx.moveTo(L * 0.38, -4.5); cx.lineTo(L / 2 + 10, 0); cx.lineTo(L * 0.38, 4.5); cx.closePath(); cx.fill();   // point
+    cx.fillStyle = '#e8572a'; cx.beginPath(); cx.moveTo(-L / 2, 0); cx.lineTo(-L / 2 - 8, -6); cx.lineTo(-L / 2 - 4, 0); cx.lineTo(-L / 2 - 8, 6); cx.closePath(); cx.fill();   // tail
+    cx.restore();
+  }
+  const endAngle = r => { const n = r.pts.length, a = r.pts[n - 2], b = r.pts[n - 1]; return Math.atan2(b[1] - a[1], b[0] - a[0]); };
+  // a landed javelin: stuck in the ground tip-first, or lying flat after a skid
+  function drawLanded(r) {
+    if (r.flat) { drawJav(r.land + 1.2, 0.12, 0, false); return; }
+    const a = endAngle(r), L = JDRAW;
+    drawJav(r.land - Math.cos(a) * (L / 2 - 0.35), -Math.sin(a) * (L / 2 - 0.35), a, false);
+  }
+  function drawPath(r, col, dashed, n = 0) {
+    cx.strokeStyle = col; cx.lineWidth = dashed ? 2.5 : 3.5; cx.setLineDash(dashed ? [8, 8] : []);
+    cx.beginPath(); r.pts.forEach((p, i) => { const [x, y] = px(p[0], Math.max(0, p[1])); i ? cx.lineTo(x, y) : cx.moveTo(x, y); }); cx.stroke(); cx.setLineDash([]);
+    if (!dashed) {
+      drawLanded(r);
+      const [lx, ly] = px(r.land, 0);
+      cx.fillStyle = col; cx.beginPath(); cx.arc(lx, ly, 6, 0, 7); cx.fill();
+      cx.font = 'bold 22px system-ui,sans-serif'; cx.textAlign = 'center'; cx.fillText(r.land.toFixed(1) + ' m', lx, ly - 14 - (n % 3) * 26);   // stacked so close throws don't overlap
+    }
+  }
+  function readout(r, o) {
+    return '<span style="color:#04264d">' + o.angle + '° at ' + Math.round(o.pace * 100) + '% (' + r.v.toFixed(1) + ' m/s): </span>' +
+      (r.flat ? '<span style="color:#b02a37">lands flat at ' + r.land.toFixed(1) + ' m and skids, no mark</span>' : 'lands at <span style="color:#198754">' + r.land.toFixed(1) + ' m</span>') +
+      ' · highest ' + r.top.toFixed(1) + ' m · in the air ' + r.t.toFixed(2) + ' s (' + (r.t / JSPEED).toFixed(2) + ' s on screen)';
+  }
+  function render() {
+    const o = val();
+    $('fAngV').textContent = o.angle; $('fPaceV').textContent = Math.round(o.pace * 100);
+    $('fWindV').textContent = o.wind === 0 ? 'none' : (o.wind > 0 ? '→ ' : '← ') + Math.abs(o.wind).toFixed(1) + ' m/s';
+    drawField();
+    shots.forEach((s, i) => drawPath(s.r, s.col, false, i));
+    const r = throwPath(o.angle, o.pace, o.type, o.wind);
+    if (!anim) { cx.globalAlpha = 0.5; drawPath(r, '#04264d', true); cx.globalAlpha = 1; }
+    else drawFlying();
+    $('fRead').innerHTML = readout(anim ? anim.r : r, anim ? anim.o : o);
+  }
+  /* THROW: the javelin flies along its path at the game's on-screen speed (2x real time), leaving a coloured trail,
+     then sticks in the ground where it lands. */
+  let anim = null;
+  function drawFlying() {
+    const A = anim, pts = A.r.pts, i = Math.max(0, Math.min(pts.length - 1, Math.floor(A.k)));
+    cx.strokeStyle = A.col; cx.lineWidth = 3.5; cx.beginPath();
+    for (let q = 0; q <= i; q++) { const [x, y] = px(pts[q][0], Math.max(0, pts[q][1])); q ? cx.lineTo(x, y) : cx.moveTo(x, y); }
+    cx.stroke();
+    const p = pts[i], b = pts[Math.max(0, i - 1)], c = pts[Math.min(pts.length - 1, i + 1)];
+    drawJav(p[0], Math.max(0.2, p[1]), Math.atan2(c[1] - b[1], c[0] - b[0]), true);
+  }
+  function tick(now) {
+    if (!anim) return;
+    anim.k = Math.max(0, (now - anim.t0) / 1000 * JSPEED / DT);   // the first frame can be stamped just before the click
+    if (anim.k >= anim.r.pts.length - 1) {
+      shots.push({ r: anim.r, col: anim.col }); if (shots.length > 6) shots.shift();
+      anim = null; $('fThrow').disabled = false; render(); return;
+    }
+    render(); requestAnimationFrame(tick);
+  }
+  $('fThrow').addEventListener('click', () => {
+    if (anim) return;
+    const o = val(), r = throwPath(o.angle, o.pace, o.type, o.wind);
+    anim = { r, o, col: COLS[shots.length % COLS.length], t0: performance.now(), k: 0 };
+    $('fThrow').disabled = true; requestAnimationFrame(tick);
+  });
+  $('fClear').addEventListener('click', () => { shots = []; $('fBestBox').hidden = true; render(); });
+  $('fBest').addEventListener('click', () => {
+    const o = val(), rows = [];
+    for (let a = 5; a <= 85; a++) { const r = throwPath(a, o.pace, o.type, o.wind); rows.push({ a, d: r.flat ? 0 : r.land, flat: r.flat }); }
+    const best = rows.reduce((m, q) => q.d > m.d ? q : m, rows[0]);
+    $('fBestBox').hidden = false;
+    const w = chart.width, h = chart.height, padL = 46, padB = 34, maxD = Math.max(10, Math.ceil(best.d / 10) * 10);
+    ch.clearRect(0, 0, w, h); ch.fillStyle = '#fff'; ch.fillRect(0, 0, w, h);
+    ch.font = '14px system-ui,sans-serif'; ch.fillStyle = '#5a6475'; ch.strokeStyle = '#e3e8ef'; ch.lineWidth = 1;
+    for (let d = 0; d <= maxD; d += 10) { const y = h - padB - d / maxD * (h - padB - 12); ch.beginPath(); ch.moveTo(padL, y); ch.lineTo(w - 8, y); ch.stroke(); ch.textAlign = 'right'; ch.fillText(d + ' m', padL - 6, y + 5); }
+    ch.textAlign = 'center';
+    for (let a = 10; a <= 80; a += 10) ch.fillText(a + '°', padL + (a - 5) / 80 * (w - padL - 8), h - 10);
+    const bw = (w - padL - 8) / 81;
+    rows.forEach(q => {
+      const x = padL + (q.a - 5) / 80 * (w - padL - 8), y = h - padB - q.d / maxD * (h - padB - 12);
+      ch.fillStyle = q === best ? '#198754' : q.flat ? '#f1b0b7' : '#9ec5fe';
+      ch.fillRect(x - bw * 0.4, y, bw * 0.8, h - padB - y);
+    });
+    $('fBestRead').innerHTML = 'Furthest: <b>' + best.a + '°</b>, landing at <b>' + best.d.toFixed(1) + ' m</b>' +
+      (rows.some(q => q.flat) ? '. Pink bars are flat landings that skid (no mark).' : '.') +
+      ' Without air or wind, 45° would always be best. Rocky lets go 3.5 m up and the air slows fast throws, so the best angle is usually a little lower, and a tailwind or the Feather javelin shifts it again.';
+    $('fAng').value = best.a; render();
+  });
+  ['fAng', 'fPace', 'fWind', 'fType'].forEach(id => $(id).addEventListener('input', render));
+  $('fType').addEventListener('change', render);
+  render();
+
+  /* ---------- Demo 2: what breaks (the game's strengths and damage numbers) ---------- */
+  function breaks() {
+    const T = TYPES[$('bType').value], sp = +$('bSpeed').value, weak = $('bType').value === 'triple' ? 0.6 : 1;
+    $('bSpeedV').textContent = sp;
+    const wood = sp * 3.5 * T.dmg * weak, stone = sp * 4.5 * T.dmg * weak;
+    const hits = (hp, d) => Math.ceil(hp / d);
+    const cells = [
+      ['🪟 Glass', 'ok', 'Shatters. The javelin flies on.'],
+      wood >= 90 ? ['🪵 Wood', 'ok', 'Splinters (' + Math.round(wood) + ' damage of 90). The javelin goes through.']
+                 : ['🪵 Wood', 'mid', Math.round(wood) + ' damage of 90: it sticks in and shoves the crate. Breaks after ' + hits(90, wood) + ' hits like this.'],
+      !T.stone ? ['🪨 Stone', 'no', 'Bounces off. Only the Heavy javelin can break stone.']
+        : stone >= 320 ? ['🪨 Stone', 'ok', 'Cracks apart (' + Math.round(stone) + ' damage of 320).']
+        : ['🪨 Stone', 'mid', Math.round(stone) + ' damage of 320: it sticks in. Breaks after ' + hits(320, stone) + ' hits like this.'],
+      ['🔩 Steel rim', 'mid', 'Never breaks: 2 hits clear it, or knock it over.']
+    ];
+    $('bRes').innerHTML = cells.map(c => '<div class="m ' + c[1] + '"><b>' + c[0] + '</b>' + c[2] + '</div>').join('');
+  }
+  ['bType', 'bSpeed'].forEach(id => $(id).addEventListener('input', breaks));
+  $('bType').addEventListener('change', breaks);
+  breaks();
+})();
+</script>
+</body>
+</html>
