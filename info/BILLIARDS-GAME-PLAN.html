@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Billiards Game Plan</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<!--
+  Billiards game plan (Game 5): English billiards with three balls (white, yellow, red), against the computer.
+  Decisions agreed 23 Nov 2026 are in section 11.
+  Same layout and style as the Golf plan (GOLF-PLAN.html).
+-->
+<style>
+  :root{
+    --biz-blue:#0d6efd;
+    --biz-blue-dark:#084298;
+    --biz-yellow:#ffc107;
+    --biz-red:#dc3545;
+    --biz-green:#198754;
+    --biz-purple:#6f42c1;
+    --nav-blue:#04264d;
+    --nav-yellow:#ffd60a;
+  }
+  body{ background:#f7f8fa; margin:0; }
+
+  .topnav{
+    position:sticky; top:0; z-index:1030;
+    background:var(--nav-blue); color:var(--nav-yellow);
+    padding:.9rem 1.5rem; display:flex; justify-content:space-between; align-items:center;
+    box-shadow:0 .15rem .5rem rgba(0,0,0,.25);
+  }
+  .topnav .brand{ display:inline-flex; align-items:center; text-decoration:none; }
+  .topnav .brand-logo{ height:44px; width:auto; display:block; }
+  .topnav .tagline{ font-weight:600; font-size:1.05rem; color:var(--nav-yellow); letter-spacing:.15em; word-spacing:.6em; font-style:italic; }
+  @media (max-width:576px){ .topnav{ flex-direction:column; text-align:center; gap:.4rem; padding:.75rem 1rem; } }
+
+  .step-num{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:1.9rem; height:1.9rem; border-radius:50%;
+    background:var(--biz-yellow); color:#2b2b2b; font-weight:800; font-size:.95rem; margin-right:.55rem; flex:none;
+  }
+  .step-title{ display:flex; align-items:center; font-weight:700; font-size:1.1rem; margin-bottom:.75rem; }
+  .step-card{ border:2px solid #c9d3e3; border-radius:.6rem; }
+  .ctrl-label{ font-size:.75rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#6c757d; margin-bottom:.25rem; display:block; }
+
+  .prompt{ background:linear-gradient(120deg,var(--biz-blue-dark),var(--biz-blue)); color:#fff; border-radius:.6rem; padding:.9rem 1.1rem; font-size:1.02rem; }
+  .about-box{ background:#fde2ec; border:2px solid #f5a3c0; border-radius:.6rem; padding:.9rem 1.1rem; }
+  .about-box h2{ font-size:1.05rem; font-weight:700; color:#8a1f4a; margin-bottom:.4rem; }
+  .about-box p{ font-size:.92rem; color:#3b2a31; }
+
+  .now-box{ display:flex; gap:.75rem; flex-wrap:wrap; }
+  .now-card{ flex:1 1 220px; background:#fff; border:2px solid #dde3ec; border-radius:.6rem; padding:.7rem .9rem; }
+  .now-card.now{ border-color:#c79100; background:#fff8e1; }
+  .now-card .lbl{ font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#6c757d; }
+  .now-card .val{ font-size:1.15rem; font-weight:800; line-height:1.25; margin:.15rem 0 .25rem; }
+  .now-card .det{ font-size:.86rem; color:#5a6475; }
+
+  .phase{ border-left:5px solid var(--biz-blue); }
+  .phase.p2{ border-left-color:var(--biz-green); }
+  .phase.p3{ border-left-color:var(--biz-purple); }
+  .phase.p4{ border-left-color:#c79100; }
+  .phase.p5{ border-left-color:var(--biz-red); }
+  .phase.p6{ border-left-color:#0aa2c0; }
+  .phase ul{ margin-bottom:.4rem; }
+  .accept{ background:#eefaf3; border:1px solid #bfe3cf; border-radius:.45rem; padding:.5rem .75rem; font-size:.88rem; }
+  .accept b{ color:var(--biz-green); }
+
+  table.plan th{ background:#eef3fb; font-size:.8rem; text-transform:uppercase; letter-spacing:.04em; }
+  table.plan td, table.plan th{ font-size:.9rem; vertical-align:top; }
+  table.plan td.pts{ text-align:center; font-weight:800; white-space:nowrap; }
+
+  pre.tree{ background:#0f1b2d; color:#d7e3f4; border-radius:.5rem; padding:.9rem 1rem; font-size:.85rem; margin:0; overflow-x:auto; }
+  pre.tree .c{ color:#ffd60a; }
+
+  /* Game screen mock (top-down table) */
+  .screen{ position:relative; border-radius:.6rem; overflow:hidden; border:3px solid #1b2a44; background:#1d1410; }
+  .screen svg{ display:block; width:100%; height:auto; }
+  .screen .hud{ position:absolute; top:6px; left:8px; right:8px; display:flex; justify-content:space-between; gap:.4rem;
+                font:700 .72rem/1.2 system-ui,sans-serif; color:#fff; flex-wrap:wrap; pointer-events:none; }
+  .screen .meter{ background:rgba(4,38,77,.85); border-radius:1rem; padding:.15rem .55rem; }
+  .screen .meter.y{ color:#ffd60a; }
+  .screen .ctrls{ position:absolute; left:8px; bottom:8px; background:rgba(4,38,77,.88); color:#fff; border-radius:.5rem;
+                  padding:.35rem .6rem; font:700 .68rem/1.35 system-ui,sans-serif; width:200px; }
+  .screen .ctrls .row1{ display:flex; align-items:center; gap:.4rem; }
+  .screen .ctrls .trk{ flex:1; height:6px; background:#33507a; border-radius:3px; position:relative; }
+  .screen .ctrls .trk i{ position:absolute; top:-4px; width:14px; height:14px; border-radius:50%; background:var(--nav-yellow); }
+  .screen .spin{ position:absolute; right:92px; bottom:8px; width:46px; height:46px; border-radius:50%; background:#f4f1e8;
+                 border:2px solid #04264d; }
+  .screen .spin i{ position:absolute; left:26px; top:12px; width:8px; height:8px; border-radius:50%; background:var(--biz-red); }
+  .screen .shoot{ position:absolute; right:10px; bottom:14px; background:var(--biz-red); color:#fff; font:800 .8rem system-ui,sans-serif;
+                  padding:.45rem .9rem; border-radius:2rem; box-shadow:0 2px 0 #7a1620; }
+
+  .ball{ display:inline-block; width:.95rem; height:.95rem; border-radius:50%; vertical-align:-2px; border:1px solid rgba(0,0,0,.35); margin-right:.3rem; position:relative; }
+  .ball.white{ background:#fbfaf4; }
+  .ball.red{ background:#c4161c; }
+  .ball.yellow{ background:#f5c400; }
+  .swatch{ display:inline-block; width:.9rem; height:.9rem; border-radius:.2rem; vertical-align:-2px; border:1px solid rgba(0,0,0,.25); margin-right:.3rem; }
+
+  .tag{ border-radius:.3rem; padding:0 .35rem; font-size:.7rem; font-weight:700; color:#fff; white-space:nowrap; }
+  .tag-must{ background:var(--biz-green); } .tag-nice{ background:#6c757d; } .tag-open{ background:var(--biz-red); }
+  .reuse{ border-radius:.3rem; padding:0 .35rem; font-size:.7rem; font-weight:700; background:#e7f1ff; color:#084298; border:1px solid #9ec5fe; white-space:nowrap; }
+  .new{ border-radius:.3rem; padding:0 .35rem; font-size:.7rem; font-weight:700; background:#fff3d6; color:#7a5600; border:1px solid #f0c75e; white-space:nowrap; }
+
+  footer{ background:var(--nav-blue); }
+  footer a{ color:#fff; }
+  kbd{ background:#04264d; }
+</style>
+</head>
+<body>
+
+<!-- STICKY TOP NAV -->
+<div class="topnav">
+  <a class="brand" href="../index.html"><img class="brand-logo" src="../logo.svg" alt="RAG Champ"></a>
+  <div class="tagline">AI Games Portal</div>
+</div>
+
+<main class="container my-4">
+
+  <!-- How AI plays a part (pink box) -->
+  <div class="about-box mb-4">
+    <h2>What is this plan and how does AI play a part?</h2>
+    <p class="mb-0">This page is the build plan for <strong>Game 5: Billiards</strong>, the fifth game in the RAG Champ Games portal. It is <b>English billiards</b>, the old British game played with just three balls on a full-size snooker table. Like the other games, it will be written by an AI coding agent (Claude Code) as one HTML file with plain JavaScript and the Canvas API. There are no frameworks, no build step and no server. It reuses the tested parts of <a href="../GAME-4-Golf/golf.html">Golf</a> and <a href="../GAME-3-Javelin/javelin.html">Javelin</a>: the <code>sim</code> / <code>game-ui</code> split, the fixed-step loop, the sliders, the sound and the way the game is tested. <strong>PLEASE NOTE: players don't need any AI to play the game.</strong> The AI is used only to write the code (and to plan the computer opponent's shots, which is ordinary code, not AI).</p>
+  </div>
+
+  <h1 class="h3 fw-bold mb-1">🎱 Billiards: Development Plan</h1>
+  <p class="text-muted mb-3">Plan date: 23 Nov 2026 · Decisions agreed 23 Nov 2026 (section 11) · Status: <strong>Phases 1–2 built 23 Nov 2026 (<a href="../GAME-5-Billiards/billiards.html">play Billiards</a>: a full game against a stand-in Rusty); Phase 3 to do</strong> · <a href="GOLF-PLAN.html">Golf plan</a> · <a href="JAVELIN-GAME-PLAN.html">Javelin plan</a></p>
+
+  <div class="prompt mb-4">
+    <strong>Goal:</strong> Build <code class="text-warning">GAME-5-Billiards/billiards.html</code>, a game of <b>English billiards</b> seen from above on a 12 ft × 6 ft table with six pockets. There are three balls: a <b>white</b>, a <b>yellow</b> and a <b>red</b>. You play the white and the computer plays the yellow; each is that side's own cue ball. You score by <b>potting</b> a ball, by going <b>in-off</b> (your cue ball goes into a pocket after hitting another ball) and by making a <b>cannon</b> (your cue ball hits both other balls). You keep playing while you score; the first to the target score (<b>50</b> by default) wins. You play <b>against the computer</b>, and both sides are shown as players standing at the table. There are <b>two views</b>, switched at any time as in Golf: <b>Top</b> (the default) and the <b>Eye view</b>, low behind the cue ball, the way the player sees the table before striking.
+  </div>
+
+  <div class="now-box mb-4">
+    <div class="now-card now"><div class="lbl">Balls</div><div class="val">3: <span class="ball white"></span><span class="ball yellow"></span><span class="ball red"></span></div><div class="det">White (your cue ball), yellow (the computer's cue ball) and red.</div></div>
+    <div class="now-card"><div class="lbl">Scoring</div><div class="val">Pots, in-offs, cannons</div><div class="det">2 or 3 points each, added up in one shot (up to 10). A run of scoring shots is a <b>break</b>.</div></div>
+    <div class="now-card"><div class="lbl">Opponent</div><div class="val">The computer · first to 50</div><div class="det">Easy, Medium or Hard. 100 and 200 up are in the menu for longer games.</div></div>
+    <div class="now-card"><div class="lbl">Controls</div><div class="val">Aim · Power · Spin · ⇄ View</div><div class="det">Drag to aim, a Power slider (or pull back the cue), and a spot on the ball for top, screw and side.</div></div>
+  </div>
+
+  <!-- 1. The three balls -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">1</span>The three balls, and whose ball is whose</div>
+      <div class="row g-3">
+        <div class="col-lg-6">
+          <table class="table table-sm table-bordered plan mb-2">
+            <thead><tr><th>Ball</th><th>Belongs to</th><th>Starts</th></tr></thead>
+            <tbody>
+              <tr><td><span class="ball white"></span><b>White</b></td><td>Your cue ball</td><td>In hand: played from the "D"</td></tr>
+              <tr><td><span class="ball yellow"></span><b>Yellow</b></td><td>The computer's cue ball</td><td>Off the table until the computer's first turn, then played from the D</td></tr>
+              <tr><td><span class="ball red"></span><b>Red</b></td><td>Nobody: both players play at it</td><td>On the billiard spot, near the top cushion</td></tr>
+            </tbody>
+          </table>
+          <p class="small mb-0">The yellow takes the place of the classic dotted (spot) white, and is easier to tell apart on a small screen. It is not a third object ball: it is the <b>computer's cue ball</b>. On your turn you strike only the white, and the other two balls (the red and the yellow) are the balls you play at; on the computer's turn it strikes the yellow and plays at the red and the white. Who goes first is decided by a coin toss.</p>
+        </div>
+        <div class="col-lg-6">
+          <ul class="small mb-0">
+            <li><b>The D and baulk:</b> a line across the table near the bottom end is the <b>baulk line</b>, with a half-circle on it, the <b>D</b>. A cue ball "in hand" is placed anywhere in the D.</li>
+            <li><b>Spots:</b> the <b>billiard spot</b> (near the top cushion), the <b>pyramid spot</b> (halfway between the centre and the top cushion) and the <b>centre spot</b>. A potted red goes back on the billiard spot; if that is covered, on the pyramid spot; if that is covered too, on the centre spot.</li>
+            <li><b>A potted opponent's ball</b> (the yellow on your turn, the white on the computer's) stays off the table until its owner's next turn, when it is played from the D.</li>
+            <li><b>After an in-off</b>, your own cue ball comes back "in hand" and you play your next shot from the D.</li>
+            <li><b>Playing out of baulk:</b> when you play from hand, your cue ball must first cross the baulk line before it touches a ball that is in baulk. The game shows this with a shaded baulk area and a warning.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Scoring -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">2</span>Scoring</div>
+      <div class="row g-3">
+        <div class="col-lg-6">
+          <table class="table table-sm table-bordered plan mb-2">
+            <thead><tr><th>Score</th><th>What happens</th><th>Points</th></tr></thead>
+            <tbody>
+              <tr><td><b>Red pot</b> (red winning hazard)</td><td>Your cue ball hits the red into a pocket</td><td class="pts">3</td></tr>
+              <tr><td><b>Opponent's ball pot</b> (white winning hazard)</td><td>Your cue ball hits your opponent's cue ball into a pocket</td><td class="pts">2</td></tr>
+              <tr><td><b>In-off red</b> (red losing hazard)</td><td>Your cue ball hits the red first, then goes into a pocket</td><td class="pts">3</td></tr>
+              <tr><td><b>In-off opponent's ball</b> (white losing hazard)</td><td>Your cue ball hits your opponent's cue ball first, then goes into a pocket</td><td class="pts">2</td></tr>
+              <tr><td><b>Cannon</b></td><td>Your cue ball hits both other balls, in either order</td><td class="pts">2</td></tr>
+            </tbody>
+          </table>
+          <p class="small mb-0">Scores in one shot <b>add up</b>: a cannon that also pots the red is 2 + 3 = 5. The most from one shot is <b>10</b> (cannon, both balls potted, and in-off). After an in-off that also made a cannon, the in-off counts as off the ball hit <b>first</b>; if both were hit at the same moment, it counts as off the opponent's ball (2). (The official names say "white" for the opponent's ball, from the days of two whites; in this game that ball is the yellow on your turn.)</p>
+        </div>
+        <div class="col-lg-6">
+          <span class="ctrl-label">Fouls (opponent gets the points, then plays)</span>
+          <table class="table table-sm table-bordered plan mb-2">
+            <thead><tr><th>Foul</th><th>Penalty</th></tr></thead>
+            <tbody>
+              <tr><td><b>Miss:</b> the cue ball hits neither ball</td><td class="pts">2</td></tr>
+              <tr><td><b>Coup:</b> the cue ball goes into a pocket without hitting a ball</td><td class="pts">3</td></tr>
+              <tr><td>Playing from hand straight at a ball in baulk</td><td class="pts">2</td></tr>
+              <tr><td>The cue ball jumps off the table (rare: only with a very hard shot)</td><td class="pts">2</td></tr>
+            </tbody>
+          </table>
+          <ul class="small mb-0">
+            <li><b>Your turn goes on</b> while every shot scores; a shot that scores nothing (or a foul) ends your turn.</li>
+            <li><b>The break counter</b> shows your current break ("Break 23"); the best break of the game and of all time are saved.</li>
+            <li><b>Winning:</b> the first to reach the target score. <b>50 up</b> is the default (about ten minutes); 100 and 200 up are in the menu.</li>
+          </ul>
+        </div>
+      </div>
+      <p class="small mb-0 mt-2"><b>Left out:</b> the match limits that stop endless repeat scores in professional play (caps on hazards or cannons in a row, and the red moving to the centre spot after repeated pots off its spot). At 50 up they would hardly ever matter.</p>
+    </div>
+  </div>
+
+  <!-- 3. How a turn plays -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">3</span>How a turn plays</div>
+      <div class="row g-3">
+        <div class="col-lg-6">
+          <ol class="small mb-0">
+            <li><b>Place the ball</b> if it is in hand: drag your white anywhere inside the D.</li>
+            <li><b>Aim:</b> drag anywhere on the table to turn the cue around your ball, or use <kbd>←</kbd><kbd>→</kbd> (hold <kbd>Shift</kbd> for fine aim). A <b>fine-aim</b> wheel turns the cue by a tenth of a degree for thin cuts.</li>
+            <li><b>Read the guide:</b> a dotted line shows where your ball goes, a faint <b>ghost ball</b> shows where it will touch the first ball, and a short line shows which way that ball will go. The guide stops at the first ball (Easy shows one cushion bounce too).</li>
+            <li><b>Choose spin</b> by tapping a spot on the big cue-ball picture: above the middle for <b>top</b> (the ball follows on), below for <b>screw</b> (it comes back), left or right for <b>side</b> (it bends off cushions).</li>
+            <li><b>Set Power</b> with the slider, or by pulling the cue back on the table, and press <b>SHOOT</b> (or <kbd>Space</kbd>).</li>
+            <li><b>Watch</b> the balls roll, hit and bounce. The score for the shot pops up ("Cannon + red pot: 5") and is added to your break.</li>
+          </ol>
+        </div>
+        <div class="col-lg-6">
+          <span class="ctrl-label">Computer opponent</span>
+          <ul class="small mb-2">
+            <li>It tries many shots in the same <code>sim</code> as the real game (different angles, powers and spins), scores each one by the points it makes and where it leaves the balls for the next shot, and plays the best.</li>
+            <li><b>Easy</b> tries few shots and adds a big wobble to its aim; <b>Medium</b> a small wobble; <b>Hard</b> plans two shots ahead and plays safe (leaves the balls hard for you) when it can't score.</li>
+            <li>It "thinks" for a moment with the cue moving, so the player can see what it is aiming at.</li>
+          </ul>
+          <span class="ctrl-label">Players at the table</span>
+          <ul class="small mb-0">
+            <li>Two characters drawn in code stand around the table: <b>Archie</b> (you, white ball) and <b>Rusty</b> (the computer, yellow ball). See "Meet Archie and Rusty" below. The one whose turn it is walks to the cue ball, bends over the cue and strikes; the other waits by the wall.</li>
+            <li>So they never hide a ball, the player is drawn behind the cue and turns see-through wherever they cover the table; a "Hide players" switch removes them.</li>
+            <li>Small reactions: a nod for a good pot, a head shake after a miss, a bow on winning.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Archie and Rusty -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">★</span>Meet Archie and Rusty</div>
+      <div class="row g-3 align-items-center">
+        <div class="col-md-4 text-center">
+          <svg viewBox="0 0 240 150" width="240" style="max-width:100%" role="img" aria-label="Sketches of Archie, with short dark hair, a white shirt, black waistcoat and red bow tie, and Rusty, with red curly hair, a white shirt, maroon waistcoat and yellow bow tie">
+            <title>Archie and Rusty</title>
+            <!-- Archie -->
+            <g>
+              <path d="M18 150 Q 22 104 60 100 Q 98 104 102 150 Z" fill="#fbfaf4" stroke="#c9c4b4"/>
+              <path d="M34 150 L40 108 Q 60 104 80 108 L86 150 Z" fill="#1f1f24"/>
+              <path d="M54 102 L60 140 L66 102 Z" fill="#fbfaf4"/>
+              <circle cx="60" cy="122" r="1.8" fill="#888"/><circle cx="60" cy="132" r="1.8" fill="#888"/>
+              <path d="M49 100 L60 105 L71 100 L71 110 L60 105 L49 110 Z" fill="#c4161c"/>
+              <rect x="53" y="84" width="14" height="15" rx="5" fill="#e3a77c"/>
+              <ellipse cx="60" cy="66" rx="24" ry="24" fill="#eab48a"/>
+              <path d="M36 62 Q 36 38 60 38 Q 84 38 84 62 Q 78 48 60 48 Q 42 48 36 62 Z" fill="#2b1d14"/>
+              <circle cx="51" cy="66" r="2.6" fill="#2b1d14"/><circle cx="69" cy="66" r="2.6" fill="#2b1d14"/>
+              <path d="M51 77 Q 60 84 69 77" fill="none" stroke="#7a3b25" stroke-width="2" stroke-linecap="round"/>
+              <text x="60" y="30" font-family="system-ui" font-weight="800" font-size="13" text-anchor="middle" fill="#04264d">Archie</text>
+            </g>
+            <!-- Rusty -->
+            <g transform="translate(120 0)">
+              <path d="M18 150 Q 22 104 60 100 Q 98 104 102 150 Z" fill="#fbfaf4" stroke="#c9c4b4"/>
+              <path d="M34 150 L40 108 Q 60 104 80 108 L86 150 Z" fill="#7a1f2b"/>
+              <path d="M54 102 L60 140 L66 102 Z" fill="#fbfaf4"/>
+              <circle cx="60" cy="122" r="1.8" fill="#d8b86a"/><circle cx="60" cy="132" r="1.8" fill="#d8b86a"/>
+              <path d="M49 100 L60 105 L71 100 L71 110 L60 105 L49 110 Z" fill="#f5c400"/>
+              <rect x="53" y="84" width="14" height="15" rx="5" fill="#f0c4a0"/>
+              <ellipse cx="60" cy="66" rx="24" ry="24" fill="#f6cfae"/>
+              <g fill="#c8501e"><circle cx="40" cy="54" r="8"/><circle cx="50" cy="45" r="8"/><circle cx="62" cy="42" r="8"/><circle cx="74" cy="46" r="8"/><circle cx="82" cy="56" r="7"/><circle cx="37" cy="64" r="6"/></g>
+              <g fill="#d98a6a" opacity=".7"><circle cx="45" cy="74" r="1.2"/><circle cx="49" cy="76" r="1.2"/><circle cx="71" cy="76" r="1.2"/><circle cx="75" cy="74" r="1.2"/></g>
+              <circle cx="51" cy="66" r="2.6" fill="#2b1d14"/><circle cx="69" cy="66" r="2.6" fill="#2b1d14"/>
+              <path d="M52 79 Q 60 75 70 78" fill="none" stroke="#7a3b25" stroke-width="2" stroke-linecap="round"/>
+              <text x="60" y="30" font-family="system-ui" font-weight="800" font-size="13" text-anchor="middle" fill="#04264d">Rusty</text>
+            </g>
+          </svg>
+        </div>
+        <div class="col-md-8">
+          <div class="row g-3">
+            <div class="col-sm-6">
+              <p class="small mb-1"><span class="ball white"></span><b>Archie: you</b>, playing the white</p>
+              <ul class="small mb-0">
+                <li><span class="swatch" style="background:#2b1d14"></span>Short dark hair</li>
+                <li><span class="swatch" style="background:#fbfaf4"></span>White shirt, sleeves rolled up</li>
+                <li><span class="swatch" style="background:#1f1f24"></span>Black waistcoat</li>
+                <li><span class="swatch" style="background:#c4161c"></span>Red bow tie</li>
+                <li><span class="swatch" style="background:#7d8088"></span>Grey trousers, polished black shoes</li>
+              </ul>
+            </div>
+            <div class="col-sm-6">
+              <p class="small mb-1"><span class="ball yellow"></span><b>Rusty: the computer</b>, playing the yellow</p>
+              <ul class="small mb-0">
+                <li><span class="swatch" style="background:#c8501e"></span>Red curly hair and freckles</li>
+                <li><span class="swatch" style="background:#fbfaf4"></span>White shirt</li>
+                <li><span class="swatch" style="background:#7a1f2b"></span>Maroon waistcoat</li>
+                <li><span class="swatch" style="background:#f5c400"></span>Yellow bow tie, to match his ball</li>
+                <li><span class="swatch" style="background:#1f1f24"></span>Black trousers, brown shoes</li>
+              </ul>
+            </div>
+          </div>
+          <p class="small mt-2 mb-0"><b>In the game:</b> the same classic billiards outfit in two colours, so it is always clear who is at the table. The one whose turn it is walks round to the cue ball, chalks the cue, bends down and strikes; the other waits by the wall with his cue. Small reactions: a nod for a good pot, a head shake after a miss, a bow on winning. Rusty is the same character on Easy, Medium and Hard; only his skill changes. Both are seen from above at the table in Top view and face-on in the scoreboard portraits. In the Eye view you are looking through Archie's eyes, so only his bridge hand and the cue are drawn; on Rusty's turn the eye view is from behind his cue.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Screen -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">4</span>What the screen looks like</div>
+      <div class="row g-3">
+        <div class="col-lg-7">
+          <div class="screen" aria-label="Mock-up of the billiards screen: a green table seen from above with six pockets, the baulk line and D on the left, the white in the D aiming at the red near the right end, and the yellow nearby">
+            <svg viewBox="0 0 600 330" aria-hidden="true">
+              <!-- wooden frame and cushions -->
+              <rect x="0" y="0" width="600" height="330" fill="#5b3a22"/>
+              <rect x="12" y="12" width="576" height="306" rx="6" fill="#0f6b34"/>
+              <rect x="22" y="22" width="556" height="286" fill="#1c8a45"/>
+              <!-- pockets -->
+              <g fill="#0b0b0b">
+                <circle cx="22" cy="22" r="11"/><circle cx="578" cy="22" r="11"/>
+                <circle cx="22" cy="308" r="11"/><circle cx="578" cy="308" r="11"/>
+                <circle cx="300" cy="17" r="10"/><circle cx="300" cy="313" r="10"/>
+              </g>
+              <!-- baulk line and D -->
+              <line x1="137" y1="22" x2="137" y2="308" stroke="#e8f3ea" stroke-width="1.2"/>
+              <path d="M137 119 A 46 46 0 0 0 137 211" fill="none" stroke="#e8f3ea" stroke-width="1.2"/>
+              <!-- spots -->
+              <g fill="#e8f3ea"><circle cx="300" cy="165" r="1.6"/><circle cx="439" cy="165" r="1.6"/><circle cx="527" cy="165" r="1.6"/></g>
+              <!-- aim guide, ghost ball and object path -->
+              <line x1="115" y1="178" x2="511" y2="168" stroke="#fff" stroke-width="1.5" stroke-dasharray="3 5"/>
+              <circle cx="519" cy="168" r="7" fill="none" stroke="#fff" stroke-width="1.2" opacity=".75"/>
+              <line x1="533" y1="161" x2="572" y2="138" stroke="#ffd60a" stroke-width="1.5" stroke-dasharray="3 4"/>
+              <!-- balls -->
+              <circle cx="527" cy="165" r="7" fill="#c4161c" stroke="#5c0a0d" stroke-width="1"/>
+              <circle cx="380" cy="232" r="7" fill="#f5c400" stroke="#8a6d00" stroke-width="1"/>
+              <circle cx="115" cy="178" r="7" fill="#fbfaf4" stroke="#7a7a70" stroke-width="1"/>
+              <!-- cue -->
+              <line x1="105" y1="178.3" x2="22" y2="180.4" stroke="#e9cf98" stroke-width="5" stroke-linecap="round"/>
+              <line x1="60" y1="179.4" x2="4" y2="180.8" stroke="#3b2414" stroke-width="7" stroke-linecap="round"/>
+              <line x1="105" y1="178.3" x2="100" y2="178.4" stroke="#4aa0e0" stroke-width="5"/>
+            </svg>
+            <div class="hud">
+              <span class="meter"><span class="ball white" style="width:.7rem;height:.7rem"></span>Archie 36 · Break 12</span>
+              <span class="meter y">First to 50</span>
+              <span class="meter"><span class="ball yellow" style="width:.7rem;height:.7rem"></span>Rusty 31</span>
+            </div>
+            <div class="ctrls">
+              <div class="row1">POWER <span class="trk"><i style="left:45%"></i></span> 50%</div>
+              <div class="row1" style="margin-top:2px">FINE AIM <span class="trk"><i style="left:50%"></i></span> 0.0°</div>
+              <div class="row1" style="margin-top:2px">⇄ View: <span style="color:#ffd60a">Top</span></div>
+            </div>
+            <div class="spin" title="Spin: tap where to hit the cue ball"><i></i></div>
+            <div class="shoot">SHOOT</div>
+          </div>
+          <p class="small text-muted mt-2 mb-0">Mock-up only, not the final art; the players at the table are not drawn here. The table fills the screen from above, with the baulk end on the left. On a phone held upright the table turns on its side (baulk at the bottom) and the controls sit below it. Home, Full screen, Sound and Pause are in the top-right corner, as in the other games.</p>
+        </div>
+        <div class="col-lg-5">
+          <ul class="small mb-0">
+            <li><b>Top view (default)</b> of the whole table, always in sight, so nothing is hidden. The <b>⇄ View</b> button switches to the <b>Eye view</b> (see 4b below). The balls have a light shine and a soft shadow, and roll with a moving highlight so you can see spin.</li>
+            <li><b>HUD:</b> Archie's score and Rusty's, each with a small portrait and his ball, the current break and the target score.</li>
+            <li><b>Spin picker:</b> a big cue-ball picture; the red dot shows where the cue tip will hit it.</li>
+            <li><b>Shot replay:</b> a "Replay" button plays the last shot again, slower, with the ball paths drawn.</li>
+            <li><b>Score pop-ups:</b> "In-off red 3", "Cannon 2", "Foul: miss, 2 to Rusty".</li>
+            <li><b>Table and room:</b> a green cloth with a slight nap texture, wooden frame with brass corners, and a dim room with a lamp over the table.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Two views -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">4b</span>Two views: Top and Eye view</div>
+      <p class="small">As in <a href="../GAME-4-Golf/golf.html">Golf</a>, a <b>⇄ View</b> button (or <kbd>V</kbd>) switches between two views at any time: before, during or after a shot. <b>Top</b> is the default and every game starts in it. The <b>Eye view</b> shows the table the way the player sees it, bent over the cue just before striking. Both views draw the same balls from the same <code>sim</code>, so switching never changes or resets anything.</p>
+      <div class="row g-3">
+        <div class="col-lg-7">
+          <div class="screen" aria-label="Mock-up of the eye view: the table seen low from behind the white cue ball, with the cue coming up from the bottom of the screen, the yellow ball in the middle distance, the red near the far cushion and the aim guide running to it">
+            <svg viewBox="0 0 600 300" aria-hidden="true">
+              <!-- room -->
+              <defs>
+                <radialGradient id="lamp" cx="50%" cy="0%" r="80%"><stop offset="0" stop-color="#4a3a2c"/><stop offset="1" stop-color="#140e0a"/></radialGradient>
+                <radialGradient id="cloth" cx="50%" cy="20%" r="90%"><stop offset="0" stop-color="#25a052"/><stop offset="1" stop-color="#147a3a"/></radialGradient>
+              </defs>
+              <rect width="600" height="300" fill="url(#lamp)"/>
+              <rect x="250" y="0" width="100" height="14" fill="#2b2018"/><path d="M230 14 L370 14 L350 30 L250 30 Z" fill="#0f5a2a"/>
+              <!-- frame, cushions and cloth in perspective -->
+              <path d="M178 62 L422 62 L700 300 L-100 300 Z" fill="#5b3a22"/>
+              <path d="M188 68 L412 68 L660 300 L-60 300 Z" fill="#0f6b34"/>
+              <path d="M196 74 L404 74 L630 300 L-30 300 Z" fill="url(#cloth)"/>
+              <!-- pockets -->
+              <g fill="#0b0b0b"><ellipse cx="196" cy="73" rx="9" ry="4"/><ellipse cx="404" cy="73" rx="9" ry="4"/><ellipse cx="118" cy="140" rx="12" ry="6"/><ellipse cx="482" cy="140" rx="12" ry="6"/></g>
+              <!-- spots -->
+              <g fill="#e8f3ea"><ellipse cx="300" cy="86" rx="2" ry="1"/><ellipse cx="300" cy="102" rx="2.2" ry="1.1"/></g>
+              <!-- aim guide, ghost ball and object path -->
+              <path d="M300 250 L300 92" stroke="#fff" stroke-width="2" stroke-dasharray="4 7" fill="none"/>
+              <ellipse cx="300" cy="89" rx="5" ry="5" fill="none" stroke="#fff" stroke-width="1.2" opacity=".75"/>
+              <path d="M302 84 L322 72" stroke="#ffd60a" stroke-width="1.5" stroke-dasharray="3 4"/>
+              <!-- balls with shadows, far to near -->
+              <ellipse cx="300" cy="88" rx="5.5" ry="2" fill="#000" opacity=".35"/><circle cx="300" cy="83" r="5" fill="#c4161c"/><circle cx="298.5" cy="81.5" r="1.4" fill="#fff" opacity=".7"/>
+              <ellipse cx="386" cy="148" rx="12" ry="4" fill="#000" opacity=".35"/><circle cx="386" cy="138" r="11" fill="#f5c400"/><circle cx="382" cy="134" r="3" fill="#fff" opacity=".7"/>
+              <ellipse cx="300" cy="262" rx="40" ry="10" fill="#000" opacity=".35"/><circle cx="300" cy="232" r="34" fill="#fbfaf4"/><circle cx="288" cy="220" r="8" fill="#fff"/>
+              <!-- bridge hand and cue -->
+              <path d="M228 300 Q 236 268 268 262 Q 300 258 332 262 Q 364 268 372 300 Z" fill="#e3a77c"/>
+              <path d="M268 262 Q 300 252 332 262" fill="none" stroke="#c98a60" stroke-width="2"/>
+              <path d="M296 300 L298 272 L302 272 L304 300 Z" fill="#e9cf98"/>
+              <rect x="297.5" y="268" width="5" height="5" fill="#4aa0e0"/>
+            </svg>
+            <div class="hud">
+              <span class="meter"><span class="ball white" style="width:.7rem;height:.7rem"></span>Archie 36 · Break 12</span>
+              <span class="meter y">Eye view</span>
+              <span class="meter"><span class="ball yellow" style="width:.7rem;height:.7rem"></span>Rusty 31</span>
+            </div>
+            <div class="ctrls">
+              <div class="row1">POWER <span class="trk"><i style="left:45%"></i></span> 50%</div>
+              <div class="row1" style="margin-top:2px">⇄ View: <span style="color:#ffd60a">Eye</span></div>
+            </div>
+            <div class="spin" title="Spin: tap where to hit the cue ball"><i></i></div>
+            <div class="shoot">SHOOT</div>
+          </div>
+          <p class="small text-muted mt-2 mb-0">Mock-up of the eye view, not the final art: Archie is lining up a long, straight pot on the red into the far middle of the top cushion, with the yellow off to the right. The same controls, HUD and corner buttons as in Top view.</p>
+        </div>
+        <div class="col-lg-5">
+          <ul class="small mb-0">
+            <li><b>Where the eye is:</b> just behind the cue ball, on the aim line, low over the cue (about 30 cm above the cloth), looking along the shot. It turns with the aim, so turning left and right swings the whole table round, as when a real player moves round the ball.</li>
+            <li><b>Looking up and down:</b> drag up or down (or <kbd>↑</kbd><kbd>↓</kbd>) to raise the eye from "down on the cue" to "standing up", to see more of the table before getting down for the shot.</li>
+            <li><b>What you see:</b> the cloth, cushions and pockets in perspective, the balls getting smaller with distance, their shadows under the lamp, and the aim guide and ghost ball. At the bottom are Archie's bridge hand and the cue tip, pulling back as you set Power and striking on SHOOT.</li>
+            <li><b>During the shot</b> the eye stays where it was, like a player watching from the shot position; switch to Top at any moment to follow every ball.</li>
+            <li><b>Rusty's turn:</b> the eye view moves behind Rusty's cue ball, so you see what he is aiming at while he lines up.</li>
+            <li><b>Aiming is the same in both views:</b> drag left or right, the arrow keys and the fine-aim wheel all turn the cue, and placing a ball in hand happens in Top view (the game switches for you, then back).</li>
+          </ul>
+        </div>
+      </div>
+      <p class="small mt-2 mb-0"><b>How it is drawn (no library):</b> the table is flat, so the eye view needs only a simple hand-written 3D projection, like Golf's views. Each point on the table (corners, cushion edges, pocket rims, the baulk line and D, the guide) is turned into screen position by the camera's position and direction; things are drawn from far to near; a ball is a shaded circle whose size depends on its distance, with an oval shadow below it. Anything behind the eye is left out.</p>
+    </div>
+  </div>
+
+  <!-- 5. Table -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">5</span>The table, in real sizes</div>
+      <div class="row g-3">
+        <div class="col-lg-6">
+          <table class="table table-sm table-bordered plan mb-0">
+            <thead><tr><th>Part</th><th>Size (millimetres)</th></tr></thead>
+            <tbody>
+              <tr><td>Playing area (inside the cushions)</td><td>3569 × 1778 (about 12 ft × 6 ft)</td></tr>
+              <tr><td>Ball diameter</td><td>52.5</td></tr>
+              <tr><td>Baulk line from the bottom cushion</td><td>737</td></tr>
+              <tr><td>Radius of the D</td><td>292</td></tr>
+              <tr><td>Billiard spot from the top cushion</td><td>324</td></tr>
+              <tr><td>Pyramid spot</td><td>halfway between the centre spot and the top cushion</td></tr>
+              <tr><td>Pockets</td><td>4 corner and 2 middle pockets; corner mouths a little wider than middle ones; sizes tuned in Phase 1 for fair play</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="col-lg-6">
+          <p class="small mb-2">The game works in metres, so every distance is real: a ball rolling at 1 m/s on real cloth stops after about 2.5 m, and the game should match that.</p>
+          <p class="small mb-0">Billiards is all about <b>position play</b>: scoring, and leaving the balls where you can score again. The sizes of the pockets and the friction of the cloth decide how hard or easy that is, so they are tuned in Phase 1 with the "Practice table" (balls placed by hand, no scoring).</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. Physics -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">6</span>How the balls move (the physics)</div>
+      <div class="row g-3">
+        <div class="col-lg-6">
+          <ul class="small mb-0">
+            <li><b>Sliding, then rolling.</b> A struck ball first slides across the cloth; friction turns its slide into a roll after a short distance. This is what makes <b>top</b> (follow) and <b>screw</b> (draw back) work: a ball with backspin keeps spinning backwards after it stops the object ball, and pulls itself back.</li>
+            <li><b>Ball meets ball.</b> Almost-perfect bounce (balls keep about 95% of their energy). The hit ball goes off along the line between the two centres; the cue ball goes off at a right angle to that (the "90° rule"), and then spin bends its path.</li>
+            <li><b>Cushions.</b> A ball bounces back with about 75% of its speed across the cushion. Side spin changes the angle it comes off at, and running side makes it come off longer.</li>
+            <li><b>Pockets.</b> Each pocket has two curved jaws (the rounded ends of the cushions) and a hole. A ball that hits a jaw can rattle and stay out, as in real play; a ball whose centre passes over the hole drops in.</li>
+            <li><b>No skipping through.</b> Each frame is split into small steps, and the time of every hit is worked out exactly, so even a fast ball never goes through another ball or a cushion.</li>
+            <li><b>No outside physics library.</b> Matter.js (used in Javelin) handles boxes and stacks, not rolling balls with spin, so the ball physics is written by hand in the <code>sim</code> script.</li>
+          </ul>
+        </div>
+        <div class="col-lg-6">
+          <span class="ctrl-label">Each small step (planned code)</span>
+<pre class="tree"><span class="c">// for every ball still moving:</span>
+slip = ball.vel - ball.spin x R;      <span class="c">// is it sliding?</span>
+if (|slip| &gt; 0.01) {
+  ball.vel  -= MU_SLIDE * g * dir(slip) * dt;
+  ball.spin += ...;                  <span class="c">// cloth turns slide into roll</span>
+} else {
+  ball.vel  -= MU_ROLL * g * dir(vel) * dt;   <span class="c">// rolling slows gently</span>
+}
+ball.pos += ball.vel * dt;
+<span class="c">// then: find the first hit (ball, cushion, jaw, pocket)</span>
+<span class="c">// inside this step, move to it, bounce, repeat.</span>
+<span class="c">// The shot ends when every ball is still.</span></pre>
+          <p class="small mt-2 mb-0">Starting numbers (tuned in Phase 1): sliding friction 0.2, rolling friction 0.01, ball-on-ball bounce 0.95, cushion bounce 0.75. The same shot with the same settings always gives exactly the same result, so replays and the computer player's planning match what really happens.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. Reuse -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">7</span>What is reused, and what is new</div>
+      <div class="table-responsive">
+        <table class="table table-sm table-bordered plan mb-0">
+          <thead><tr><th>Part</th><th></th><th>How</th></tr></thead>
+          <tbody>
+            <tr><td>Two-script layout</td><td><span class="reuse">reused</span></td><td>A <code>sim</code> script with the table, balls, physics and rules and no drawing (so whole games can be played in Node), and a <code>game-ui</code> script for the screen, as in Golf and Javelin.</td></tr>
+            <tr><td>Fixed-step loop, Pause, Home, Full screen, sound switch</td><td><span class="reuse">reused</span></td><td>Copied from Golf and adapted, including pause on a hidden tab.</td></tr>
+            <tr><td>Sliders, keys and touch, phone layouts</td><td><span class="reuse">reused</span></td><td>Power slider, arrow keys, Space to shoot, upright and sideways phone layouts.</td></tr>
+            <tr><td>Sound</td><td><span class="reuse">reused</span></td><td>Web Audio effects made from tones and noise: cue tip click, ball-on-ball clack (louder for harder hits), cushion thud, ball dropping into a pocket and rolling down the rail, polite applause for a big break.</td></tr>
+            <tr><td>Saving and testing</td><td><span class="reuse">reused</span></td><td>Browser saving with safe fallback, the Node solver idea and the headless-browser frame checks.</td></tr>
+            <tr><td>Ball physics with spin</td><td><span class="new">new</span></td><td>Sliding and rolling, ball-on-ball hits, cushions, pocket jaws, top, screw and side.</td></tr>
+            <tr><td>Billiards rules and referee</td><td><span class="new">new</span></td><td>The <code>sim</code> records every touch in a shot (which ball hit which, in what order, what went in) and a referee function turns that list into points, fouls, whose turn it is and which balls are re-spotted.</td></tr>
+            <tr><td>Aim guide and ghost ball</td><td><span class="new">new</span></td><td>A line to the first ball and the direction the hit ball will go.</td></tr>
+            <tr><td>Computer opponent</td><td><span class="new">new</span></td><td>Tries shots in the <code>sim</code> and picks the best, at three levels.</td></tr>
+            <tr><td>Players at the table</td><td><span class="new">new</span></td><td>Two characters drawn in code, walking to the cue ball, cueing and reacting, see-through where they cover the table.</td></tr>
+            <tr><td>Turns, breaks and the scoreboard</td><td><span class="new">new</span></td><td>As described above.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8. Deliverables / technical -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">8</span>Deliverables and technical design</div>
+      <div class="row g-3">
+        <div class="col-lg-5">
+<pre class="tree">GAMES/
+├── index.html                <span class="c">← new "Game 5" card</span>
+├── GAME-5-Billiards/
+│   └── billiards.html        <span class="c">← the whole game, one file</span>
+└── info/
+    ├── BILLIARDS-GAME-PLAN.html <span class="c">← this page</span>
+    └── HOW-BILLIARDS-WORKS.html <span class="c">← explainer (Phase 6)</span></pre>
+        </div>
+        <div class="col-lg-7">
+          <ul class="small mb-0">
+            <li><b>Units:</b> metres, seconds and radians. The origin is the middle of the bottom (baulk) cushion; the table runs "up" to the top cushion.</li>
+            <li><b>The shot record:</b> every shot produces a list of events such as <code>{t:0.42, hit:'red'}</code>, <code>{t:0.90, cushion:'left'}</code>, <code>{t:1.31, hit:'spot'}</code>, <code>{t:2.05, pocket:'top-right', ball:'red'}</code>. The referee reads only this list, so the rules can be tested without drawing anything.</li>
+            <li><b>Game state</b> (ball positions, scores, whose turn, which ball is in hand, the break) is one plain object that is saved after every shot, so leaving and coming back carries on the game.</li>
+            <li><b>Drawing:</b> in Top view the table is drawn once to an off-screen canvas; each frame draws only the balls, the cue and the guide on top, so it stays smooth on phones. The Eye view redraws the table each frame through the 3D projection (a few dozen shapes, cheap on a phone). The rules (<code>sim</code>) don't know which view is showing.</li>
+            <li><b>No outside files,</b> no network requests, works from <code>file:///</code>.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Phases -->
+  <h2 class="h5 fw-bold mt-4 mb-3">Build phases</h2>
+
+  <div class="card shadow-sm mb-3 phase">
+    <div class="card-body">
+      <h2 class="h6 fw-bold">Phase 1: The table and the balls</h2>
+      <ul>
+        <li>Canvas, fixed-step loop and the <code>sim</code> / <code>game-ui</code> split, copied from Golf.</li>
+        <li>The table in real sizes, pockets with jaws, the baulk line, the D and the spots.</li>
+        <li>Ball physics: sliding and rolling, ball-on-ball, cushions, pockets, and exact hit times.</li>
+        <li>Aiming, fine aim, the Power slider, SHOOT, and the aim guide with the ghost ball. No spin yet.</li>
+        <li>A Practice table: drag any ball anywhere and shoot, no rules.</li>
+      </ul>
+      <div class="accept"><b>Done when:</b> The same shot always gives the same result, balls never pass through each other or the cushions even at full power, a straight full-ball hit stops the cue ball dead (with no spin), and a ball sent along a cushion into a corner pocket drops in.</div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mb-3 phase p2">
+    <div class="card-body">
+      <h2 class="h6 fw-bold">Phase 2: The rules and turns</h2>
+      <ul>
+        <li>The shot record and the referee: pots, in-offs, cannons, adding up, fouls, re-spotting the red, a potted cue ball staying off, ball in hand, playing out of baulk.</li>
+        <li>Turns, breaks, the coin toss, target score (50 by default, 100, 200), win screen.</li>
+        <li>A simple stand-in computer (plays a plain shot at the nearer ball) so whole games can be played before Phase 4.</li>
+        <li>Saving a game in progress, best break and wins.</li>
+        <li>Node tests: a list of set-up shots, each with the points and fouls the referee must give.</li>
+      </ul>
+      <div class="accept"><b>Done when:</b> Every row of the scoring and foul tables has a Node test that passes, including the 10-point shot, and a full game to 50 can be played against the stand-in computer.</div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mb-3 phase p3">
+    <div class="card-body">
+      <h2 class="h6 fw-bold">Phase 3: Spin and the Eye view</h2>
+      <ul>
+        <li>The Eye view: the 3D projection, the camera behind the cue ball turning with the aim, raising and lowering the eye, the bridge hand and cue, and the ⇄ View button and <kbd>V</kbd> key (Top stays the default).</li>
+        <li>The spin picker; top, screw and side in the physics.</li>
+        <li>Side changing cushion angles; the guide hints at the effect on Easy.</li>
+        <li>A "Spin school" practice set: five set-up shots that need follow, screw or side, with a target circle to land the cue ball in.</li>
+      </ul>
+      <div class="accept"><b>Done when:</b> A full-ball screw shot brings the cue ball back towards the player, top makes it follow through, side visibly changes the angle off a cushion, and every Spin school shot can be made. In the Eye view the aim guide lines up with the same ball as in Top view, and a shot can be aimed and played from the Eye view alone.</div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mb-3 phase p4">
+    <div class="card-body">
+      <h2 class="h6 fw-bold">Phase 4: The computer opponent</h2>
+      <ul>
+        <li>Shot search in the <code>sim</code>: many angles, powers and spins, each scored by points and the leave.</li>
+        <li>Easy, Medium and Hard, with aim wobble and, on Hard, two-shot planning and safety play.</li>
+        <li>"Thinking" animation, and the search spread over several frames so the screen never freezes.</li>
+      </ul>
+      <div class="accept"><b>Done when:</b> In Node, Hard scores at least 3 times as many points as Easy over 50 games against itself, Medium beats Easy most of the time, and no computer shot takes more than 2 seconds to choose on a phone.</div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mb-3 phase p5">
+    <div class="card-body">
+      <h2 class="h6 fw-bold">Phase 5: Look, sound, phones and polish</h2>
+      <ul>
+        <li>The cloth, frame, room and lamp; ball shine, shadows and the rolling highlight; the cue drawing back and striking.</li>
+        <li>Archie and Rusty at the table, drawn in code, and their scoreboard portraits: walking round to the cue ball, cueing, reactions, see-through where they cover the table, and the "Hide players" switch.</li>
+        <li>Web Audio sounds; score pop-ups; shot replay.</li>
+        <li>Phone layouts (the table turns on its side when the phone is upright), full screen, and testing on a laptop and a phone.</li>
+      </ul>
+      <div class="accept"><b>Done when:</b> Every event has a sound, nothing sounds before the first tap, a full game plays smoothly on a phone, and no control or player ever hides a ball.</div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mb-3 phase p6">
+    <div class="card-body">
+      <h2 class="h6 fw-bold">Phase 6: Portal and explainer</h2>
+      <ul>
+        <li>A "Game 5: Billiards" card in <code>GAMES/index.html</code> with Play, Plan and How it works buttons.</li>
+        <li><code>info/HOW-BILLIARDS-WORKS.html</code>: how a ball slides then rolls, the 90° rule, how spin works, how the referee reads a shot, how the computer chooses its shot, with hands-on demos and a dated timeline.</li>
+        <li>Add the game to the table in <code>CLAUDE.md</code>.</li>
+      </ul>
+      <div class="accept"><b>Done when:</b> The game opens from the portal, and the explainer links back to the game and the portal.</div>
+    </div>
+  </div>
+
+  <!-- 9. Tests -->
+  <div class="card shadow-sm step-card mb-3 mt-4">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">9</span>Test checklist</div>
+      <div class="row">
+        <div class="col-md-6">
+          <ul class="mb-0">
+            <li>Opens from <code>file:///</code> in Chrome, Edge and Firefox with no console errors.</li>
+            <li>The same shot always gives the same result; a replay matches the shot exactly.</li>
+            <li>No ball ever leaves the table, overlaps another ball or passes through a cushion, over 10,000 random full-power shots in Node.</li>
+            <li>Every scoring and foul rule has a Node test, including combined scores and the in-off-after-cannon rule.</li>
+            <li>The red goes to the right spot when its spot is covered; a potted cue ball (white or yellow) stays off until its owner's turn.</li>
+          </ul>
+        </div>
+        <div class="col-md-6">
+          <ul class="mb-0">
+            <li>Playing from hand: the ball can only be placed in the D, and a direct shot at a ball in baulk is called a foul.</li>
+            <li>Scores, breaks and the winner are right at the end of a game.</li>
+            <li>Leaving mid-game and coming back keeps the balls, scores and whose turn it is.</li>
+            <li>Switching tabs pauses the game, including while the computer is thinking.</li>
+            <li>The game still works in a private window (saving blocked).</li>
+            <li>Rotating a phone keeps the table sharp and the controls clear of the balls.</li>
+            <li>Switching views at any moment (even mid-shot) shows the same balls in the same places, and nothing resets; every game starts in Top view.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 10. Out of scope -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">10</span>Not in this version</div>
+      <ul class="small mb-0">
+        <li>Two people playing each other, on one device or online. This version is against the computer only.</li>
+        <li>The professional match limits on repeated hazards and cannons.</li>
+        <li>A free camera that can fly anywhere round the room: the two views (Top and Eye) cover what a player needs.</li>
+        <li>Jump shots, massé (big curling shots with a raised cue) and the "push stroke" rule.</li>
+        <li>Other cue games (snooker, pool). The table and physics would suit them later.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 11. Open questions -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">11</span>Decisions (agreed 23 Nov 2026)</div>
+      <ul class="mb-0">
+        <li><span class="tag tag-must">agreed</span> <strong>Ball colours: white, yellow and red.</strong> The yellow replaces the classic dotted (spot) white, as in many modern sets; it is easier to tell apart on a small screen. No dotted ball.</li>
+        <li><span class="tag tag-must">agreed</span> <strong>Players at the table: Archie and Rusty.</strong> Archie (you, white ball) wears a white shirt, black waistcoat and red bow tie; Rusty (the computer, yellow ball) has red curly hair, a maroon waistcoat and a yellow bow tie. Both are drawn in code, walk round the table and cue each shot, turn see-through wherever they cover the table, and can be hidden. Rusty keeps the same name and look on every level.</li>
+        <li><span class="tag tag-must">agreed</span> <strong>Two views, as in Golf.</strong> Top (the default) and the Eye view (low behind the cue ball, the way the player sees the table before striking), switched at any time with the ⇄ View button or <kbd>V</kbd>.</li>
+        <li><span class="tag tag-must">agreed</span> <strong>Against the computer only.</strong> Easy, Medium or Hard. No two-player mode in this version.</li>
+        <li><span class="tag tag-must">agreed</span> <strong>50 up by default.</strong> About ten minutes a game; 100 and 200 up are in the menu.</li>
+        <li><span class="tag tag-must">agreed</span> <strong>No pro rules.</strong> The match limits on repeated hazards and cannons are left out.</li>
+        <li><span class="tag tag-must">agreed</span> <strong>Genre, not a copy.</strong> The game uses the standard rules of English billiards, which belong to everyone, with its own table art, sounds and opponent. No graphics, names or music from any existing billiards or snooker game are used.</li>
+      </ul>
+    </div>
+  </div>
+
+</main>
+
+<footer class="text-white py-4 mt-5">
+  <div class="container text-center small">AI Games Portal · Billiards plan · <a href="GOLF-PLAN.html">⛳ Golf plan</a> · <a href="JAVELIN-GAME-PLAN.html">🎯 Javelin plan</a> · <a href="CHINTU-GAME-PLAN.html">🏃 Chintu plan</a> · <a href="CAR-RACE-PLAN.html">🏎️ Car Race plan</a> · <a href="../index.html">🏠 Games Home</a></div>
+</footer>
+
+</body>
+</html>

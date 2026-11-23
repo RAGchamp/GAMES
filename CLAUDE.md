@@ -9,6 +9,7 @@ Games written with Claude Code, linked from the portal page `index.html`. Each g
 | Game 2: Chintu | `GAME-2-Chintu/` | `info/CHINTU-GAME-PLAN.html`, `info/HOW-CHINTU-WORKS.html` |
 | Game 3: Javelin | `GAME-3-Javelin/` | `info/JAVELIN-GAME-PLAN.html`, `info/HOW-JAVELIN-WORKS.html` |
 | Game 4: Golf | `GAME-4-Golf/` | `info/GOLF-PLAN.html` (explainer `HOW-GOLF-WORKS.html` not written yet) |
+| Game 5: Billiards | `GAME-5-Billiards/` | `info/BILLIARDS-GAME-PLAN.html` (in progress: Phases 1–2 built; not on the portal yet) |
 
 Javelin's tower physics is Matter.js 0.19.0 (MIT), pasted as one long line in the last `<script id="matter">` of
 `javelin.html`; edit the `sim` and `game-ui` scripts above it, not that line. The `sim` script has no DOM code so
@@ -17,6 +18,11 @@ levels can be tested in Node. The demos in `HOW-JAVELIN-WORKS.html` copy the fli
 
 Golf (`golf.html`) has the same split: a `sim` script (course data, clubs, ball flight, bounce and roll; no DOM, so
 holes can be played in Node) and a `game-ui` script (side and top-down views, Willy, sound, menus). It uses no library.
+
+Billiards (`billiards.html`, English billiards with white, yellow and red balls) has the same split: a `sim` script
+(table in real sizes, pockets with jaws, sliding/rolling ball physics with exact hit times; no DOM) and a `game-ui`
+script. It uses no library. Build it phase by phase from its plan, whose decisions (section 11) are agreed: computer
+opponent only (Rusty, yellow), you are Archie (white), 50 up by default, no pro rules, Top view plus an Eye view.
 
 ## Abandoned: Geography game (22 Nov 2026)
 
