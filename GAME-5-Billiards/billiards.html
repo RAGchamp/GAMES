@@ -309,8 +309,14 @@ function makeBSIM() {
   const G = 9.81, DT = 1 / 60, SUB = 10, H = DT / SUB;
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
-  /* ---------- The table (real sizes, inside the cushions) ---------- */
-  const L = 3.569, W = 1.778, HW = W / 2, R = 0.02625;
+  /* ---------- The table (real sizes, inside the cushions) ----------
+     SIZE: the balls are drawn and played at twice real size, so they are easy to see on a phone.
+     POCKET: the pockets grow less (1.6x), so a pot still needs some care: the corner mouth is about 1.8 balls wide,
+     close to a real table. (Bigger balls and pockets on the same table make pots easier, since the pocket is wider
+     as seen from the ball; at 2x, careful pots went in 63% of the time, at 1.6x 47%.) */
+  const SIZE = 2;
+  const POCKET = 1.6;      // pocket size against real size
+  const L = 3.569, W = 1.778, HW = W / 2, R = 0.02625 * SIZE;
   const BAULK = 0.737, D_R = 0.292;
   const SPOT = { billiard: { x: 0, y: L - 0.324 }, pyramid: { x: 0, y: L * 0.75 }, centre: { x: 0, y: L / 2 } };
 
@@ -326,9 +332,9 @@ function makeBSIM() {
   /* ---------- Cushions and pockets ----------
      Cushions are the straight "nose" lines; at each pocket two jaws (short straight sides) lead into the pocket.
      A ball drops when its centre passes over the pocket's hole (a circle set just behind the mouth). */
-  const CM = 0.085;        // corner mouth: each cushion stops this far from the corner
-  const MM = 0.055;        // middle mouth: half the gap between the middle cushions
-  const LJ = 0.15, LM = 0.11;
+  const CM = 0.085 * POCKET; // corner mouth: each cushion stops this far from the corner
+  const MM = 0.055 * POCKET; // middle mouth: half the gap between the middle cushions
+  const LJ = 0.1 * POCKET, LM = 0.09 * POCKET, PR = 0.055 * POCKET;   // jaw lengths; pocket hole radius
   const SEGS = [], POCKETS = [];
   function seg(ax, ay, bx, by, kind) {
     const dx = bx - ax, dy = by - ay, len = Math.hypot(dx, dy), tx = dx / len, ty = dy / len;
@@ -346,13 +352,13 @@ function makeBSIM() {
     const A = { x: sx * HW, y: Y0 + dy * CM }, B = { x: sx * (HW - CM), y: Y0 };
     const A2 = { x: A.x + ux * LJ, y: A.y + uy * LJ }, B2 = { x: B.x + ux * LJ, y: B.y + uy * LJ };
     seg(A.x, A.y, A2.x, A2.y, 'jaw'); seg(B.x, B.y, B2.x, B2.y, 'jaw');
-    POCKETS.push({ id, x: sx * (HW + 0.01), y: Y0 - dy * 0.01, r: 0.055, corner: true, mouth: [A, A2, B2, B] });
+    POCKETS.push({ id, x: sx * (HW + 0.01 * POCKET), y: Y0 - dy * 0.01 * POCKET, r: PR, corner: true, mouth: [A, A2, B2, B] });
   }
   for (const [id, sx] of [['ML', -1], ['MR', 1]]) {
     const A = { x: sx * HW, y: L / 2 + MM }, B = { x: sx * HW, y: L / 2 - MM };
-    const A2 = { x: sx * (HW + LM), y: L / 2 + MM - 0.005 }, B2 = { x: sx * (HW + LM), y: L / 2 - MM + 0.005 };
+    const A2 = { x: sx * (HW + LM), y: L / 2 + MM - 0.005 * POCKET }, B2 = { x: sx * (HW + LM), y: L / 2 - MM + 0.005 * POCKET };
     seg(A.x, A.y, A2.x, A2.y, 'jaw'); seg(B.x, B.y, B2.x, B2.y, 'jaw');
-    POCKETS.push({ id, x: sx * (HW + 0.045), y: L / 2, r: 0.055, corner: false, mouth: [A, A2, B2, B] });
+    POCKETS.push({ id, x: sx * (HW + 0.035 * POCKET), y: L / 2, r: PR, corner: false, mouth: [A, A2, B2, B] });
   }
 
   const inD = (x, y) => y <= BAULK && Math.hypot(x, y - BAULK) <= D_R;
@@ -652,7 +658,7 @@ function makeBSIM() {
   }
 
   return {
-    G, DT, SUB, L, W, HW, R, BAULK, D_R, SPOT, SEGS, POCKETS, IDS, VMAX, MU_S, MU_R, E_BALL, E_CUSH,
+    G, DT, SUB, SIZE, POCKET, L, W, HW, R, BAULK, D_R, SPOT, SEGS, POCKETS, IDS, VMAX, MU_S, MU_R, E_BALL, E_CUSH,
     inD, onBed, ball, practiceLayout, newState, cloneBalls, find, moving, anyMoving, step, strike, simulate,
     firstContact, free, placeAt, respotRed, placeInD, toiPt, toiSeg,
     OTHER, VALUE, PENALTY, referee, newMatch, startTurn, applyShot, cpuCandidates, cpuValue, cpuPick
@@ -704,7 +710,7 @@ window.addEventListener('DOMContentLoaded', () => {
   const wrap = $('wrap'), stage = $('stage'), controls = $('controls');
   let LW = 960, LH = 540, scale = 1, cssW = 960, cssH = 540, running = false, topPx = 44, cornerLeft = 700;
   let K = 240, OX = 0, OY = 0;                    // screen x = OX + y*K, screen y = OY + x*K (baulk on the left)
-  const FRAME = 0.15, CUSH = 0.05;                // wooden frame and cushion widths (m)
+  const FRAME = 0.2, CUSH = 0.05;                 // wooden frame and cushion widths (m); wide enough for the big pockets
   const toS = (x, y) => [OX + y * K, OY + x * K];
   const toW = (sx, sy) => ({ x: (sy - OY) / K, y: (sx - OX) / K });
   const tableCv = document.createElement('canvas'), tctx = tableCv.getContext('2d');
@@ -1183,7 +1189,7 @@ window.addEventListener('DOMContentLoaded', () => {
     for (let i = 1; i < 8; i++) if (i !== 4) for (const s of [-1, 1]) { const [x, y] = toS(s * (HW + FRAME * 0.55), L * i / 8); c.beginPath(); c.arc(x, y, Math.max(1.2, 0.008 * K), 0, 7); c.fill(); }
     for (let i = 1; i < 4; i++) for (const yy of [-FRAME * 0.55, L + FRAME * 0.55]) { const [x, y] = toS(-HW + W * i / 4, yy); c.beginPath(); c.arc(x, y, Math.max(1.2, 0.008 * K), 0, 7); c.fill(); }
     // brass plates round the pockets
-    for (const p of BS.POCKETS) { const [x, y] = toS(p.x, p.y); const br = c.createRadialGradient(x, y, 0, x, y, 0.1 * K); br.addColorStop(0, '#e6c56a'); br.addColorStop(1, '#8c6a22'); c.fillStyle = br; c.beginPath(); c.arc(x, y, 0.095 * K, 0, 7); c.fill(); }
+    for (const p of BS.POCKETS) { const [x, y] = toS(p.x, p.y); const br = c.createRadialGradient(x, y, 0, x, y, (p.r + 0.035) * K); br.addColorStop(0, '#e6c56a'); br.addColorStop(1, '#8c6a22'); c.fillStyle = br; c.beginPath(); c.arc(x, y, (p.r + 0.03) * K, 0, 7); c.fill(); }
     // cushions, then the cloth
     c.fillStyle = '#0d5f2e'; worldRect(c, -HW - CUSH, -CUSH, HW + CUSH, L + CUSH); c.fill();
     const cl = c.createRadialGradient(cx, cy, K * 0.2, cx, cy, K * L * 0.62);
@@ -1264,7 +1270,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const at = s => toS(c.x - dx * s, c.y - dy * s);
     const [tx, ty] = at(d0), [bx, by] = at(d0 + LEN);
     const px = -(by - ty), py = bx - tx, pl = Math.hypot(px, py) || 1, nx = px / pl, ny = py / pl;
-    const wTip = 0.0055 * K, wButt = 0.0145 * K;
+    const wTip = 0.0085 * K, wButt = 0.02 * K;   // thicker than real, to suit the big balls
     const part = (s0, s1, w0, w1, col) => {
       const [x0, y0] = at(s0), [x1, y1] = at(s1);
       ctx.fillStyle = col; ctx.beginPath();

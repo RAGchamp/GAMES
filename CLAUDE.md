@@ -20,7 +20,7 @@ Golf (`golf.html`) has the same split: a `sim` script (course data, clubs, ball 
 holes can be played in Node) and a `game-ui` script (side and top-down views, Willy, sound, menus). It uses no library.
 
 Billiards (`billiards.html`, English billiards with white, yellow and red balls) has the same split: a `sim` script
-(table in real sizes, pockets with jaws, sliding/rolling ball physics with exact hit times; no DOM) and a `game-ui`
+(table in real sizes but balls at twice real size (`SIZE = 2`) so they show on a phone, pockets at 1.6x (`POCKET`) so potting stays a little hard, pockets with jaws, sliding/rolling ball physics with exact hit times; no DOM) and a `game-ui`
 script. It uses no library. Build it phase by phase from its plan, whose decisions (section 11) are agreed: computer
 opponent only (Rusty, yellow), you are Archie (white), 50 up by default, no pro rules, Top view plus an Eye view.
 
