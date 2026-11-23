@@ -8,11 +8,15 @@ Games written with Claude Code, linked from the portal page `index.html`. Each g
 | Game 1: Car Race | `GAME1-CAR-RACE/` | `info/CAR-RACE-PLAN.html`, `info/HOW-CAR-RACE-WORKS.html` |
 | Game 2: Chintu | `GAME-2-Chintu/` | `info/CHINTU-GAME-PLAN.html`, `info/HOW-CHINTU-WORKS.html` |
 | Game 3: Javelin | `GAME-3-Javelin/` | `info/JAVELIN-GAME-PLAN.html`, `info/HOW-JAVELIN-WORKS.html` |
+| Game 4: Golf | `GAME-4-Golf/` | `info/GOLF-PLAN.html` (explainer `HOW-GOLF-WORKS.html` not written yet) |
 
 Javelin's tower physics is Matter.js 0.19.0 (MIT), pasted as one long line in the last `<script id="matter">` of
 `javelin.html`; edit the `sim` and `game-ui` scripts above it, not that line. The `sim` script has no DOM code so
 levels can be tested in Node. The demos in `HOW-JAVELIN-WORKS.html` copy the flight constants and formulas from the
 `sim` script (release point, speeds, drag, wind, javelin types, material strengths); change them there too if those change.
+
+Golf (`golf.html`) has the same split: a `sim` script (course data, clubs, ball flight, bounce and roll; no DOM, so
+holes can be played in Node) and a `game-ui` script (side and top-down views, Willy, sound, menus). It uses no library.
 
 ## Abandoned: Geography game (22 Nov 2026)
 
