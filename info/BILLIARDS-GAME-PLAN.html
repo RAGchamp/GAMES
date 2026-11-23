@@ -123,7 +123,7 @@
   </div>
 
   <h1 class="h3 fw-bold mb-1">🎱 Billiards: Development Plan</h1>
-  <p class="text-muted mb-3">Plan date: 23 Nov 2026 · Decisions agreed 23 Nov 2026 (section 11) · Status: <strong>Phases 1–2 built 23 Nov 2026 (<a href="../GAME-5-Billiards/billiards.html">play Billiards</a>: a full game against a stand-in Rusty); Phase 3 to do</strong> · <a href="GOLF-PLAN.html">Golf plan</a> · <a href="JAVELIN-GAME-PLAN.html">Javelin plan</a></p>
+  <p class="text-muted mb-3">Plan date: 23 Nov 2026 · Decisions agreed 23 Nov 2026 (section 11) · Status: <strong>Phases 1–3 built 23 Nov 2026 (<a href="../GAME-5-Billiards/billiards.html">play Billiards</a>: a full game against a stand-in Rusty, spin, the Spin school and the Eye view); Phase 4 to do</strong> · <a href="GOLF-PLAN.html">Golf plan</a> · <a href="JAVELIN-GAME-PLAN.html">Javelin plan</a></p>
 
   <div class="prompt mb-4">
     <strong>Goal:</strong> Build <code class="text-warning">GAME-5-Billiards/billiards.html</code>, a game of <b>English billiards</b> seen from above on a 12 ft × 6 ft table with six pockets. There are three balls: a <b>white</b>, a <b>yellow</b> and a <b>red</b>. You play the white and the computer plays the yellow; each is that side's own cue ball. You score by <b>potting</b> a ball, by going <b>in-off</b> (your cue ball goes into a pocket after hitting another ball) and by making a <b>cannon</b> (your cue ball hits both other balls). You keep playing while you score; the first to the target score (<b>50</b> by default) wins. You play <b>against the computer</b>, and both sides are shown as players standing at the table. There are <b>two views</b>, switched at any time as in Golf: <b>Top</b> (the default) and the <b>Eye view</b>, low behind the cue ball, the way the player sees the table before striking.
@@ -434,7 +434,7 @@
           </ul>
         </div>
       </div>
-      <p class="small mt-2 mb-0"><b>How it is drawn (no library):</b> the table is flat, so the eye view needs only a simple hand-written 3D projection, like Golf's views. Each point on the table (corners, cushion edges, pocket rims, the baulk line and D, the guide) is turned into screen position by the camera's position and direction; things are drawn from far to near; a ball is a shaded circle whose size depends on its distance, with an oval shadow below it. Anything behind the eye is left out.</p>
+      <p class="small mt-2 mb-0"><b>How it is drawn (changed 23 Nov 2026: three.js):</b> the Eye view is drawn in 3D with <b>three.js</b> (r160, MIT licence): the table under a lamp, shiny balls with soft shadows, and the cue resting on a 3D bridge hand. three.js is pasted into the file as plain text and run only when the Eye view is first opened, so the game still needs no network and the Top view pays nothing for it. The guide and spin hint are drawn over it through the same camera. If a device has no WebGL, the game uses the first plan instead: a simple hand-written 3D projection, like Golf's views. Each point on the table (corners, cushion edges, pocket rims, the baulk line and D, the guide) is turned into screen position by the camera's position and direction; things are drawn from far to near; a ball is a shaded circle whose size depends on its distance, with an oval shadow below it. Anything behind the eye is left out.</p>
     </div>
   </div>
 
@@ -593,6 +593,7 @@ ball.pos += ball.vel * dt;
         <li>A "Spin school" practice set: five set-up shots that need follow, screw or side, with a target circle to land the cue ball in.</li>
       </ul>
       <div class="accept"><b>Done when:</b> A full-ball screw shot brings the cue ball back towards the player, top makes it follow through, side visibly changes the angle off a cushion, and every Spin school shot can be made. In the Eye view the aim guide lines up with the same ball as in Top view, and a shot can be aimed and played from the Eye view alone.</div>
+      <p class="small text-muted mt-2 mb-0"><b>Built 23 Nov 2026.</b> The spin hint (a dotted line showing where the white runs after its first contact) is shown on every shot for now, since the levels come in Phase 4; Phase 4 keeps it for Easy only. Side changes only the angle off a cushion: a ball with no side bounces exactly as in Phase 2.</p>
     </div>
   </div>
 
@@ -683,7 +684,7 @@ ball.pos += ball.vel * dt;
       <ul class="mb-0">
         <li><span class="tag tag-must">agreed</span> <strong>Ball colours: white, yellow and red.</strong> The yellow replaces the classic dotted (spot) white, as in many modern sets; it is easier to tell apart on a small screen. No dotted ball.</li>
         <li><span class="tag tag-must">agreed</span> <strong>Players at the table: Archie and Rusty.</strong> Archie (you, white ball) wears a white shirt, black waistcoat and red bow tie; Rusty (the computer, yellow ball) has red curly hair, a maroon waistcoat and a yellow bow tie. Both are drawn in code, walk round the table and cue each shot, turn see-through wherever they cover the table, and can be hidden. Rusty keeps the same name and look on every level.</li>
-        <li><span class="tag tag-must">agreed</span> <strong>Two views, as in Golf.</strong> Top (the default) and the Eye view (low behind the cue ball, the way the player sees the table before striking), switched at any time with the ⇄ View button or <kbd>V</kbd>.</li>
+        <li><span class="tag tag-must">agreed</span> <strong>Two views, as in Golf.</strong> Top (the default) and the Eye view (low behind the cue ball, the way the player sees the table before striking), switched at any time with the Top / Eye switch or <kbd>V</kbd>. <em>Changed 23 Nov 2026:</em> the Eye view is drawn in 3D with three.js (MIT), pasted into the file; the Top view uses no library.</li>
         <li><span class="tag tag-must">agreed</span> <strong>Against the computer only.</strong> Easy, Medium or Hard. No two-player mode in this version.</li>
         <li><span class="tag tag-must">agreed</span> <strong>50 up by default.</strong> About ten minutes a game; 100 and 200 up are in the menu.</li>
         <li><span class="tag tag-must">agreed</span> <strong>No pro rules.</strong> The match limits on repeated hazards and cannons are left out.</li>

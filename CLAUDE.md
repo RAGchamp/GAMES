@@ -9,7 +9,7 @@ Games written with Claude Code, linked from the portal page `index.html`. Each g
 | Game 2: Chintu | `GAME-2-Chintu/` | `info/CHINTU-GAME-PLAN.html`, `info/HOW-CHINTU-WORKS.html` |
 | Game 3: Javelin | `GAME-3-Javelin/` | `info/JAVELIN-GAME-PLAN.html`, `info/HOW-JAVELIN-WORKS.html` |
 | Game 4: Golf | `GAME-4-Golf/` | `info/GOLF-PLAN.html` (explainer `HOW-GOLF-WORKS.html` not written yet) |
-| Game 5: Billiards | `GAME-5-Billiards/` | `info/BILLIARDS-GAME-PLAN.html` (in progress: Phases 1–2 built; on the portal as a simple card, full description in Phase 6) |
+| Game 5: Billiards | `GAME-5-Billiards/` | `info/BILLIARDS-GAME-PLAN.html` (in progress: Phases 1–3 built; on the portal as a simple card, full description in Phase 6) |
 
 Javelin's tower physics is Matter.js 0.19.0 (MIT), pasted as one long line in the last `<script id="matter">` of
 `javelin.html`; edit the `sim` and `game-ui` scripts above it, not that line. The `sim` script has no DOM code so
@@ -21,8 +21,12 @@ holes can be played in Node) and a `game-ui` script (side and top-down views, Wi
 
 Billiards (`billiards.html`, English billiards with white, yellow and red balls) has the same split: a `sim` script
 (table in real sizes but balls at twice real size (`SIZE = 2`) so they show on a phone, pockets at 1.6x (`POCKET`) so potting stays a little hard, pockets with jaws, sliding/rolling ball physics with exact hit times; no DOM) and a `game-ui`
-script. It uses no library. Build it phase by phase from its plan, whose decisions (section 11) are agreed: computer
-opponent only (Rusty, yellow), you are Archie (white), 50 up by default, no pro rules, Top view plus an Eye view.
+script, plus an `eye3d` script that draws the Eye view in 3D with three.js r160 (MIT). three.js is pasted as one long
+line of plain text in the last `<script type="text/plain" id="three-src">` of `billiards.html` and run only when the Eye
+view is first opened; edit the scripts above it, not that line. If WebGL is missing the game falls back to the
+hand-drawn Eye view in `game-ui`. The Top view uses no library. Build it phase by phase from its plan, whose decisions
+(section 11) are agreed: computer opponent only (Rusty, yellow), you are Archie (white), 50 up by default, no pro
+rules, Top view plus an Eye view (3D, three.js).
 
 ## Abandoned: Geography game (22 Nov 2026)
 
