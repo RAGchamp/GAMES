@@ -185,9 +185,9 @@
   /* Spin: a small cue-ball button in the deck, and a big picker over the table */
   .sbtn.spin{ padding:.15rem .3rem; line-height:0; }
   .sbtn.spin canvas{ width:30px; height:30px; display:block; }
-  .spinpop{ position:absolute; left:60px; bottom:8px; z-index:7; background:rgba(4,38,77,.94); color:#fff;
+  .spinpop{ position:absolute; left:8px; bottom:8px; z-index:7; background:rgba(4,38,77,.94); color:#fff;
     border:2px solid var(--nav-yellow); border-radius:.7rem; padding:.5rem .6rem; display:flex; gap:.6rem; align-items:center;
-    box-shadow:0 .4rem 1rem rgba(0,0,0,.45); max-width:calc(100% - 68px); }
+    box-shadow:0 .4rem 1rem rgba(0,0,0,.45); max-width:calc(100% - 68px); z-index:8; }
   .spinpop[hidden]{ display:none; }
   .spinpop canvas{ width:150px; height:150px; touch-action:none; cursor:crosshair; flex:none; }
   .spinpop .txt{ font-size:.82rem; max-width:13rem; }
@@ -203,7 +203,7 @@
   .sbtn.view[aria-checked="true"] .vtrack{ background:#ff8a3d; }
   .sbtn.view[aria-checked="true"] .vknob{ left:18px; }
   /* Top view: the power cue on the left. Pull it down to set the power, let go to shoot. */
-  .pullcue{ position:absolute; left:6px; top:44px; bottom:34px; width:46px; z-index:4; display:flex; flex-direction:column;
+  .pullcue{ position:absolute; right:6px; top:44px; bottom:34px; width:46px; z-index:4; display:flex; flex-direction:column;
     align-items:center; gap:4px; touch-action:none; user-select:none; -webkit-user-select:none; }
   .pullcue[hidden]{ display:none; }
   .pullcue.off{ opacity:.45; pointer-events:none; }
@@ -215,6 +215,26 @@
     box-shadow:0 0 0 1px rgba(0,0,0,.4), 2px 0 3px rgba(0,0,0,.4);
     background:linear-gradient(#3d7fc9 0 8px, #f4efe2 8px 20px, #e6cc96 20px 72%, #c9a13b 72% 74%, #3b2414 74%); }
   .pullcue .pc-hint{ font-size:.58rem; font-weight:800; color:#cfe0f7; text-align:center; line-height:1.1; text-shadow:0 1px 2px #000; }
+  /* the scores along the top, in the same size as the corner buttons */
+  .hud{ position:absolute; left:8px; top:8px; z-index:6; display:flex; gap:6px; pointer-events:none; overflow:hidden; }
+  .hud .hp{ flex:none; display:inline-flex; align-items:center; gap:.35rem; white-space:nowrap; background:rgba(4,38,77,.8);
+    color:#fff; font-weight:800; font-size:.85rem; line-height:1.2; padding:.15rem .6rem; border-radius:2rem; border:2px solid transparent; }
+  .hud .hp.turn{ border-color:#ffd60a; }
+  .hud .hp.y{ color:#ffd60a; }
+  .hud .dot, .pcard .dot{ display:inline-block; width:.75em; height:.75em; border-radius:50%; border:1px solid rgba(0,0,0,.45); flex:none; }
+  @media (max-width:640px){ .hud .hp{ font-size:.75rem; padding:.1rem .45rem; } }
+  /* Archie and Rusty, one below the other on the left of the table (Top view) */
+  .players{ position:absolute; left:6px; top:44px; bottom:34px; width:66px; z-index:4; display:flex; flex-direction:column;
+    gap:6px; justify-content:center; pointer-events:none; }
+  .players[hidden]{ display:none; }
+  .pcard{ flex:0 1 auto; min-height:0; display:flex; flex-direction:column; align-items:center; background:rgba(4,38,77,.8);
+    border:2px solid rgba(255,255,255,.25); border-radius:.6rem; padding:3px 3px 2px; transition:border-color .2s, opacity .2s; }
+  .pcard[hidden]{ display:none; }
+  .pcard canvas{ width:56px; height:62px; max-height:100%; border-radius:.4rem; display:block; }
+  .pcard span{ display:flex; align-items:center; gap:.25rem; color:#fff; font-weight:800; font-size:.72rem; margin-top:2px; }
+  .pcard.turn{ border-color:#ffd60a; box-shadow:0 0 10px rgba(255,214,10,.45); }
+  .pcard.wait{ opacity:.7; }
+  @media (max-height:330px){ .pcard canvas{ width:44px; height:48px; } .players{ width:58px; } .pcard span{ font-size:.62rem; gap:.15rem; } }
   #dbg{ position:absolute; left:6px; top:44px; z-index:4; background:rgba(0,0,0,.6); color:#9f9; font:11px/1.3 monospace; padding:4px 6px; border-radius:4px; pointer-events:none; white-space:pre; }
   #dbg[hidden]{ display:none; }
 
@@ -252,6 +272,11 @@
         <button class="cbtn" id="pauseBtn" aria-label="Pause" title="Pause (P)" hidden>⏸<span class="wide"> Pause</span></button>
       </div>
       <div id="dbg" hidden></div>
+      <div class="hud" id="hud" aria-live="polite"></div>
+      <div class="players" id="players" hidden>
+        <div class="pcard" id="pcWhite"><canvas id="faceArchie" aria-label="Archie"></canvas><span><i class="dot" style="background:#f7f5ee"></i>Archie</span></div>
+        <div class="pcard" id="pcYellow"><canvas id="faceRusty" aria-label="Rusty"></canvas><span><i class="dot" style="background:#f2c300"></i>Rusty</span></div>
+      </div>
 
       <!-- Top view: the power cue -->
       <div class="pullcue" id="pullCue" hidden>
@@ -1046,18 +1071,21 @@ window.addEventListener('DOMContentLoaded', () => {
     const cr = $('corner').getBoundingClientRect(), cb = cr.bottom - r.top;
     topPx = Math.max(40, cb * LH / cssH + 4);
     cornerLeft = (cr.left - r.left) * LW / cssW;
-    const gw = gaugeRoom() ? 54 * LW / cssW : 0;          // room on the left for the power cue (Top view)
-    const botPx = 30, availW = LW - 16 - gw, availH = LH - topPx - botPx;
+    // Top view: room on the left for Archie and Rusty, and on the right for the power cue
+    const side = gaugeRoom(), gl = side && !$('players').hidden ? ($('players').getBoundingClientRect().width + 10) * LW / cssW : 0, gr = side ? 54 * LW / cssW : 0;
+    const botPx = 30, availW = LW - 16 - gl - gr, availH = LH - topPx - botPx;
     K = Math.min(availW / (L + 2 * FRAME), availH / (W + 2 * FRAME));
-    OX = gw + (LW - gw - L * K) / 2; OY = topPx + availH / 2;
+    OX = gl + (LW - gl - gr - L * K) / 2; OY = topPx + availH / 2;
+    $('hud').style.maxWidth = Math.max(60, cr.left - r.left - 16) + 'px'; hudKey = '';
     tableCv.width = cv.width; tableCv.height = cv.height;
     if (E3.eye) E3.eye.resize(cssW, cssH, dpr);
     tctx.setTransform(scale, 0, 0, scale, 0, 0);
     drawTable(tctx);
     if (!running) draw();
   }
-  // the power cue sits on the left in the Top view while playing
+  // the portraits and the power cue sit beside the table in the Top view while playing
   function gaugeRoom() { return (screen === 'play' || screen === 'pause') && viewNow() === 'top'; }
+  let hudKey = '';
   new ResizeObserver(resize).observe(wrap);
   window.addEventListener('resize', resize);
 
@@ -1257,6 +1285,10 @@ window.addEventListener('DOMContentLoaded', () => {
     const topView = viewNow() === 'top';
     $('powerBox').hidden = $('shootBtn').hidden = topView;
     $('pullCue').hidden = !(topView && screen === 'play');
+    $('players').hidden = !(topView && (screen === 'play' || screen === 'pause') && isMatch());   // only in a game against Rusty
+    const turn = isMatch() ? (game.m.over ? null : game.m.turn) : 'white';
+    $('pcWhite').classList.toggle('turn', turn === 'white'); $('pcYellow').classList.toggle('turn', turn === 'yellow');
+    $('pcWhite').classList.toggle('wait', turn === 'yellow'); $('pcYellow').classList.toggle('wait', turn === 'white');
     $('pullCue').classList.toggle('off', game.phase !== 'aim');
     if (!pc.on) pcShow(0);
     const busy = game.phase !== 'aim';
@@ -1266,6 +1298,55 @@ window.addEventListener('DOMContentLoaded', () => {
     drawSpinBall($('spinMini'), 30, false);
     if (!$('spinPop').hidden) { drawSpinBall($('spinBig'), spinBigSize(), true); spinWords(); }
   }
+
+  /* ---------------- Archie and Rusty: head-and-shoulders portraits, drawn in code ----------------
+     Archie: short dark hair, white shirt, black waistcoat, red bow tie. Rusty: red curly hair and freckles, white
+     shirt, maroon waistcoat, yellow bow tie (as in the plan). */
+  function drawFace(el, who) {
+    const w = 56, h = 62, dpr = Math.min(window.devicePixelRatio || 1, 3);
+    el.width = Math.round(w * dpr); el.height = Math.round(h * dpr);
+    const c = el.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const rusty = who === 'rusty', skin = '#f1c49c', skinDark = '#d9a47a';
+    const bg = c.createRadialGradient(w / 2, h * 0.4, 4, w / 2, h * 0.45, w * 0.8);
+    bg.addColorStop(0, rusty ? '#3d4a63' : '#3a5a46'); bg.addColorStop(1, '#151c28');
+    c.fillStyle = bg; c.fillRect(0, 0, w, h);
+    const el2 = (x, y, rx, ry, col, rot = 0) => { c.fillStyle = col; c.beginPath(); c.ellipse(x, y, rx, ry, rot, 0, 7); c.fill(); };
+    // shoulders: white shirt, then the waistcoat in a V, the collar and the bow tie
+    el2(w / 2, h + 6, 27, 20, '#f4f1ea');
+    c.fillStyle = rusty ? '#7a1f2b' : '#1d1d22';
+    c.beginPath(); c.moveTo(3, h); c.quadraticCurveTo(6, h - 16, 18, h - 19); c.lineTo(w / 2 - 2, h); c.closePath(); c.fill();
+    c.beginPath(); c.moveTo(w - 3, h); c.quadraticCurveTo(w - 6, h - 16, w - 18, h - 19); c.lineTo(w / 2 + 2, h); c.closePath(); c.fill();
+    c.fillStyle = '#c9a13b'; for (const y of [h - 7, h - 2]) { c.beginPath(); c.arc(w / 2 + 4, y, 1, 0, 7); c.fill(); }
+    c.fillStyle = skinDark; c.fillRect(w / 2 - 5, h - 26, 10, 9);                         // neck
+    c.fillStyle = '#fff'; c.beginPath(); c.moveTo(w / 2 - 8, h - 19); c.lineTo(w / 2, h - 14); c.lineTo(w / 2 + 8, h - 19); c.lineTo(w / 2 + 6, h - 21); c.lineTo(w / 2, h - 17); c.lineTo(w / 2 - 6, h - 21); c.closePath(); c.fill();
+    const tie = rusty ? '#f2c300' : '#c4161c';
+    c.fillStyle = tie; c.beginPath(); c.moveTo(w / 2, h - 15); c.lineTo(w / 2 - 8, h - 19); c.lineTo(w / 2 - 8, h - 11); c.closePath(); c.fill();
+    c.beginPath(); c.moveTo(w / 2, h - 15); c.lineTo(w / 2 + 8, h - 19); c.lineTo(w / 2 + 8, h - 11); c.closePath(); c.fill();
+    el2(w / 2, h - 15, 2.4, 2.4, rusty ? '#c99a00' : '#8f0f14');
+    // head and ears
+    const hx = w / 2, hy = 25;
+    el2(hx - 13, hy + 2, 3, 4.5, skinDark); el2(hx + 13, hy + 2, 3, 4.5, skinDark);
+    el2(hx, hy, 13, 15, skin);
+    // hair
+    if (rusty) {
+      c.fillStyle = '#c4501b';
+      for (const [x, y, r] of [[-11, -8, 5], [-6, -13, 5.5], [0, -15, 5.5], [6, -13, 5.5], [11, -8, 5], [-13, -2, 4], [13, -2, 4], [-3, -10, 4], [4, -10, 4]]) { c.beginPath(); c.arc(hx + x, hy + y, r, 0, 7); c.fill(); }
+      c.fillStyle = '#a8400f'; for (const [x, y] of [[-8, -12], [2, -15], [9, -10], [-12, -5]]) { c.beginPath(); c.arc(hx + x, hy + y, 1.6, 0, 7); c.fill(); }
+    } else {
+      c.fillStyle = '#2b1d14';
+      c.beginPath(); c.moveTo(hx - 13.5, hy - 1); c.quadraticCurveTo(hx - 14, hy - 17, hx, hy - 16.5); c.quadraticCurveTo(hx + 14, hy - 17, hx + 13.5, hy - 1);
+      c.quadraticCurveTo(hx + 10, hy - 9, hx + 2, hy - 10); c.quadraticCurveTo(hx - 6, hy - 6, hx - 13.5, hy - 1); c.fill();
+    }
+    // eyebrows, eyes, nose, smile
+    c.strokeStyle = rusty ? '#a8400f' : '#2b1d14'; c.lineWidth = 1.4; c.lineCap = 'round';
+    for (const sx of [-1, 1]) { c.beginPath(); c.moveTo(hx + sx * 3, hy - 5); c.lineTo(hx + sx * 8, hy - 6); c.stroke(); }
+    for (const sx of [-1, 1]) { el2(hx + sx * 5.2, hy - 1, 2.2, 2.4, '#fff'); el2(hx + sx * 5.2, hy - 0.8, 1.3, 1.5, '#2a2f45'); }
+    c.strokeStyle = skinDark; c.lineWidth = 1.2; c.beginPath(); c.moveTo(hx, hy); c.quadraticCurveTo(hx + 2, hy + 4, hx - 0.5, hy + 5); c.stroke();
+    c.strokeStyle = '#a5473c'; c.lineWidth = 1.4; c.beginPath(); c.arc(hx, hy + 6, 4.5, 0.35, Math.PI - 0.35); c.stroke();
+    el2(hx - 8, hy + 4, 2.4, 1.6, 'rgba(230,120,110,.35)'); el2(hx + 8, hy + 4, 2.4, 1.6, 'rgba(230,120,110,.35)');
+    if (rusty) { c.fillStyle = '#b8754a'; for (const [x, y] of [[-9, 2], [-7, 4], [-10, 5], [-6, 1.5], [9, 2], [7, 4], [10, 5], [6, 1.5], [-2, 2], [2, 2]]) { c.beginPath(); c.arc(hx + x, hy + y, 0.7, 0, 7); c.fill(); } }
+  }
+  drawFace($('faceArchie'), 'archie'); drawFace($('faceRusty'), 'rusty');
 
   /* ---------------- Top view: pull the power cue down to set the power, let go to shoot ----------------
      The further down it is pulled the harder the shot; the cue on the table draws back with it. Pushing it back to
@@ -1878,23 +1959,6 @@ window.addEventListener('DOMContentLoaded', () => {
     for (let i = 0; i <= 40; i++) { const t = Math.PI * i / 40, [x, y] = toS(D_R * Math.cos(t), BAULK - D_R * Math.sin(t)); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
     ctx.closePath(); ctx.fill(); ctx.stroke();
   }
-  function ballDot(x, y, id) { ctx.fillStyle = COL[id][1]; ctx.beginPath(); ctx.arc(x, y, 5.5, 0, 7); ctx.fill(); ctx.strokeStyle = 'rgba(0,0,0,.45)'; ctx.lineWidth = 1; ctx.stroke(); }
-  function drawMatchHUD(room) {
-    const m = game.m;
-    ctx.font = '800 13px system-ui, sans-serif'; ctx.textAlign = 'left';
-    let x = 8;
-    for (const id of ['white', 'yellow']) {
-      const t = PLAYER[id] + '  ' + m.score[id], w = ctx.measureText(t).width + 36;
-      pill(x, 9, w, 24);
-      if (m.turn === id && !m.over) { ctx.strokeStyle = '#ffd60a'; ctx.lineWidth = 2; rr(ctx, x, 9, w, 24, 12); ctx.stroke(); }
-      ballDot(x + 14, 21, id); ctx.fillStyle = '#fff'; ctx.fillText(t, x + 25, 21.5);
-      x += w + 6;
-    }
-    let t3 = (m.brk ? 'Break ' + m.brk + ' · ' : '') + 'First to ' + m.target;
-    if (x + ctx.measureText(t3).width + 22 > room) t3 = m.brk ? 'Break ' + m.brk : 'to ' + m.target;
-    const w3 = ctx.measureText(t3).width + 22;
-    if (x + w3 <= room) { pill(x, 9, w3, 24); ctx.fillStyle = '#ffd60a'; ctx.fillText(t3, x + 11, 21.5); }
-  }
   function drawBanner() {
     const b = game.banner; if (!b) return;
     const a = clamp(Math.min(b.t / 0.3, (b.d - b.t) / 0.2), 0, 1);
@@ -1907,21 +1971,32 @@ window.addEventListener('DOMContentLoaded', () => {
     if (b.sub) { ctx.font = '700 14px system-ui, sans-serif'; ctx.fillStyle = '#ffd60a'; ctx.fillText(b.sub, cx, cy + 15); }
     ctx.globalAlpha = 1;
   }
-  function drawHUD() {
-    ctx.font = '700 13px system-ui, sans-serif'; ctx.textBaseline = 'middle';
-    // the pills shrink (or drop the last one) so they never run under the corner buttons
-    const room = cornerLeft - 16;
-    if (isMatch()) { drawMatchHUD(room); drawMessages(); return; }
-    const school = game.mode === 'school', d = BS.DRILLS[game.drill];
-    let t1 = school ? 'Spin school ' + (game.drill + 1) + '/' + BS.DRILLS.length + ' · ' + d.name + (save.school[game.drill] ? ' ✓' : '')
-                    : 'Practice table · Cue ball: ' + NAME[game.cue];
-    if (ctx.measureText(t1).width + 22 > room) t1 = school ? (game.drill + 1) + '/' + BS.DRILLS.length + ' ' + d.name : 'Practice · ' + NAME[game.cue];
-    const w1 = ctx.measureText(t1).width + 22; pill(8, 9, w1, 24); ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.fillText(t1, 19, 21.5);
+  // the pills along the top: scores in a game, or what is set on the Practice table / Spin school. They are page
+  // elements in the same size as the Home button; when there is no room they shorten, then drop the last pill.
+  function hudPill(text, cls, dot) { return '<span class="hp' + (cls ? ' ' + cls : '') + '">' + (dot ? '<i class="dot" style="background:' + COL[dot][1] + '"></i>' : '') + text + '</span>'; }
+  function hudVersions() {
+    if (screen === 'title') return [''];
     const deg = ((game.aim / DEG) % 360 + 360) % 360;
-    let t2 = 'Aim ' + deg.toFixed(1) + '° · Power ' + Math.round(game.power * 100) + '% · ' + spinLabel(game.spin);
-    if (16 + w1 + ctx.measureText(t2).width + 22 > room) t2 = deg.toFixed(1) + '°';
-    const w2 = ctx.measureText(t2).width + 22;
-    if (16 + w1 + w2 <= room) { pill(16 + w1, 9, w2, 24); ctx.fillStyle = '#ffd60a'; ctx.fillText(t2, 27 + w1, 21.5); }
+    if (isMatch()) {
+      const m = game.m, p = id => hudPill(PLAYER[id] + ' ' + m.score[id], m.turn === id && !m.over ? 'turn' : '', id);
+      const two = p('white') + p('yellow');
+      return [two + hudPill((m.brk ? 'Break ' + m.brk + ' · ' : '') + 'First to ' + m.target, 'y'),
+              two + hudPill(m.brk ? 'Break ' + m.brk : 'to ' + m.target, 'y'), two, p(m.turn === 'yellow' ? 'yellow' : 'white')];
+    }
+    const school = game.mode === 'school', d = BS.DRILLS[game.drill];
+    const t1 = school ? 'Spin school ' + (game.drill + 1) + '/' + BS.DRILLS.length + ' · ' + d.name + (save.school[game.drill] ? ' ✓' : '') : 'Practice · Cue: ' + NAME[game.cue];
+    const t1s = school ? (game.drill + 1) + '/' + BS.DRILLS.length + ' ' + d.name : 'Practice';
+    const a = hudPill(t1, '', school ? null : game.cue), as = hudPill(t1s, '', school ? null : game.cue);
+    return [a + hudPill('Aim ' + deg.toFixed(1) + '° · Power ' + Math.round(game.power * 100) + '% · ' + spinLabel(game.spin), 'y'),
+            a + hudPill(deg.toFixed(1) + '° · ' + Math.round(game.power * 100) + '%', 'y'), a, as];
+  }
+  function drawHUD() {
+    const vs = hudVersions(), key = vs[0];
+    if (key !== hudKey) {
+      hudKey = key;
+      const el = $('hud');
+      for (const v of vs) { el.innerHTML = v; if (el.scrollWidth <= el.clientWidth + 1) break; }
+    }
     drawMessages();
   }
   function drawMessages() {
@@ -2203,7 +2278,7 @@ window.addEventListener('DOMContentLoaded', () => {
   let last = performance.now();
   let layoutKey = '';
   function draw() {
-    const lk = viewNow() + screen;
+    const lk = viewNow() + screen + game.mode;
     if (lk !== layoutKey) { layoutKey = lk; updateControls(); resize(); return; }
     game.warn = '';
     const eye = viewNow() === 'eye';
