@@ -14,6 +14,9 @@
   aim guide with the ghost ball, and the Practice table (drag any ball anywhere and shoot; no rules).
   Phase 2: the referee (pots, in-offs, cannons, fouls, ball in hand, playing out of baulk, re-spotting the red),
   turns and breaks, the coin toss, first to 50 / 100 / 200, a stand-in Rusty, and saving a game in progress.
+  Phase 4: Rusty, the computer player, at Easy, Medium or Hard: he tries shots in the same sim (pots, thick-to-thin
+  hits, paces and spin), scores each by points and the leave, looks ahead and plays safe on Hard, and has an aim
+  wobble that shrinks with the level. The spin hint on the guide is shown in a game on Easy only.
   Phase 3: spin (top, screw and side, from where the cue tip hits the ball, picked on a big cue-ball picture),
   side changing the angle off a cushion, a hint on the guide showing where the white goes after its first contact,
   the Spin school (five set-up shots), and the Eye view (a hand-drawn 3D view from behind the cue ball, the Top / Eye switch or V).
@@ -310,6 +313,10 @@
             <button class="btn-go green" id="btnPractice">Practice table</button>
             <button class="btn-go alt" id="btnSchool">Spin school</button>
           </div>
+          <div class="opts" id="levelOpts" aria-label="How good Rusty is">
+            <span class="small" style="align-self:center;font-weight:700">Rusty:</span>
+            <button class="opt" data-level="easy">Easy</button><button class="opt" data-level="medium">Medium</button><button class="opt" data-level="hard">Hard</button>
+          </div>
           <div class="opts" id="targetOpts" aria-label="Points to win">
             <span class="small" style="align-self:center;font-weight:700">First to:</span>
             <button class="opt" data-target="50">50</button><button class="opt" data-target="100">100</button><button class="opt" data-target="200">200</button>
@@ -367,10 +374,11 @@
       <h3>How to play</h3>
       <ul>
         <li><b>Aim:</b> press on the cue stick and swing it round the white, at any angle; the stick stays under your finger or mouse. Use ◀ ▶ (or <kbd>←</kbd> <kbd>→</kbd>) for fine aim.</li>
-        <li><b>Read the guide:</b> the dotted line runs to the first ball; the ring is where your ball will touch it (the <b>ghost ball</b>), the yellow line is where that ball will go, and the light blue dotted line is where your white runs after it (it bends with spin).</li>
+        <li><b>Read the guide:</b> the dotted line runs to the first ball; the ring is where your ball will touch it (the <b>ghost ball</b>), the yellow line is where that ball will go, and the light blue dotted line is where your white runs after it (it bends with spin; in a game against Rusty, on Easy only).</li>
         <li><b>Spin:</b> tap the small white ball in the controls, then tap where the cue tip should hit it: above the middle for <b>top</b> (the white follows on), below for <b>screw</b> (it comes back), to one side for <b>side</b> (it changes the angle off a cushion). Keys: <kbd>I</kbd> <kbd>K</kbd> <kbd>J</kbd> <kbd>L</kbd>, <kbd>O</kbd> for the middle. Spin goes back to the middle after each shot.</li>
         <li><b>Shoot:</b> from above, pull the <b>cue on the left</b> down (the further, the harder) and let go; push it back to the top to cancel. In the Eye view, set the <b>Power</b> and press <b>SHOOT</b>. <kbd>Space</kbd> shoots in either view.</li>
         <li>The <b>Top / Eye</b> switch (or <kbd>V</kbd>) changes between the table from above and the <b>Eye view</b>, low behind the cue ball. In the Eye view drag left or right to aim, and up or down to raise or lower your eye.</li>
+        <li><b>Rusty</b> plays at <b>Easy</b>, <b>Medium</b> or <b>Hard</b> (choose on the first screen). On Easy his aim wobbles a lot, and you get the light blue line showing where your white runs; on Hard he plans his next shot and plays safe when he cannot score.</li>
         <li><b>Spin school:</b> five set-up shots. Pot the red and leave the white in the yellow circle; each one needs top, screw or side.</li>
         <li><b>Ball in hand:</b> when your white is off the table it comes back into the <b>D</b> (the half-circle on the left); drag it anywhere inside the D. You must then play out of baulk: you may not hit a ball that is in baulk (left of the line) until your ball has crossed the line.</li>
         <li><b>Practice table:</b> no rules; drag any ball anywhere, and <b>Cue</b> switches the cue ball.</li>
@@ -460,6 +468,8 @@ function makeBSIM() {
     POCKETS.push({ id, x: sx * (HW + 0.035 * POCKET), y: L / 2, r: PR, corner: false, mouth: [A, A2, B2, B] });
   }
 
+  // each cushion or jaw's box, grown by a ball's radius: a ball whose path in a step stays outside it cannot touch it
+  for (const sg of SEGS) { sg.x0 = Math.min(sg.ax, sg.bx) - R; sg.x1 = Math.max(sg.ax, sg.bx) + R; sg.y0 = Math.min(sg.ay, sg.by) - R; sg.y1 = Math.max(sg.ay, sg.by) + R; }
   const inD = (x, y) => y <= BAULK && Math.hypot(x, y - BAULK) <= D_R;
   const onBed = (x, y) => Math.abs(x) <= HW - R && y >= R && y <= L - R;
 
@@ -574,7 +584,10 @@ function makeBSIM() {
       let best = rem, ev = null;
       for (const b of mv) {
         if (b.vx === 0 && b.vy === 0) continue;
+        const ex = b.x + b.vx * best, ey = b.y + b.vy * best;
+        const px0 = Math.min(b.x, ex), px1 = Math.max(b.x, ex), py0 = Math.min(b.y, ey), py1 = Math.max(b.y, ey);
         for (const s of SEGS) {
+          if (px1 < s.x0 || px0 > s.x1 || py1 < s.y0 || py0 > s.y1) continue;   // too far away to touch it in this step
           const r = toiSeg(b.x, b.y, b.vx, b.vy, s);
           if (r && r.t < best) { best = r.t; ev = { kind: s.kind, b, nx: r.nx, ny: r.ny }; }
         }
@@ -757,10 +770,10 @@ function makeBSIM() {
   }
 
   /* ---------- A match: Archie (white) against Rusty (yellow), first to the target ---------- */
-  function newMatch(target, first) {
+  function newMatch(target, first, level) {
     const red = ball('red', SPOT.billiard.x, SPOT.billiard.y), w = ball('white', 0, 0), y = ball('yellow', 0, 0);
     w.on = y.on = false;               // both whites start in hand
-    return { target, first, turn: first, score: { white: 0, yellow: 0 }, brk: 0, best: { white: 0, yellow: 0 },
+    return { target, first, level: LEVELS[level] ? level : 'medium', turn: first, score: { white: 0, yellow: 0 }, brk: 0, best: { white: 0, yellow: 0 },
              balls: [w, y, red], fromHand: false, shots: 0, over: false, winner: null, log: [] };
   }
   // the start of a turn: a cue ball that is off the table comes into the D ("in hand")
@@ -787,56 +800,175 @@ function makeBSIM() {
     return res;
   }
 
-  /* ---------- Rusty, stand-in version (Phase 2) ----------
-     Tries a short list of shots in this same sim (a plain hit, half-ball hits either side, and a pot of each
-     ball into each pocket that is in a straight line) and plays the one that scores most. Phase 4 replaces this. */
-  function cpuCandidates(m) {
-    const id = m.turn, me = m.balls.find(q => q.id === id), out = [];
-    const places = [{ x: me.x, y: me.y }];
-    if (m.fromHand) for (const [x, y] of [[0, BAULK - 0.12], [0.18, BAULK - 0.08], [-0.18, BAULK - 0.08]])
-      if (free(m.balls, id, x, y)) places.push({ x, y });
+  /* ---------- Rusty, the computer player (Phase 4) ----------
+     Rusty makes a list of shots from where his ball lies (or, in hand, from the best spots in the D): a pot of each
+     ball into each pocket it lines up with, and hits from thick to thin on each ball (for cannons and in-offs), at a
+     few paces and with spin. He plays each one in this same sim, so his planning matches what really happens, and
+     scores it: the points it makes, plus how good the leave is (an easy next shot for him if he scores; on Hard, a
+     hard one for Archie if he does not, which is safety play). On Hard he also looks one shot further ahead for his
+     best few shots. Then he plays the best one with a wobble on his aim and pace: big on Easy, small on Hard.
+     The work is done a few shots at a time (step), so the screen never freezes while he thinks. */
+  const LEVELS = {
+    easy:   { name: 'Easy',   aim: 1.4,  pow: 0.12, spins: [[0, 0]], offsets: [-0.5, 0, 0.5], powers: [1], places: 1,
+              leave: 0, safety: 0, deep: 0, maxEvals: 70 },
+    medium: { name: 'Medium', aim: 0.45, pow: 0.05, spins: [[0, 0], [0, 0.6], [0, -0.6]], offsets: [-0.7, -0.35, 0, 0.35, 0.7],
+              powers: [1, 1.35], places: 2, leave: 0.8, safety: 0, deep: 0, maxEvals: 150 },
+    hard:   { name: 'Hard',   aim: 0.12, pow: 0.02, spins: [[0, 0], [0, 0.7], [0, -0.7], [0.6, 0], [-0.6, 0]],
+              offsets: [-0.75, -0.4, 0, 0.4, 0.75], powers: [0.85, 1.2], places: 2,
+              leave: 1.0, safety: 0.9, deep: 2, maxEvals: 120 }
+  };
+  const EVAL_T = 10;                  // seconds of play looked at for each tried shot (balls are nearly still by then)
+  const mouthOf = p => [(p.mouth[0].x + p.mouth[3].x) / 2, (p.mouth[0].y + p.mouth[3].y) / 2];
+  // is the straight path from a to b clear of the other balls?
+  function clear(balls, ax, ay, bx, by, skip) {
+    const dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy || 1;
+    for (const o of balls) {
+      if (!o.on || skip.includes(o.id)) continue;
+      const t = clamp(((o.x - ax) * dx + (o.y - ay) * dy) / L2, 0, 1);
+      if (Math.hypot(ax + dx * t - o.x, ay + dy * t - o.y) < 2 * R) return false;
+    }
+    return true;
+  }
+  // how easy the next shot looks for the player whose cue ball is id (0 = nothing on, about 1 = very easy):
+  // the best clear pot (straighter, shorter and worth more is easier), or two object balls close together (a cannon)
+  function leaveEase(balls, id) {
+    const c = balls.find(b => b.id === id);
+    if (!c || !c.on) return 0.45;   // in hand: a good shot is usually there from the D
+    let best = 0;
+    const obs = balls.filter(b => b.on && b.id !== id);
+    for (const o of obs) {
+      for (const p of POCKETS) {
+        const [tx, ty] = mouthOf(p); let dx = tx - o.x, dy = ty - o.y; const d2 = Math.hypot(dx, dy); dx /= d2; dy /= d2;
+        const gx = o.x - dx * 2 * R, gy = o.y - dy * 2 * R, ax = gx - c.x, ay = gy - c.y, d1 = Math.hypot(ax, ay);
+        if (d1 < 0.02) continue;
+        const cos = (ax * dx + ay * dy) / d1;
+        if (cos < 0.3) continue;
+        if (!clear(balls, c.x, c.y, gx, gy, [id, o.id]) || !clear(balls, o.x, o.y, tx, ty, [id, o.id])) continue;
+        const e = cos * cos / (1 + 0.5 * d1 + 0.35 * d2) * (o.id === 'red' ? 1 : 0.75);
+        if (e > best) best = e;
+      }
+    }
+    if (obs.length === 2) {
+      const gap = Math.hypot(obs[0].x - obs[1].x, obs[0].y - obs[1].y), near = Math.min(...obs.map(o => Math.hypot(o.x - c.x, o.y - c.y)));
+      if (gap < 0.45) best = Math.max(best, 0.55 * (1 - gap / 0.45) / (1 + 0.4 * near));
+    }
+    return best;
+  }
+  // after a tried shot: the balls as the next player will find them (red back on its spot, potted balls off)
+  function afterShot(balls) {
+    const bs = cloneBalls(balls);
+    if (!bs.find(b => b.id === 'red').on) respotRed(bs);
+    return bs;
+  }
+  function cpuPlanner(m, level, rnd) {
+    const P = LEVELS[level] || LEVELS.medium, id = m.turn, opp = OTHER[id];
+    rnd = rnd || Math.random;
+    // where to play from: as the ball lies, or (in hand) the best few spots in the D for the balls out of baulk
+    let places;
+    const me = m.balls.find(b => b.id === id);
+    if (m.fromHand) {
+      const spots = [[0, BAULK - 0.1], [0.15, BAULK - 0.06], [-0.15, BAULK - 0.06], [0.24, BAULK - 0.12], [-0.24, BAULK - 0.12], [0, BAULK - 0.25], [0.1, BAULK - 0.22], [-0.1, BAULK - 0.22]];
+      places = spots.filter(([x, y]) => free(m.balls, id, x, y)).map(([x, y]) => {
+        const bs = cloneBalls(m.balls); placeAt(bs, id, x, y);
+        for (const b of bs) if (b.id !== id && b.y <= BAULK) b.on = false;   // balls in baulk cannot be played at
+        return { x, y, ease: leaveEase(bs, id) };
+      }).sort((a, b) => b.ease - a.ease).slice(0, P.places);
+      if (!places.length) places = [{ x: 0, y: BAULK - 0.25 }];
+    } else places = [{ x: me.x, y: me.y }];
+    // the shots to try: pots first (most likely to score), then thick-to-thin hits
+    const pots = [], hits = [];
     for (const pl of places) {
       const bs = cloneBalls(m.balls); placeAt(bs, id, pl.x, pl.y);
       for (const o of bs) {
         if (o.id === id || !o.on || (m.fromHand && o.y <= BAULK)) continue;
         const dx = o.x - pl.x, dy = o.y - pl.y, d = Math.hypot(dx, dy), base = Math.atan2(dy, dx);
-        out.push({ place: pl, aim: base, power: clamp(0.2 + d * 0.1, 0.25, 0.6), kind: 'plain', target: o.id });
-        const half = Math.asin(Math.min(1, R / d));
-        out.push({ place: pl, aim: base + half, power: clamp(0.25 + d * 0.1, 0.3, 0.65), kind: 'half', target: o.id });
-        out.push({ place: pl, aim: base - half, power: clamp(0.25 + d * 0.1, 0.3, 0.65), kind: 'half', target: o.id });
         for (const p of POCKETS) {
-          const px = p.x - o.x, py = p.y - o.y, pd = Math.hypot(px, py);
-          const gx = o.x - px / pd * 2 * R, gy = o.y - py / pd * 2 * R, ax = gx - pl.x, ay = gy - pl.y, ad = Math.hypot(ax, ay);
-          const cos = (ax * px + ay * py) / (ad * pd);
+          const [tx, ty] = mouthOf(p); let ux = tx - o.x, uy = ty - o.y; const d2 = Math.hypot(ux, uy); ux /= d2; uy /= d2;
+          const gx = o.x - ux * 2 * R, gy = o.y - uy * 2 * R, ax = gx - pl.x, ay = gy - pl.y, d1 = Math.hypot(ax, ay);
+          const cos = (ax * ux + ay * uy) / d1;
           if (cos < 0.3) continue;
           const aim = Math.atan2(ay, ax), fc = firstContact(bs, id, aim);
           if (fc.kind !== 'ball' || fc.id !== o.id) continue;
-          out.push({ place: pl, aim, power: clamp(0.15 + (ad + pd / cos) * 0.08, 0.2, 0.75), kind: 'pot', target: o.id, pocket: p.id });
+          const need = clamp(0.1 + 0.075 * (d1 + d2 / cos), 0.12, 0.85), ease = cos * cos / (1 + 0.5 * d1 + 0.35 * d2);
+          for (const k of P.powers) for (const [sx, sy] of P.spins)
+            pots.push({ place: pl, aim, power: clamp(need * k, 0.08, 1), spin: { x: sx, y: sy }, kind: 'pot', target: o.id, pocket: p.id, pri: ease });
+        }
+        for (const f of P.offsets) {
+          const aim = base + Math.asin(clamp(f * 2 * R / Math.max(d, 2 * R), -1, 1));
+          for (const k of P.powers) hits.push({ place: pl, aim, power: clamp((0.2 + 0.09 * d) * k, 0.12, 0.9), spin: { x: 0, y: 0 }, kind: f === 0 ? 'full' : 'cut', target: o.id, pri: 0 });
         }
       }
     }
-    if (!out.length) out.push({ place: places[0], aim: Math.PI / 2, power: 0.4, kind: 'plain', target: null });
-    return out;
+    pots.sort((a, b) => b.pri - a.pri);
+    let list = pots.concat(hits);
+    if (list.length > P.maxEvals) list = list.slice(0, P.maxEvals);
+    if (!list.length) list = [{ place: places[0], aim: Math.PI / 2, power: 0.4, spin: { x: 0, y: 0 }, kind: 'plain', target: null, pri: 0 }];
+
+    // try one shot in the sim and score it
+    function tryShot(balls, who, c, fromHand, withLeave) {
+      const bs = cloneBalls(balls); placeAt(bs, who, c.place.x, c.place.y);
+      const start = cloneBalls(bs), st = newState(bs);
+      simulate(st, who, c.aim, c.power, EVAL_T, c.spin);
+      const r = referee(who, st.events, start, fromHand), next = afterShot(st.balls);
+      let v;
+      if (r.foul) v = -r.penalty - 1 - P.safety * 3 * leaveEase(next, OTHER[who]);
+      else if (r.points > 0) v = r.points + (withLeave ? P.leave * 3 * leaveEase(next, who) : 0);
+      else v = -P.safety * 3 * leaveEase(next, OTHER[who]);
+      return { v, pts: r.foul ? 0 : r.points, foul: !!r.foul, next };
+    }
+    const state = { i: 0, deepI: 0, deepList: null, done: false, best: null };
+    const plan = {
+      level: P, total: list.length + P.deep,
+      // do up to n more tried shots; returns true when the choice is made
+      step(n) {
+        while (n-- > 0 && !state.done) {
+          if (state.i < list.length) {
+            const c = list[state.i++], r = tryShot(m.balls, id, c, m.fromHand, true);
+            c.v = r.v; c.pts = r.pts; c.next = r.next;
+            if (!state.best || c.v > state.best.v) state.best = c;
+          } else if (P.deep && state.deepI < P.deep) {
+            // Hard: for his best few scoring shots, look at the best follow-up from where the balls stop
+            if (!state.deepList) state.deepList = list.filter(c => c.pts > 0).sort((a, b) => b.v - a.v).slice(0, P.deep);
+            const c = state.deepList[state.deepI++];
+            if (!c) { state.deepI = P.deep; continue; }
+            const me2 = c.next.find(b => b.id === id), m2 = { turn: id, balls: c.next, fromHand: !me2.on };
+            if (!me2.on) placeInD(m2.balls, id);
+            const follow = cpuPlanner(m2, 'medium', rnd); let f2 = 0;
+            follow.finish(20);
+            f2 = Math.max(0, follow.best().v);
+            c.v = c.pts + 0.7 * f2;
+            if (c.v > state.best.v) state.best = c;
+          } else state.done = true;
+        }
+        if (state.i >= list.length && (!P.deep || state.deepI >= P.deep)) state.done = true;
+        return state.done;
+      },
+      done: () => state.done,
+      // finish now (or after at most n more tries): used when time runs short
+      finish(n = 0) { if (n) this.step(n); state.done = true; return state.best; },
+      best: () => state.best || Object.assign({ v: -9 }, list[0]),
+      looking: () => list[Math.min(state.i, list.length - 1)],
+      progress: () => Math.min(1, (state.i + state.deepI) / plan.total)
+    };
+    return plan;
   }
-  function cpuValue(m, c) {
-    const bs = cloneBalls(m.balls); placeAt(bs, m.turn, c.place.x, c.place.y);
-    const start = cloneBalls(bs), st = newState(bs);
-    simulate(st, m.turn, c.aim, c.power, 30);
-    const r = referee(m.turn, st.events, start, m.fromHand);
-    return r.foul ? -r.penalty - 1 : r.points;
+  // the shot Rusty actually plays: his choice, with the wobble of his level on the aim and pace
+  function cpuShot(plan, rnd) {
+    rnd = rnd || Math.random;
+    const b = plan.best(), P = plan.level;
+    const g = () => Math.sqrt(-2 * Math.log(rnd() + 1e-12)) * Math.cos(2 * Math.PI * rnd());
+    return { place: b.place, aim: b.aim + g() * P.aim * Math.PI / 180, power: clamp(b.power * (1 + g() * P.pow), 0.05, 1),
+             spin: b.spin || { x: 0, y: 0 }, kind: b.kind, target: b.target, pocket: b.pocket, value: b.v };
   }
-  function cpuPick(m) {
-    let best = null, bv = -1e9;
-    for (const c of cpuCandidates(m)) { const v = cpuValue(m, c); if (v > bv) { bv = v; best = c; } }
-    return Object.assign({ value: bv }, best);
-  }
+  // all in one go (tests, and the Node games)
+  function cpuPick(m, level, rnd) { const plan = cpuPlanner(m, level, rnd); while (!plan.step(50)); return cpuShot(plan, rnd); }
 
   return {
     G, DT, SUB, SIZE, POCKET, L, W, HW, R, BAULK, D_R, SPOT, SEGS, POCKETS, IDS, VMAX, MU_S, MU_R, E_BALL, E_CUSH, TIP_MAX,
     inD, onBed, ball, practiceLayout, newState, cloneBalls, find, moving, anyMoving, step, strike, simulate, spinFor, cuePath,
     DRILLS, drillBalls, drillCheck,
     firstContact, free, placeAt, respotRed, placeInD, toiPt, toiSeg,
-    OTHER, VALUE, PENALTY, referee, newMatch, startTurn, applyShot, cpuCandidates, cpuValue, cpuPick
+    OTHER, VALUE, PENALTY, referee, newMatch, startTurn, applyShot, LEVELS, leaveEase, cpuPlanner, cpuShot, cpuPick
   };
 }
 if (typeof module !== 'undefined') module.exports = { makeBSIM };
@@ -1048,6 +1180,8 @@ window.addEventListener('DOMContentLoaded', () => {
   try { const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); if (s && typeof s === 'object') Object.assign(save, s); } catch (e) {}
   if (!Array.isArray(save.school)) save.school = [];
   if (![50, 100, 200].includes(save.target)) save.target = 50;
+  if (!BS.LEVELS[save.level]) save.level = 'medium';
+  const levelName = lv => (BS.LEVELS[lv] || BS.LEVELS.medium).name;
   function store() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) {} }
 
   /* ---------------- Canvas and the table's place on it ---------------- */
@@ -1206,7 +1340,7 @@ window.addEventListener('DOMContentLoaded', () => {
   function storeMatch() { save.match = game.m && !game.m.over ? snapshot(game.m) : null; store(); }
   function startMatch(first) {
     const f = first || (Math.random() < 0.5 ? 'white' : 'yellow');
-    game.mode = 'match'; game.m = BS.newMatch(save.target, f);
+    game.mode = 'match'; game.m = BS.newMatch(save.target, f, save.level);
     game.texts = []; game.report = ''; game.view = 'top'; game.handTop = false; game.next = null; game.spin = noSpin();
     storeMatch();
     showScreen('play');
@@ -1234,7 +1368,7 @@ window.addEventListener('DOMContentLoaded', () => {
     aimAtNearest();
     if (m.turn === 'yellow') {
       game.phase = 'cpu';
-      game.cpu = { list: BS.cpuCandidates(m), i: 0, best: null, bv: -1e9, t: 0, done: false, turnT: 0, from: game.aim, to: game.aim };
+      game.cpu = { plan: BS.cpuPlanner(m, m.level, Math.random), t: 0, done: false, turnT: 0, from: game.aim, to: game.aim, spin: noSpin() };
       banner("Rusty's turn", m.fromHand ? 'Ball in hand' : '', 1.1);
     } else {
       game.phase = 'aim'; game.power = clamp(save.power, 0.01, 1);
@@ -1251,7 +1385,7 @@ window.addEventListener('DOMContentLoaded', () => {
     save.match = null; store();
     $('endTitle').textContent = won ? '🏆 You win!' : 'Rusty wins';
     $('endScore').textContent = 'Archie ' + m.score.white + ' – ' + m.score.yellow + ' Rusty';
-    $('endLine').textContent = 'First to ' + m.target + ' · ' + m.shots + ' shots · your best break ' + m.best.white + ', Rusty\'s ' + m.best.yellow +
+    $('endLine').textContent = 'First to ' + m.target + ' against ' + levelName(m.level) + ' Rusty · ' + m.shots + ' shots · your best break ' + m.best.white + ', Rusty\'s ' + m.best.yellow +
       (m.best.white && m.best.white >= st.bestBreak ? ' (your best ever!)' : '');
     (won ? SFX.win : SFX.lose)();
     game.phase = 'over';
@@ -1576,7 +1710,8 @@ window.addEventListener('DOMContentLoaded', () => {
   function titleInfo() {
     const m = save.match;
     $('btnContinue').hidden = !m;
-    if (m) $('btnContinue').textContent = '▶ Continue: Archie ' + m.score.white + ' – ' + m.score.yellow + ' Rusty';
+    if (m) $('btnContinue').textContent = '▶ Continue: Archie ' + m.score.white + ' – ' + m.score.yellow + ' Rusty (' + levelName(m.level) + ')';
+    for (const b of document.querySelectorAll('[data-level]')) b.classList.toggle('sel', b.dataset.level === save.level);
     for (const b of document.querySelectorAll('[data-target]')) b.classList.toggle('sel', +b.dataset.target === save.target);
     const s = save.stats, parts = [];
     if (s.played) parts.push('Played ' + s.played + ', won ' + s.won);
@@ -1605,6 +1740,7 @@ window.addEventListener('DOMContentLoaded', () => {
   $('btnAgain').onclick = () => { SFX.click(); startMatch(); };
   $('btnEndHome').onclick = () => { SFX.click(); goHome(); };
   for (const b of document.querySelectorAll('[data-target]')) b.onclick = () => { save.target = +b.dataset.target; store(); SFX.click(); titleInfo(); };
+  for (const b of document.querySelectorAll('[data-level]')) b.onclick = () => { save.level = b.dataset.level; store(); SFX.click(); titleInfo(); };
   function optButtons() {
     for (const id of ['optSound', 'optSound2']) { const b = $(id); b.className = 'opt ' + (save.sound ? 'on' : 'off'); b.textContent = 'Sound: ' + (save.sound ? 'on' : 'off'); }
     $('sndBtn').textContent = save.sound ? '🔊' : '🔇';
@@ -1729,29 +1865,27 @@ window.addEventListener('DOMContentLoaded', () => {
     const g = game, c = g.cpu, m = g.m;
     c.t += dt;
     if (!c.done) {
-      // think: try the candidate shots in the sim, a few per frame so the screen never freezes
+      // think: try shots in the sim, a few per frame (8 ms) so the screen never freezes
       const t0 = performance.now();
-      do {
-        const cand = c.list[c.i], v = BS.cpuValue(m, cand);
-        if (v > c.bv) { c.bv = v; c.best = cand; }
-        c.i++;
-      } while (c.i < c.list.length && performance.now() - t0 < 8);
-      // while thinking, the cue drifts slowly between the balls he is looking at
-      const look = c.list[Math.min(c.i, c.list.length - 1)];
-      g.aim += angDiff(g.aim, look.aim) * Math.min(1, dt * 2);
-      if (c.i >= c.list.length) {
-        c.done = true;
-        const b = c.best || c.list[0];
+      while (!c.plan.done() && performance.now() - t0 < 8) c.plan.step(1);
+      c.work = (c.work || 0) + performance.now() - t0;   // real time spent thinking (a slow device does less per frame)
+      // while thinking, the cue drifts slowly between the shots he is looking at
+      const look = c.plan.looking();
+      if (look) g.aim += angDiff(g.aim, look.aim) * Math.min(1, dt * 2);
+      // he plays when he has tried everything, or after 1.5 s of thinking with the best so far (so a slow phone
+      // never waits more than about 2 s)
+      if (c.plan.done() || c.work > 1500) {
+        c.plan.finish(); c.done = true;
+        const b = BS.cpuShot(c.plan, Math.random);   // his choice, with the wobble of his level
         BS.placeAt(m.balls, m.turn, b.place.x, b.place.y);
-        // a small wobble: the stand-in Rusty is good, not perfect
-        c.from = g.aim; c.to = b.aim + (Math.random() - 0.5) * 0.4 * DEG; c.turnT = 0;
+        c.from = g.aim; c.to = b.aim; c.turnT = 0; c.spin = b.spin;
         g.power = b.power;
       }
     } else {
       c.turnT += dt;
       const k = Math.min(1, c.turnT / 0.6);
       g.aim = c.from + angDiff(c.from, c.to) * ease(k);
-      if (k >= 1 && c.turnT > 0.85 && c.t > 1.2) { g.aim = c.to; g.phase = 'strike'; g.strikeT = 0; g.shotSpin = noSpin(); updateControls(); }
+      if (k >= 1 && c.turnT > 0.85 && c.t > 1.2) { g.aim = c.to; g.phase = 'strike'; g.strikeT = 0; g.shotSpin = c.spin; updateControls(); }
     }
   }
   function update(dt) {
@@ -1898,6 +2032,7 @@ window.addEventListener('DOMContentLoaded', () => {
   function drawPath() {
     const gd = game.guide;
     if (game.phase !== 'aim' || game.drag || !gd || (gd.kind !== 'ball' && gd.kind !== 'cushion')) return;
+    if (isMatch() && game.m.level !== 'easy') return;   // in a game the hint is help for Easy only
     const pts = cuePathNow(); if (pts.length < 2) return;
     if (viewNow() === 'eye') { line3(ctx, pts.map(q => [q.x, q.y, 0.003]), 'rgba(120,215,255,.95)', 2, [3, 4]); return; }
     ctx.strokeStyle = 'rgba(120,215,255,.95)'; ctx.lineWidth = 2; ctx.setLineDash([3, 4]); ctx.beginPath();
@@ -1980,7 +2115,9 @@ window.addEventListener('DOMContentLoaded', () => {
     if (isMatch()) {
       const m = game.m, p = id => hudPill(PLAYER[id] + ' ' + m.score[id], m.turn === id && !m.over ? 'turn' : '', id);
       const two = p('white') + p('yellow');
-      return [two + hudPill((m.brk ? 'Break ' + m.brk + ' · ' : '') + 'First to ' + m.target, 'y'),
+      const lv = levelName(m.level);
+      return [two + hudPill((m.brk ? 'Break ' + m.brk + ' · ' : '') + 'First to ' + m.target + ' · ' + lv, 'y'),
+              two + hudPill((m.brk ? 'Break ' + m.brk + ' · ' : '') + 'First to ' + m.target, 'y'),
               two + hudPill(m.brk ? 'Break ' + m.brk : 'to ' + m.target, 'y'), two, p(m.turn === 'yellow' ? 'yellow' : 'white')];
     }
     const school = game.mode === 'school', d = BS.DRILLS[game.drill];
@@ -2003,7 +2140,7 @@ window.addEventListener('DOMContentLoaded', () => {
     // shot report (or a warning) along the bottom
     let msg = game.phase === 'roll' || game.phase === 'strike' ? '' : game.report, warn = false;
     if (game.phase === 'aim' && game.warn) { msg = game.warn; warn = true; }
-    else if (game.phase === 'cpu') msg = 'Rusty is thinking…';
+    else if (game.phase === 'cpu') msg = levelName(game.m.level) + ' Rusty is thinking…';
     if (msg) {
       ctx.font = '600 12px system-ui, sans-serif'; ctx.textBaseline = 'middle';
       let s = msg; while (ctx.measureText(s).width > LW - 40 && s.length > 10) s = s.slice(0, -4) + '…';

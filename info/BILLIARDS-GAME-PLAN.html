@@ -123,7 +123,7 @@
   </div>
 
   <h1 class="h3 fw-bold mb-1">🎱 Billiards: Development Plan</h1>
-  <p class="text-muted mb-3">Plan date: 23 Nov 2026 · Decisions agreed 23 Nov 2026 (section 11) · Status: <strong>Phases 1–3 built 23 Nov 2026 (<a href="../GAME-5-Billiards/billiards.html">play Billiards</a>: a full game against a stand-in Rusty, spin, the Spin school and the Eye view); Phase 4 to do</strong> · <a href="GOLF-PLAN.html">Golf plan</a> · <a href="JAVELIN-GAME-PLAN.html">Javelin plan</a></p>
+  <p class="text-muted mb-3">Plan date: 23 Nov 2026 · Decisions agreed 23 Nov 2026 (section 11) · Status: <strong>Phases 1–4 built 23 Nov 2026 (<a href="../GAME-5-Billiards/billiards.html">play Billiards</a>: a full game against Rusty at Easy, Medium or Hard, spin, the Spin school and the Eye view); Phase 5 to do</strong> · <a href="GOLF-PLAN.html">Golf plan</a> · <a href="JAVELIN-GAME-PLAN.html">Javelin plan</a></p>
 
   <div class="prompt mb-4">
     <strong>Goal:</strong> Build <code class="text-warning">GAME-5-Billiards/billiards.html</code>, a game of <b>English billiards</b> seen from above on a 12 ft × 6 ft table with six pockets. There are three balls: a <b>white</b>, a <b>yellow</b> and a <b>red</b>. You play the white and the computer plays the yellow; each is that side's own cue ball. You score by <b>potting</b> a ball, by going <b>in-off</b> (your cue ball goes into a pocket after hitting another ball) and by making a <b>cannon</b> (your cue ball hits both other balls). You keep playing while you score; the first to the target score (<b>50</b> by default) wins. You play <b>against the computer</b>, and both sides are shown as players standing at the table. There are <b>two views</b>, switched at any time as in Golf: <b>Top</b> (the default) and the <b>Eye view</b>, low behind the cue ball, the way the player sees the table before striking.
@@ -606,6 +606,7 @@ ball.pos += ball.vel * dt;
         <li>"Thinking" animation, and the search spread over several frames so the screen never freezes.</li>
       </ul>
       <div class="accept"><b>Done when:</b> In Node, Hard scores at least 3 times as many points as Easy over 50 games against itself, Medium beats Easy most of the time, and no computer shot takes more than 2 seconds to choose on a phone.</div>
+      <p class="small text-muted mt-2 mb-0"><b>Built 23 Nov 2026.</b> In Node, over 50 games Hard v Easy, Hard scored 2,575 points to Easy's 378 (6.8 times) and won all 50; over 51 games Medium v Easy, Medium won 50. On a laptop Hard takes about 0.36 s to choose a shot (0.72 s at most in a timed run); in the game Rusty plays his best shot so far after 1.5 s of thinking, so a slow phone never waits much more than 2 s. Rusty's search uses the same sim as the game; a quick test that skips cushions a ball cannot reach made the sim about 4 times faster with exactly the same results. The spin hint is shown in a game on Easy only (always on the Practice table and in Spin school).</p>
     </div>
   </div>
 
