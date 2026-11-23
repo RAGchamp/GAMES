@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Phone Simulator</title>
+<!--
+  Phone Simulator: a testing tool for the owner, not for players.
+  Pick a game and a phone, and the game is shown at that phone's screen size in portrait and landscape side by side.
+  It is on GitHub but deliberately NOT linked from the portal or any other page.
+
+  Limits: each view is an iframe of the phone's CSS size, so the game's layout, media queries and canvas sizing match
+  the phone. It does not fake touch input, the phone's pixel ratio or its browser bars (use "Browser bars" to take
+  a typical amount of height off). For touch, use Chrome DevTools device mode on the game itself.
+  Full screen inside a view makes the whole laptop screen full screen, not just that phone.
+-->
+<style>
+  :root{
+    --bg:#eef2f7; --panel:#fff; --ink:#1b2a41; --muted:#5b6b82; --line:#d3dbe7; --accent:#0b4f9c; --phone:#111;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){ --bg:#0f1520; --panel:#182131; --ink:#e7edf6; --muted:#9aa8bd; --line:#2b3850; --accent:#6aa8ff; --phone:#000; }
+  }
+  :root[data-theme="dark"]{ --bg:#0f1520; --panel:#182131; --ink:#e7edf6; --muted:#9aa8bd; --line:#2b3850; --accent:#6aa8ff; --phone:#000; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:var(--bg); color:var(--ink); font:14px/1.4 system-ui, "Segoe UI", Roboto, sans-serif; }
+  header{ position:sticky; top:0; z-index:5; background:var(--panel); border-bottom:1px solid var(--line);
+    display:flex; flex-wrap:wrap; gap:.6rem 1rem; align-items:center; padding:.6rem 16px; }
+  h1{ font-size:1rem; margin:0 .5rem 0 0; }
+  label{ display:flex; align-items:center; gap:.35rem; color:var(--muted); font-weight:600; }
+  select, input[type=text], button{ font:inherit; color:var(--ink); background:var(--bg); border:1px solid var(--line);
+    border-radius:.4rem; padding:.3rem .5rem; }
+  input[type=text]{ width:9rem; }
+  button{ cursor:pointer; font-weight:600; }
+  button:hover{ border-color:var(--accent); }
+  .url{ color:var(--muted); font-size:.8rem; margin-left:auto; }
+  .url a{ color:var(--accent); }
+  main{ display:flex; flex-wrap:wrap; gap:28px; align-items:flex-start; justify-content:center; padding:20px 16px 40px; }
+  figure{ margin:0; display:flex; flex-direction:column; align-items:center; gap:.5rem; }
+  figcaption{ color:var(--muted); font-weight:600; font-size:.85rem; }
+  .holder{ position:relative; }           /* sized to the scaled phone */
+  .phone{ position:absolute; left:0; top:0; transform-origin:0 0; background:var(--phone);
+    border-radius:34px; padding:14px; box-shadow:0 10px 30px rgba(0,0,0,.25); }
+  .phone iframe{ display:block; border:0; background:#fff; border-radius:20px; }
+  .note{ max-width:60rem; margin:0 auto 30px; padding:0 16px; color:var(--muted); font-size:.82rem; }
+</style>
+</head>
+<body>
+<header>
+  <h1>📱 Phone Simulator</h1>
+  <label>Game
+    <select id="game"></select>
+  </label>
+  <label>Phone
+    <select id="device"></select>
+  </label>
+  <label title="Added to the game's address, e.g. ?practice or ?debug">Query
+    <input type="text" id="query" placeholder="?practice">
+  </label>
+  <label title="Take off the height a phone browser's address and tool bars usually use">
+    <input type="checkbox" id="bars"> Browser bars
+  </label>
+  <label>Zoom
+    <select id="zoom">
+      <option value="fit">Fit</option><option value="1">100%</option><option value="0.75">75%</option><option value="0.5">50%</option>
+    </select>
+  </label>
+  <button id="reload" type="button">⟳ Reload</button>
+  <span class="url" id="url"></span>
+</header>
+
+<main id="views">
+  <figure><figcaption id="capP">Portrait</figcaption><div class="holder" id="holdP"><div class="phone" id="phoneP"><iframe id="frameP" title="Portrait view" allow="fullscreen; autoplay"></iframe></div></div></figure>
+  <figure><figcaption id="capL">Landscape</figcaption><div class="holder" id="holdL"><div class="phone" id="phoneL"><iframe id="frameL" title="Landscape view" allow="fullscreen; autoplay"></iframe></div></div></figure>
+</main>
+<p class="note">For testing on the laptop only. Each view is an iframe at the phone's CSS screen size, so layout and canvas sizing match the phone,
+but touch, pixel ratio and the phone's browser bars are not simulated (tick <b>Browser bars</b> for a rough allowance). Both views run the game at
+once, so sound may play twice; mute one in the game. Saved game settings (localStorage) are shared by both views.</p>
+
+<script>
+(() => {
+  // Games in this folder. Add a line here when a new game is added to the portal.
+  const GAMES = [
+    { name: 'Game 1: Car Race',  path: 'GAME1-CAR-RACE/car-race.html' },
+    { name: 'Game 2: Chintu',    path: 'GAME-2-Chintu/chintu.html' },
+    { name: 'Game 3: Javelin',   path: 'GAME-3-Javelin/javelin.html' },
+    { name: 'Game 4: Golf',      path: 'GAME-4-Golf/golf.html' },
+    { name: 'Game 5: Billiards', path: 'GAME-5-Billiards/billiards.html' },
+    { name: 'Portal (index.html)', path: 'index.html' }
+  ];
+  // CSS pixel sizes (portrait width x height); bars = height a phone browser's bars usually take (portrait, landscape)
+  const DEVICES = [
+    { name: 'iPhone SE (375 × 667)',        w: 375, h: 667, bars: [120, 70] },
+    { name: 'iPhone 14 / 15 (390 × 844)',   w: 390, h: 844, bars: [150, 80] },
+    { name: 'iPhone 15 Pro Max (430 × 932)', w: 430, h: 932, bars: [150, 80] },
+    { name: 'Pixel 7 (412 × 915)',          w: 412, h: 915, bars: [110, 60] },
+    { name: 'Galaxy S20 (360 × 800)',       w: 360, h: 800, bars: [110, 60] },
+    { name: 'Small Android (360 × 640)',    w: 360, h: 640, bars: [100, 56] }
+  ];
+  const BEZEL = 14, $ = id => document.getElementById(id);
+  const KEY = 'phone-simulator';
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) {}
+  const store = () => { try { localStorage.setItem(KEY, JSON.stringify(saved)); } catch (e) {} };
+
+  GAMES.forEach((g, i) => $('game').add(new Option(g.name, i)));
+  DEVICES.forEach((d, i) => $('device').add(new Option(d.name, i)));
+  $('game').value = saved.game in GAMES ? saved.game : 0;
+  $('device').value = saved.device in DEVICES ? saved.device : 1;
+  $('query').value = saved.query || '';
+  $('bars').checked = !!saved.bars;
+  $('zoom').value = saved.zoom || 'fit';
+
+  function src() {
+    let q = $('query').value.trim();
+    if (q && q[0] !== '?' && q[0] !== '#') q = '?' + q;
+    return GAMES[$('game').value].path + q;
+  }
+  function load() {
+    const s = src();
+    $('frameP').src = s; $('frameL').src = s;
+    $('url').innerHTML = 'Opening <a href="' + s + '" target="_blank" rel="noopener">' + s + '</a>';
+  }
+  function layout() {
+    const d = DEVICES[$('device').value], bars = $('bars').checked;
+    const P = { w: d.w, h: d.h - (bars ? d.bars[0] : 0) }, L = { w: d.h, h: d.w - (bars ? d.bars[1] : 0) };
+    let z = parseFloat($('zoom').value);
+    if (isNaN(z)) {   // fit both phones side by side (or stacked on a narrow window) into the space below the header
+      const availW = document.documentElement.clientWidth - 32 - 28, availH = window.innerHeight - $('views').offsetTop - 70;
+      const sideBySide = Math.min(availW / (P.w + L.w + 4 * BEZEL), availH / (P.h + 2 * BEZEL));
+      const stacked = Math.min((availW + 28) / (L.w + 2 * BEZEL), (availH - 40) / (P.h + L.h + 4 * BEZEL));
+      z = Math.min(1, Math.max(0.25, sideBySide, stacked));
+    }
+    for (const [k, s, label] of [['P', P, 'Portrait'], ['L', L, 'Landscape']]) {
+      const f = $('frame' + k);
+      f.style.width = s.w + 'px'; f.style.height = s.h + 'px';
+      $('phone' + k).style.transform = 'scale(' + z + ')';
+      $('hold' + k).style.width = (s.w + 2 * BEZEL) * z + 'px';
+      $('hold' + k).style.height = (s.h + 2 * BEZEL) * z + 'px';
+      $('cap' + k).textContent = label + ' · ' + s.w + ' × ' + s.h + ' · ' + Math.round(z * 100) + '%';
+    }
+  }
+  function save() {
+    saved = { game: $('game').value, device: $('device').value, query: $('query').value, bars: $('bars').checked, zoom: $('zoom').value };
+    store();
+  }
+
+  $('game').addEventListener('change', () => { save(); load(); });
+  $('query').addEventListener('change', () => { save(); load(); });
+  $('reload').addEventListener('click', load);
+  for (const id of ['device', 'bars', 'zoom']) $(id).addEventListener('change', () => { save(); layout(); });
+  window.addEventListener('resize', layout);
+  layout(); load();
+})();
+</script>
+</body>
+</html>
