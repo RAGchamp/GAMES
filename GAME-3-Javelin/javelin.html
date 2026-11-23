@@ -250,6 +250,16 @@
   footer{ background:var(--nav-blue); color:#fff; text-align:center; font-size:.85rem; padding:1.4rem 1rem; margin-top:2.5rem; }
   footer a{ color:#fff; }
   footer .credit{ opacity:.75; margin-top:.25rem; font-size:.8rem; }
+
+  /* ---- Phones: menus (title, pause, end and the other screens) are not squeezed into the game picture; the game
+     area grows to fit the menu and the page scrolls normally, as in Car Race ---- */
+  @media (max-width:700px), (max-height:500px){
+    .game-wrap.menu{ aspect-ratio:auto !important; height:auto; min-height:300px; overflow:visible; touch-action:pan-y; }
+    .game-wrap.menu > canvas{ position:absolute !important; inset:0; width:100%; height:100%; }
+    .game-wrap.menu .overlay{ position:relative; inset:auto; min-height:300px; padding:46px 8px 12px; overflow:visible; }
+    .game-wrap.menu .panel{ max-height:none; overflow:visible; }
+    .stage:fullscreen .game-wrap.menu, .stage:-webkit-full-screen .game-wrap.menu{ overflow-y:auto; }
+  }
 </style>
 </head>
 <body>
@@ -266,7 +276,7 @@
   </div>
 
   <div class="stage" id="stage">
-    <div class="game-wrap" id="wrap">
+    <div class="game-wrap menu" id="wrap">
       <canvas id="game" aria-label="Javelin game"></canvas>
       <div class="corner-btns" id="corner">
         <button class="cbtn" id="homeBtn" aria-label="Home" title="Home (H)" hidden>🏠<span class="wide"> Home</span></button>
@@ -1298,6 +1308,7 @@ window.addEventListener('DOMContentLoaded', () => {
   function showScreen(name) {
     screen = name;
     for (const k in OVS) $(OVS[k]).hidden = k !== name;
+    $('wrap').classList.toggle('menu', name !== 'play');   // phones: the game area grows to fit the menu (see the CSS)
     if (name === 'pause') { $(OVS.pause).hidden = false; }
     const inGame = name === 'play' || name === 'pause' || name === 'result';
     controls.hidden = !(name === 'play' || name === 'pause');
