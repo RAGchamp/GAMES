@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Phone Simulator</title>
+<!--
+  Phone Simulator (Flask app): pick a game, a phone and a display mode, and one phone is shown at a time.
+  The games are served by the same app under /games/, so the game's own Full screen stays inside the phone.
+  Not simulated: touch input, the phone's pixel ratio and its browser bars ("Browser bars" takes off a typical amount).
+-->
+<style>
+  :root{ --bg:#eef2f7; --panel:#fff; --ink:#1b2a41; --muted:#5b6b82; --line:#d3dbe7; --accent:#0b4f9c; --phone:#111; }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){ --bg:#0f1520; --panel:#182131; --ink:#e7edf6; --muted:#9aa8bd; --line:#2b3850; --accent:#6aa8ff; --phone:#000; }
+  }
+  :root[data-theme="dark"]{ --bg:#0f1520; --panel:#182131; --ink:#e7edf6; --muted:#9aa8bd; --line:#2b3850; --accent:#6aa8ff; --phone:#000; }
+  *{ box-sizing:border-box; }
+  html, body{ height:100%; }
+  body{ margin:0; background:var(--bg); color:var(--ink); font:14px/1.4 system-ui, "Segoe UI", Roboto, sans-serif;
+    display:flex; flex-direction:column; }
+  header{ flex:none; background:var(--panel); border-bottom:1px solid var(--line);
+    display:flex; flex-wrap:wrap; gap:.6rem 1rem; align-items:center; padding:.6rem 16px; }
+  h1{ font-size:1rem; margin:0 .5rem 0 0; }
+  label{ display:flex; align-items:center; gap:.35rem; color:var(--muted); font-weight:600; }
+  select, input[type=text], button{ font:inherit; color:var(--ink); background:var(--bg); border:1px solid var(--line);
+    border-radius:.4rem; padding:.3rem .5rem; }
+  input[type=text]{ width:8rem; }
+  button{ cursor:pointer; font-weight:600; }
+  button:hover{ border-color:var(--accent); }
+  .url{ color:var(--muted); font-size:.8rem; margin-left:auto; }
+  .url a{ color:var(--accent); }
+  main{ flex:1 1 auto; min-height:0; overflow:auto; display:flex; flex-direction:column; align-items:center;
+    padding:12px 16px 16px; gap:.5rem; }
+  figcaption{ color:var(--muted); font-weight:600; font-size:.85rem; }
+  .holder{ position:relative; flex:none; }          /* sized to the scaled phone */
+  .phone{ position:absolute; left:0; top:0; transform-origin:0 0; background:var(--phone);
+    border-radius:34px; padding:14px; box-shadow:0 10px 30px rgba(0,0,0,.25); }
+  .phone iframe{ display:block; border:0; background:#fff; border-radius:20px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>📱 Phone Simulator</h1>
+  <label>Game <select id="game"></select></label>
+  <label>Display mode
+    <select id="mode"><option value="L">Landscape</option><option value="P">Portrait</option></select>
+  </label>
+  <label>Phone <select id="device"></select></label>
+  <label title="Added to the game's address, e.g. ?practice or ?debug">Query
+    <input type="text" id="query" placeholder="?practice">
+  </label>
+  <label title="Take off the height a phone browser's address and tool bars usually use">
+    <input type="checkbox" id="bars"> Browser bars
+  </label>
+  <label>Zoom
+    <select id="zoom">
+      <option value="fit">Fit window</option><option value="1.5">150%</option><option value="1.25">125%</option>
+      <option value="1">100% (fastest)</option><option value="0.75">75%</option>
+    </select>
+  </label>
+  <button id="reload" type="button">⟳ Reload</button>
+  <button id="full" type="button" title="Full screen for the simulator (F)">⛶ Full screen</button>
+  <span class="url" id="url"></span>
+</header>
+
+<main id="view">
+  <figcaption id="cap"></figcaption>
+  <div class="holder" id="hold"><div class="phone" id="phone"><iframe id="frame" title="Phone view" allow="fullscreen; autoplay"></iframe></div></div>
+</main>
+
+<script>
+(() => {
+  const GAMES = {{ games|tojson }};          // found by app.py: every GAME* folder's pages, then the portal
+  // CSS pixel sizes (portrait width x height); bars = height a phone browser's bars usually take (portrait, landscape)
+  const DEVICES = [
+    { name: 'iPhone SE (375 × 667)',         w: 375, h: 667, bars: [120, 70] },
+    { name: 'iPhone 14 / 15 (390 × 844)',    w: 390, h: 844, bars: [150, 80] },
+    { name: 'iPhone 15 Pro Max (430 × 932)', w: 430, h: 932, bars: [150, 80] },
+    { name: 'Pixel 7 (412 × 915)',           w: 412, h: 915, bars: [110, 60] },
+    { name: 'Galaxy S20 (360 × 800)',        w: 360, h: 800, bars: [110, 60] },
+    { name: 'Small Android (360 × 640)',     w: 360, h: 640, bars: [100, 56] }
+  ];
+  const BEZEL = 14, $ = id => document.getElementById(id), frame = $('frame');
+  const KEY = 'phone-simulator-app';
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) {}
+  const store = () => { try { localStorage.setItem(KEY, JSON.stringify(saved)); } catch (e) {} };
+
+  GAMES.forEach((g, i) => $('game').add(new Option(g.name, g.path)));
+  DEVICES.forEach((d, i) => $('device').add(new Option(d.name, i)));
+  $('game').value = GAMES.some(g => g.path === saved.game) ? saved.game : (GAMES[0] || {}).path;
+  $('mode').value = saved.mode === 'P' ? 'P' : 'L';
+  $('device').value = saved.device in DEVICES ? saved.device : 1;
+  $('query').value = saved.query || '';
+  $('bars').checked = !!saved.bars;
+  $('zoom').value = saved.zoom || 'fit';
+
+  function src() {
+    let q = $('query').value.trim();
+    if (q && q[0] !== '?' && q[0] !== '#') q = '?' + q;
+    return 'games/' + $('game').value + q;
+  }
+  function save() {
+    saved = { game: $('game').value, mode: $('mode').value, device: $('device').value, query: $('query').value,
+              bars: $('bars').checked, zoom: $('zoom').value };
+    store();
+  }
+
+  /* ---- Game full screen inside the phone ----
+     A real full screen from inside an iframe always fills the laptop's whole screen. So the game's full screen
+     calls are replaced by a fake one: the element is pinned over the phone's screen, the game's own :fullscreen
+     CSS rules are copied onto it, and the usual fullscreenchange event is sent. */
+  function fakeFullscreen(w) {
+    const d = w.document;
+    if (d.__simFs) return;
+    d.__simFs = true;
+    let cur = null, copied = false;
+    const fire = () => d.dispatchEvent(new w.Event('fullscreenchange'));
+    function copyRules() {   // copy every ":fullscreen" rule as a "[data-sim-fs]" rule
+      if (copied) return; copied = true;
+      const out = [];
+      const walk = (rules, open, close) => {
+        for (const r of rules) {
+          if (r.selectorText && /:(-webkit-)?full-?screen/.test(r.selectorText)) {
+            out.push(open + r.cssText.replace(/:-webkit-full-screen|:fullscreen/g, '[data-sim-fs]') + close);
+          } else if (r.cssRules && r.media) walk(r.cssRules, open + '@media ' + r.media.mediaText + '{', '}' + close);
+        }
+      };
+      for (const sh of d.styleSheets) { try { walk(sh.cssRules, '', ''); } catch (e) {} }
+      const st = d.createElement('style');
+      st.textContent = '[data-sim-fs]{position:fixed!important;inset:0!important;width:100%!important;height:100%!important;' +
+        'min-width:0!important;min-height:0!important;max-width:none!important;max-height:none!important;margin:0!important;' +
+        'box-sizing:border-box!important;transform:none!important;z-index:2147483647!important;}' +
+        'html:has([data-sim-fs]),html:has([data-sim-fs]) body{overflow:hidden!important;}\n' + out.join('\n');
+      d.head.appendChild(st);
+    }
+    function enter(el) {
+      copyRules();
+      if (cur) cur.removeAttribute('data-sim-fs');
+      cur = el; el.setAttribute('data-sim-fs', ''); fire();
+      return w.Promise.resolve();
+    }
+    function exit() {
+      if (cur) { cur.removeAttribute('data-sim-fs'); cur = null; fire(); }
+      return w.Promise.resolve();
+    }
+    const get = v => ({ get: v, configurable: true });
+    for (const k of ['fullscreenEnabled', 'webkitFullscreenEnabled']) Object.defineProperty(d, k, get(() => true));
+    for (const k of ['fullscreenElement', 'webkitFullscreenElement']) Object.defineProperty(d, k, get(() => cur));
+    w.Element.prototype.requestFullscreen = w.Element.prototype.webkitRequestFullscreen = function () { return enter(this); };
+    d.exitFullscreen = d.webkitExitFullscreen = exit;
+    d.addEventListener('keydown', e => { if (e.key === 'Escape' && cur) exit(); }, true);
+  }
+  let watchId = 0;
+  function watch() {   // patch the game's page as soon as it exists, before its scripts run
+    const me = ++watchId;
+    let n = 0, old = null;
+    try { old = frame.contentWindow.document; } catch (e) {}
+    const tick = () => {
+      if (me !== watchId) return;
+      try {
+        const w = frame.contentWindow, d = w.document, fresh = d !== old && d.URL !== 'about:blank';
+        if (fresh) fakeFullscreen(w);
+        if (fresh && d.readyState !== 'loading') return;
+      } catch (e) { return; }
+      if (++n < 2000) setTimeout(tick, 2);
+    };
+    tick();
+  }
+  frame.addEventListener('load', () => { try { fakeFullscreen(frame.contentWindow); } catch (e) {} });
+
+  function load() {
+    const s = src();
+    frame.src = s;
+    watch();
+    $('url').innerHTML = 'Opening <a href="' + s + '" target="_blank" rel="noopener">' + s.replace(/^games\//, '') + '</a>';
+  }
+  function layout() {
+    const d = DEVICES[$('device').value], bars = $('bars').checked, mode = $('mode').value;
+    const s = mode === 'P' ? { w: d.w, h: d.h - (bars ? d.bars[0] : 0) } : { w: d.h, h: d.w - (bars ? d.bars[1] : 0) };
+    let z = parseFloat($('zoom').value);
+    if (isNaN(z)) {   // the whole phone fits in the window, as big as it can be
+      const m = $('view'), availW = m.clientWidth - 32, availH = m.clientHeight - 28 - $('cap').offsetHeight - 8;
+      z = Math.max(0.25, Math.min(availW / (s.w + 2 * BEZEL), availH / (s.h + 2 * BEZEL)));
+    }
+    frame.style.width = s.w + 'px'; frame.style.height = s.h + 'px';
+    $('phone').style.transform = 'scale(' + z + ')';
+    $('hold').style.width = (s.w + 2 * BEZEL) * z + 'px';
+    $('hold').style.height = (s.h + 2 * BEZEL) * z + 'px';
+    $('cap').textContent = (mode === 'P' ? 'Portrait' : 'Landscape') + ' · ' + s.w + ' × ' + s.h + ' · ' + Math.round(z * 100) + '%';
+  }
+
+  $('game').addEventListener('change', () => { save(); load(); });
+  $('query').addEventListener('change', () => { save(); load(); });
+  $('reload').addEventListener('click', load);
+  for (const id of ['mode', 'device', 'bars', 'zoom']) $(id).addEventListener('change', () => { save(); layout(); });
+  window.addEventListener('resize', layout);
+
+  // Full screen for the simulator page itself (the phone re-fits to the bigger window)
+  const fsEl = () => document.fullscreenElement || document.webkitFullscreenElement;
+  function toggleFull() {
+    const de = document.documentElement;
+    if (fsEl()) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+    else (de.requestFullscreen || de.webkitRequestFullscreen).call(de);
+  }
+  const fsLabel = () => { $('full').textContent = fsEl() ? '⛶ Exit full screen' : '⛶ Full screen'; layout(); };
+  $('full').addEventListener('click', toggleFull);
+  document.addEventListener('fullscreenchange', fsLabel);
+  document.addEventListener('webkitfullscreenchange', fsLabel);
+  document.addEventListener('keydown', e => {   // F toggles full screen, unless typing in a box
+    if ((e.key === 'f' || e.key === 'F') && !e.ctrlKey && !e.metaKey && !e.altKey && e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT') toggleFull();
+  });
+
+  layout(); load();
+})();
+</script>
+</body>
+</html>
