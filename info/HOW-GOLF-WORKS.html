@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How Golf Works</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<!--
+  How Golf works: the "How it works" page for Game 4 (Phase 6 of the Golf plan).
+  Explains the course and how a hole is built, the clubs, the ball's flight (drag and wind), bounce and roll,
+  putting and the cup, the wind rules, scoring, the views and Willy, and what Claude Code built, with a dated
+  timeline. The demos copy the formulas and constants from GAME-4-Golf/golf.html (the "sim" script): G, DRAG,
+  the CLUBS table, the fairway and green surfaces, CUP_R and the cup rule. If those change, change them here too.
+-->
+<style>
+  :root{
+    --biz-blue:#0d6efd;
+    --biz-blue-dark:#084298;
+    --biz-yellow:#ffc107;
+    --biz-red:#dc3545;
+    --biz-green:#198754;
+    --nav-blue:#04264d;
+    --nav-yellow:#ffd60a;
+  }
+  body{ background:#f7f8fa; margin:0; }
+  .topnav{
+    position:sticky; top:0; z-index:1030;
+    background:var(--nav-blue); color:var(--nav-yellow);
+    padding:.9rem 1.5rem; display:flex; justify-content:space-between; align-items:center;
+    box-shadow:0 .15rem .5rem rgba(0,0,0,.25);
+  }
+  .topnav .brand{ display:inline-flex; align-items:center; text-decoration:none; }
+  .topnav .brand-logo{ height:44px; width:auto; display:block; }
+  .topnav .tagline{ font-weight:600; font-size:1.05rem; color:var(--nav-yellow); letter-spacing:.15em; word-spacing:.6em; font-style:italic; }
+  @media (max-width:576px){ .topnav{ flex-direction:column; text-align:center; gap:.4rem; padding:.75rem 1rem; } }
+
+  .step-num{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:1.9rem; height:1.9rem; border-radius:50%;
+    background:var(--biz-yellow); color:#2b2b2b; font-weight:800; font-size:.95rem; margin-right:.55rem; flex:none;
+  }
+  .step-title{ display:flex; align-items:center; font-weight:700; font-size:1.1rem; margin-bottom:.75rem; }
+  .step-card{ border:2px solid #c9d3e3; border-radius:.6rem; }
+  .ctrl-label{ font-size:.75rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#6c757d; margin-bottom:.25rem; display:block; }
+  .about-box{ background:#fde2ec; border:2px solid #f5a3c0; border-radius:.6rem; padding:.9rem 1.1rem; }
+  .about-box h2{ font-size:1.05rem; font-weight:700; color:#8a1f4a; margin-bottom:.4rem; }
+  .about-box p{ font-size:.92rem; color:#3b2a31; }
+  .facts{ display:flex; flex-wrap:wrap; gap:.6rem; }
+  .fact{ flex:1 1 140px; background:#fff; border:2px solid #dde3ec; border-radius:.6rem; padding:.5rem .75rem; }
+  .fact .val{ font-size:1.35rem; font-weight:800; line-height:1.15; color:var(--nav-blue); }
+  .fact .lbl{ font-size:.75rem; color:#5a6475; }
+  pre.code{ background:#0f1b2d; color:#d7e3f4; border-radius:.5rem; padding:.7rem .9rem; font-size:.8rem; margin:0; white-space:pre-wrap; }
+  pre.code .c{ color:#8fa7c7; }
+  table.ref th{ background:#eef3fb; font-size:.78rem; text-transform:uppercase; letter-spacing:.04em; }
+  table.ref td, table.ref th{ font-size:.88rem; vertical-align:top; }
+  .demo{ background:#fff; border:2px dashed #9ec5fe; border-radius:.6rem; padding:.75rem .9rem; }
+  .demo h3{ font-size:.95rem; font-weight:800; color:var(--biz-blue-dark); margin:0 0 .4rem; }
+  .demo canvas{ width:100%; display:block; border-radius:.45rem; }
+  .demo label{ font-size:.8rem; font-weight:700; color:#3b4656; display:flex; justify-content:space-between; }
+  .demo input[type=range]{ width:100%; }
+  .read{ font-size:.9rem; font-weight:700; }
+  .flow{ display:flex; flex-wrap:wrap; align-items:stretch; gap:.4rem; }
+  .flow .box{ flex:1 1 130px; background:#eef3fb; border:2px solid #c9d3e3; border-radius:.5rem; padding:.45rem .6rem; font-size:.84rem; }
+  .flow .box b{ display:block; color:var(--nav-blue); }
+  .flow .arrow{ align-self:center; font-weight:800; color:#6c757d; }
+  @media (max-width:700px){ .flow .arrow{ display:none; } }
+  .timeline td:first-child{ white-space:nowrap; }
+  .tag{ border-radius:.3rem; padding:0 .35rem; font-size:.7rem; font-weight:700; color:#fff; background:#6c757d; white-space:nowrap; }
+  .tag.chg{ background:var(--biz-red); }
+  .pills{ display:flex; flex-wrap:wrap; gap:.35rem; margin-bottom:.4rem; }
+  .pills button{ border:2px solid #c9d3e3; background:#fff; border-radius:2rem; padding:.12rem .6rem; font-size:.8rem; font-weight:700; color:var(--nav-blue); }
+  .pills button.on{ border-color:#c0392b; background:#fdecea; color:#c0392b; }
+  kbd{ background:#04264d; }
+  footer{ background:var(--nav-blue); }
+  footer a{ color:#fff; }
+</style>
+</head>
+<body>
+
+<!-- STICKY TOP NAV -->
+<div class="topnav">
+  <a class="brand" href="../index.html"><img class="brand-logo" src="../logo.svg" alt="RAG Champ"></a>
+  <div class="tagline">AI Games Portal</div>
+</div>
+
+<main class="container my-4">
+
+  <h1 class="h3 fw-bold mb-1">⛳ How Golf Works</h1>
+  <p class="text-muted mb-3"><a href="../GAME-4-Golf/golf.html">▶ Play Golf</a> · <a href="GOLF-PLAN.html">📋 The development plan</a> · <a href="../index.html">🏠 Games Home</a></p>
+
+  <div class="facts mb-4">
+    <div class="fact"><div class="val">1 file</div><div class="lbl"><code>golf.html</code>: HTML, CSS and JavaScript together</div></div>
+    <div class="fact"><div class="val">≈ 1,560</div><div class="lbl">lines written for the game, in 2 scripts: rules and screen</div></div>
+    <div class="fact"><div class="val">0</div><div class="lbl">image or sound files: Willy, the course, the sounds and the music are made with code</div></div>
+    <div class="fact"><div class="val">18</div><div class="lbl">holes, par 72, 5,907 m from first tee to last flag</div></div>
+    <div class="fact"><div class="val">6</div><div class="lbl">clubs: Driver, 3-Wood, 5-Iron, 9-Iron, Wedge and Putter</div></div>
+    <div class="fact"><div class="val">240</div><div class="lbl">physics steps a second, the same on every computer and phone</div></div>
+  </div>
+
+  <!-- 1. The course -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">1</span>The course: 18 holes from short recipes</div>
+      <p>The course is real size: the holes run from 135 m to 521 m, with four par 3s, ten par 4s and four par 5s. The front nine is parkland; the back nine runs along the sea, where the far side of the rough drops away and a ball there is out of bounds. Each hole is written as a short <b>recipe</b>, and the game builds the whole map from it: the ground's height, the fairway, rough, bunkers, water, trees and the green.</p>
+      <div class="row g-3">
+        <div class="col-lg-6">
+          <span class="ctrl-label">Hole 5, "Left Turn", as it is written in golf.html</span>
+<pre class="code">{ n: 5, par: 4, name: 'Left Turn',
+  cl: [[0, 0], [190, 0], [300, 45]], <span class="c">// the centre line: a dogleg left</span>
+  fw: 34,                            <span class="c">// fairway width (m)</span>
+  gr: 15, tilt: [0.008, -0.01],      <span class="c">// green radius and slope</span>
+  cup: [2, -3],                      <span class="c">// the cup, from the green's middle</span>
+  hills:   [[80, -25, 35, 3], ...],  <span class="c">// along, across, size, height</span>
+  bunkers: [[200, -16, 8, 4], ...],
+  trees:   [[205, 26], [214, 36], ...] }</pre>
+          <p class="small mt-2 mb-0">Trees are added along both edges of the rough by a seeded random pattern, so a hole always looks the same. The ground is gentle rolls everywhere, plus the hills, with a smooth tilted plane under each green and banks rising beyond the rough.</p>
+        </div>
+        <div class="col-lg-6">
+          <span class="ctrl-label">What each kind of ground does</span>
+          <table class="table table-sm table-bordered ref mb-0">
+            <thead><tr><th>Ground</th><th>Bounce</th><th>Roll</th><th>Next shot</th></tr></thead>
+            <tbody>
+              <tr><td>🟩 Fairway / tee</td><td>good</td><td>long</td><td>full power</td></tr>
+              <tr><td>🌿 Rough</td><td>low</td><td>stops quickly</td><td>85% power</td></tr>
+              <tr><td>🟨 Bunker</td><td>almost none</td><td>stops dead</td><td>60% (Wedge 90%)</td></tr>
+              <tr><td>🟢 Green</td><td>soft</td><td>very long, follows the slope</td><td>Putter only</td></tr>
+              <tr><td>🌊 Water</td><td colspan="3">+1 stroke; dropped behind the water</td></tr>
+              <tr><td>🚧 Out of bounds</td><td colspan="3">+1 stroke; play again from the same spot</td></tr>
+              <tr><td>🌳 Trees</td><td colspan="3">a trunk knocks the ball back; leaves slow it right down</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Clubs and flight -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">2</span>The clubs, and how the ball flies</div>
+      <p>Each club has its own range of angles, its own top speed at full power, and its own <b>spin</b>, which decides how softly the ball lands. Power sets the speed from nothing to the club's top speed. Once the ball leaves the club, three things act on it: <b>gravity</b> pulls it down, <b>air drag</b> slows it (more at high speed), and <b>wind</b> pushes it, because drag works on the ball's speed through the air, not over the ground.</p>
+      <div class="row g-3">
+        <div class="col-lg-7">
+          <div class="demo">
+            <h3>Try it: hit a shot on flat fairway</h3>
+            <div class="pills" id="clubPick"></div>
+            <canvas id="flyCv" width="700" height="230" aria-label="The flight of the ball from the side, with distance markers every 50 m"></canvas>
+            <div class="row g-2 mt-1">
+              <div class="col-4"><label>Angle <span id="angV"></span></label><input type="range" id="ang" min="0" max="100" value="50"></div>
+              <div class="col-4"><label>Power <span id="powV"></span></label><input type="range" id="pow" min="5" max="100" value="100"></div>
+              <div class="col-4"><label>Wind <span id="windV"></span></label><input type="range" id="wind" min="-8" max="8" step="0.5" value="0"></div>
+            </div>
+            <p class="read mb-0 mt-1" id="flyRead"></p>
+          </div>
+        </div>
+        <div class="col-lg-5">
+          <table class="table table-sm table-bordered ref mb-2">
+            <thead><tr><th>Club</th><th>Angle</th><th>Top speed</th><th>Carry at full power</th></tr></thead>
+            <tbody>
+              <tr><td>Driver (tee only)</td><td>8°–16°</td><td>100 m/s</td><td>199 m</td></tr>
+              <tr><td>3-Wood</td><td>12°–20°</td><td>78 m/s</td><td>176 m</td></tr>
+              <tr><td>5-Iron</td><td>18°–28°</td><td>57 m/s</td><td>144 m</td></tr>
+              <tr><td>9-Iron</td><td>30°–44°</td><td>39 m/s</td><td>105 m</td></tr>
+              <tr><td>Wedge</td><td>45°–62°</td><td>30.4 m/s</td><td>70 m</td></tr>
+              <tr><td>Putter (green only)</td><td>rolls</td><td>7.5 m/s</td><td>—</td></tr>
+            </tbody>
+          </table>
+<pre class="code"><span class="c">// each tiny step (1/240 s) in the air</span>
+air = ball.velocity - wind;       <span class="c">// speed through the air</span>
+ball.velocity -= DRAG * |air| * air * dt;
+ball.vz       -= 9.8 * dt;        <span class="c">// gravity</span>
+<span class="c">// DRAG = 0.0042, tuned so each club's carry
+// matches the plan</span></pre>
+          <p class="small mt-2 mb-0">The game suggests a club and power for the distance left, from a table of each club's carry that it works out once at the start.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Wind -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">3</span>Wind that keeps you guessing</div>
+      <p>Every hole starts with a <b>new random wind</b>: a speed from 0 to 8 m/s (in half steps) and any compass direction. If a hole has been in play for <b>3 minutes</b>, the wind changes again, and every 3 minutes after that, but <b>never while the ball is moving</b>, so a shot is never spoiled by a change you couldn't see. A tailwind carries the ball further, a headwind holds it up, and a crosswind curves it sideways, so you aim off. Putts are not touched by the wind. <b>Easy</b> halves the wind and gives a longer aim guide; the practice range has no wind at all.</p>
+      <div class="row g-3">
+        <div class="col-lg-7">
+          <div class="demo">
+            <h3>Try it: a full 5-Iron, seen from above</h3>
+            <canvas id="windCv" width="700" height="220" aria-label="The ball's path from above in the wind, with the calm path for comparison"></canvas>
+            <div class="row g-2 mt-1">
+              <div class="col-6"><label>Wind speed <span id="wsV"></span></label><input type="range" id="ws" min="0" max="8" step="0.5" value="6"></div>
+              <div class="col-6"><label>Wind from <span id="wdV"></span></label><input type="range" id="wd" min="0" max="345" step="15" value="90"></div>
+            </div>
+            <p class="read mb-0 mt-1" id="windRead"></p>
+          </div>
+        </div>
+        <div class="col-lg-5">
+<pre class="code"><span class="c">// at the start of every hole, and after 3 minutes</span>
+function newWind() {
+  wind.speed = round(random() * 16) / 2;  <span class="c">// 0 to 8 m/s</span>
+  if (easy) wind.speed /= 2;
+  wind.dir = random() * 360;
+  wind.next = holeTime + 180;            <span class="c">// 3 minutes</span>
+}
+<span class="c">// each frame: change only when the ball is still</span>
+if (holeTime >= wind.next &amp;&amp; ballStopped) newWind();</pre>
+          <p class="small mt-2 mb-0">High shots stay in the air longer, so the wind moves them more: a Wedge in a crosswind drifts much further for its length than a Driver.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Bounce, roll and the cup -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">4</span>Bounce, roll, and getting it in the cup</div>
+      <p>When the ball lands, the game works out the slope under it. The part of its speed into the ground bounces back (28% on the fairway, 22% on the green), and the part along the ground is kept by the surface and the club's spin, which is why a Wedge stops quickly and a Driver runs on. When a bounce is too small, the ball <b>rolls</b>: the slope pulls it downhill and the grass slows it, fast on the fairway and only a little on the smooth green.</p>
+      <div class="row g-3">
+        <div class="col-lg-7">
+          <div class="demo">
+            <h3>Try it: a putt on a sloping green</h3>
+            <canvas id="puttCv" width="700" height="240" aria-label="A green from above with a slope; the putt curves with the slope towards or past the cup"></canvas>
+            <div class="row g-2 mt-1">
+              <div class="col-4"><label>Power <span id="ppV"></span></label><input type="range" id="pp" min="5" max="100" value="40"></div>
+              <div class="col-4"><label>Aim <span id="paV"></span></label><input type="range" id="pa" min="-12" max="12" step="0.5" value="3"></div>
+              <div class="col-4"><label>Slope <span id="psV"></span></label><input type="range" id="ps" min="-2" max="2" step="0.25" value="1"></div>
+            </div>
+            <p class="read mb-0 mt-1" id="puttRead"></p>
+          </div>
+        </div>
+        <div class="col-lg-5">
+<pre class="code"><span class="c">// rolling: each tiny step</span>
+v -= 9.8 * slope * dt;            <span class="c">// downhill pull</span>
+v *= max(0, |v| - MU * 9.8 * dt) / |v|;  <span class="c">// grass</span>
+<span class="c">// the green: MU = 0.065; the fairway: 0.30
+
+// the cup has a radius of 5.4 cm</span>
+if (passes within 1.35 cup radii &amp;&amp; speed &lt; 1.7 m/s)
+  in!                     <span class="c">// (2 radii if very slow)</span>
+else if (crosses the cup &amp;&amp; speed &lt; 3 m/s)
+  lip-out: turned aside and slowed</pre>
+          <p class="small mt-2 mb-0">A ball that stops very close to the cup (75 cm, or 1.5 m on Easy) is tapped in for one more stroke, and a hole ends after 10 strokes ("picked up"), so a bad hole never gets stuck.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. Scoring, views and Willy -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">5</span>Scoring, the two views and Willy</div>
+      <div class="row g-3">
+        <div class="col-md-4">
+          <span class="ctrl-label">Scoring</span>
+          <ul class="small mb-0">
+            <li><b>Par</b> is what a good golfer needs. One under is a <b>birdie</b>, two under an <b>eagle</b>, one in is a <b>hole in one</b>; one over a <b>bogey</b>, two over a double bogey.</li>
+            <li>The scorecard shows every hole, with circles round birdies and squares round bogeys, and the round as a total such as "+3".</li>
+            <li>Your best round and each hole's best are saved on the device.</li>
+          </ul>
+        </div>
+        <div class="col-md-4">
+          <span class="ctrl-label">Two views (⇄ View or V)</span>
+          <ul class="small mb-0">
+            <li><b>Side view:</b> the ground along your aim line, with its real hills, so you see how high the ball flies and where it bounces.</li>
+            <li><b>Top-down view:</b> the hole from above, with its bends, trees, bunkers and water; drag to aim. On the green, arrows show the slope.</li>
+            <li>Switch at any time, even mid-flight: both draw the same ball from the same rules.</li>
+          </ul>
+        </div>
+        <div class="col-md-4">
+          <span class="ctrl-label">Willy, sound and music</span>
+          <ul class="small mb-0">
+            <li>Willy is drawn in code from a reference picture: cream cap, red polo shirt and red shoes. He addresses the ball face-on, swings back over his shoulder and follows through, and cheers a birdie.</li>
+            <li>Every sound and the music are made by the browser's Web Audio, so the game has no sound files.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. What Claude Code built -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">6</span>What Claude Code built, and how it was checked</div>
+      <p class="small">Claude Code wrote the game from a plan and one picture of Willy, reusing what was built for Javelin (the flight and wind, the sliders, the sound and the testing). It uses no library. The game file has two scripts:</p>
+      <div class="flow mb-3">
+        <div class="box"><b>sim: the rules</b>The 18 hole recipes, the ground, the clubs, the flight, bounce, roll and the cup. It draws nothing, so a test program can play holes without a browser.</div>
+        <div class="arrow">→</div>
+        <div class="box"><b>game-ui: the screen</b>The side and top-down views, Willy, the sliders and buttons, the scorecard, the wind, the sound and music, and saving.</div>
+      </div>
+
+      <span class="ctrl-label">Timeline</span>
+      <p class="small mb-2"><span class="tag chg">changed</span> marks changes that came from a person testing the game.</p>
+      <table class="table table-sm table-bordered ref timeline mb-3">
+        <thead><tr><th>When</th><th>What was built</th></tr></thead>
+        <tbody>
+          <tr><td>22 Nov 2026</td><td><b>The plan:</b> 18 holes, par 72, two views, Willy, a new wind on every hole, real-size holes, and 6 build phases.</td></tr>
+          <tr><td>22 Nov 2026</td><td><b>The game:</b> the 18 holes in both views, six clubs, flight with drag and wind, bounce and roll on hills, rough, bunkers, water, out of bounds, trees, doglegs and the sea, putting with slopes and lip-outs, the wind rules, the scorecard, the practice range, saved bests, Willy, sound and music. The portal card.</td></tr>
+          <tr><td>22 Nov 2026</td><td><span class="tag chg">changed</span> Willy's swing redrawn face-on, with both hands on the grip, a backswing over his shoulder and a follow-through facing the target.</td></tr>
+          <tr><td>23 Nov 2026</td><td><span class="tag chg">changed</span> Red shoes for Willy and a bigger, outlined ball: the white ball was hard to see next to his white shoes.</td></tr>
+          <tr><td>23 Nov 2026</td><td><span class="tag chg">changed</span> The page tidied like the other games: the instructions under the game as plain text, and the "How AI plays a part" box at the bottom.</td></tr>
+          <tr><td>23 Nov 2026</td><td><b>This page</b>, and the How it works button on the portal.</td></tr>
+        </tbody>
+      </table>
+
+      <span class="ctrl-label">How it was checked</span>
+      <ul class="small mb-0">
+        <li><b>Club distances:</b> in Node, each club's carry at full power was measured with the game's own flight: 199, 176, 144, 105 and 70 m, all within 2% of the plan's table.</li>
+        <li><b>The same shot always lands in the same place</b>, so the aim guide and the club suggestion can be trusted.</li>
+        <li><b>A solver</b> plays every hole in Node, trying many clubs, angles, powers and aims for each shot. With no wind it finished every hole at par or better (it plays perfectly, so it was well under par).</li>
+        <li><b>A test browser</b> opened the game, played shots in both views and took pictures, checking for errors.</li>
+        <li><b>People</b> played it on a laptop and a phone, which led to Willy's face-on swing, the red shoes and the bigger ball.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="text-center my-4">
+    <a class="btn btn-lg fw-bold text-white px-4" style="background:#04264d;border:3px solid #ffd60a;border-radius:2rem;color:#ffd60a!important" href="../GAME-4-Golf/golf.html">▶ Play Golf</a>
+    <a class="btn btn-lg fw-bold px-4 ms-2" style="border:2px solid #04264d;color:#04264d;border-radius:2rem" href="../index.html">🏠 Games Home</a>
+  </div>
+
+  <div class="about-box mb-4">
+    <h2>What is this page and how does AI play a part?</h2>
+    <p class="mb-0">This page explains how <strong>Game 4: Golf</strong> works inside: how a hole is built from a short recipe, how each club sends the ball, how drag and wind bend its flight, how it bounces, rolls and drops in the cup, and what Claude Code (an AI coding agent) built. Claude Code wrote the whole game from a <a href="GOLF-PLAN.html">plan</a> and one picture of Willy, and a person tested it on a computer and a phone. <strong>Players don't need any AI to play.</strong> The demos on this page use the same formulas and numbers as the game, so you can try them yourself.</p>
+  </div>
+
+</main>
+
+<footer class="text-white py-4 mt-5">
+  <div class="container text-center small">AI Games Portal · How Golf works · <a href="../GAME-4-Golf/golf.html">⛳ Play Golf</a> · <a href="GOLF-PLAN.html">📋 Golf plan</a> · <a href="HOW-BILLIARDS-WORKS.html">💡 How Billiards works</a> · <a href="HOW-JAVELIN-WORKS.html">💡 How Javelin works</a> · <a href="HOW-CHINTU-WORKS.html">💡 How Chintu works</a> · <a href="HOW-CAR-RACE-WORKS.html">💡 How Car Race works</a> · <a href="../index.html">🏠 Games Home</a></div>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const DEG = Math.PI / 180;
+
+  /* ---------- The game's numbers (copied from the sim script in golf.html) ---------- */
+  const G = 9.8, DRAG = 0.0042, CUP_R = 0.054, H = 1 / 240;
+  const CLUBS = [
+    { name: 'Driver',  min: 8,  max: 16, def: 11, v: 100,  spin: 1.0 },
+    { name: '3-Wood',  min: 12, max: 20, def: 15, v: 78,   spin: 0.92 },
+    { name: '5-Iron',  min: 18, max: 28, def: 22, v: 57,   spin: 0.8 },
+    { name: '9-Iron',  min: 30, max: 44, def: 37, v: 39,   spin: 0.62 },
+    { name: 'Wedge',   min: 45, max: 62, def: 52, v: 30.4, spin: 0.45 }
+  ];
+  const FAIRWAY = { e: 0.28, keep: 0.55, mu: 0.30 }, GREEN = { mu: 0.065 };
+
+  function ctxOf(cv) {
+    const w = cv.width, h = cv.height, dpr = Math.min(window.devicePixelRatio || 1, 2);
+    if (!cv.dataset.w) { cv.dataset.w = w; cv.dataset.h = h; cv.width = w * dpr; cv.height = h * dpr; }
+    const c = cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0); return [c, +cv.dataset.w, +cv.dataset.h];
+  }
+  // one shot in 3D on flat fairway (x along the aim, y to the left, z up), as in the game: flight, bounces, then roll
+  function shot(club, angleDeg, power, wind) {
+    const a = angleDeg * DEG, v = club.v * clamp(power, 0.02, 1);
+    const B = { x: 0, y: 0, z: 0.03, vx: v * Math.cos(a), vy: 0, vz: v * Math.sin(a) };
+    const path = [[0, 0, 0]]; let carry = null, state = 'fly', apex = 0, t = 0;
+    for (let i = 0; i < 240 * 60 && state !== 'rest'; i++) {
+      t += H;
+      if (state === 'fly') {
+        const rx = B.vx - wind.x, ry = B.vy - wind.y, rz = B.vz, sp = Math.hypot(rx, ry, rz);
+        B.vx -= DRAG * sp * rx * H; B.vy -= DRAG * sp * ry * H; B.vz += (-G - DRAG * sp * rz) * H;
+        B.x += B.vx * H; B.y += B.vy * H; B.z += B.vz * H; apex = Math.max(apex, B.z);
+        if (B.z <= 0) {
+          B.z = 0; if (carry === null) carry = { x: B.x, y: B.y, t };
+          const vn = B.vz, keep = FAIRWAY.keep * club.spin, out = -vn * FAIRWAY.e;
+          B.vx *= keep; B.vy *= keep;
+          if (out < 1.2) { state = 'roll'; B.vz = 0; } else { B.vz = out; B.z = 0.01; }
+        }
+      } else {
+        const sp = Math.hypot(B.vx, B.vy), f = Math.max(0, sp - FAIRWAY.mu * G * H) / (sp || 1);
+        B.vx *= f; B.vy *= f; B.x += B.vx * H; B.y += B.vy * H;
+        if (Math.hypot(B.vx, B.vy) < 0.04) state = 'rest';
+      }
+      if (i % 12 === 0) path.push([B.x, B.y, B.z]);
+    }
+    path.push([B.x, B.y, B.z]);
+    return { path, carry, end: { x: B.x, y: B.y }, apex, flight: carry ? carry.t : 0 };
+  }
+
+  /* ---------- Demo: a shot from the side ---------- */
+  let ci = 2;
+  $('clubPick').innerHTML = CLUBS.map((c, i) => '<button type="button" data-i="' + i + '">' + c.name + '</button>').join('');
+  $('clubPick').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { ci = +b.dataset.i; $('ang').value = 50; flyDemo(); } });
+  function flyDemo() {
+    const c = CLUBS[ci], ang = c.min + (c.max - c.min) * $('ang').value / 100, pw = $('pow').value / 100, wv = +$('wind').value;
+    $('angV').textContent = ang.toFixed(0) + '°'; $('powV').textContent = Math.round(pw * 100) + '%';
+    $('windV').textContent = wv === 0 ? 'calm' : (wv > 0 ? 'with you ' : 'against ') + Math.abs(wv) + ' m/s';
+    [...$('clubPick').children].forEach((b, i) => b.classList.toggle('on', i === ci));
+    const r = shot(c, ang, pw, { x: wv, y: 0 });
+    const [g, w, h] = ctxOf($('flyCv'));
+    const sky = g.createLinearGradient(0, 0, 0, h); sky.addColorStop(0, '#bfe3ff'); sky.addColorStop(1, '#e8f6ff'); g.fillStyle = sky; g.fillRect(0, 0, w, h);
+    const ground = h - 34, sx = m => 24 + m * (w - 40) / 280, sz = m => ground - m * (w - 40) / 280 * 2.2;
+    g.fillStyle = '#5cb85c'; g.fillRect(0, ground, w, h - ground); g.fillStyle = '#4cae4c'; g.fillRect(0, ground, w, 4);
+    g.font = '11px system-ui'; g.fillStyle = '#1d4d1d';
+    for (let m = 50; m <= 250; m += 50) { g.fillStyle = '#fff'; g.fillRect(sx(m) - 1, ground - 14, 2, 14); g.fillStyle = '#d9534f'; g.fillRect(sx(m) + 1, ground - 14, 8, 5); g.fillStyle = '#1d4d1d'; g.fillText(m + ' m', sx(m) - 10, ground + 16); }
+    g.strokeStyle = '#fff'; g.lineWidth = 2.5; g.setLineDash([]); g.beginPath();
+    r.path.forEach(([x, , z], i) => { const X = sx(x), Y = sz(z); i ? g.lineTo(X, Y) : g.moveTo(X, Y); }); g.stroke();
+    if (r.carry) { g.fillStyle = '#ffd60a'; g.beginPath(); g.arc(sx(r.carry.x), ground, 4, 0, 7); g.fill(); }
+    g.fillStyle = '#fff'; g.strokeStyle = '#333'; g.lineWidth = 1; g.beginPath(); g.arc(sx(r.end.x), ground - 4, 5, 0, 7); g.fill(); g.stroke();
+    if (wv) { g.fillStyle = '#04264d'; g.font = '12px system-ui'; g.fillText('wind ' + (wv > 0 ? '→' : '←') + ' ' + Math.abs(wv) + ' m/s', w - 120, 18); }
+    $('flyRead').textContent = c.name + ' at ' + ang.toFixed(0) + '°: it flies ' + (r.carry ? r.carry.x.toFixed(0) : 0) + ' m in ' + r.flight.toFixed(1) +
+      ' s (highest ' + r.apex.toFixed(0) + ' m), then bounces and rolls to ' + r.end.x.toFixed(0) + ' m.';
+  }
+  for (const id of ['ang', 'pow', 'wind']) $(id).addEventListener('input', flyDemo);
+
+  /* ---------- Demo: crosswind from above ---------- */
+  function windDemo() {
+    const s = +$('ws').value, from = +$('wd').value;
+    const names = ['behind you', 'behind, from the right', 'the right', 'ahead, from the right', 'straight ahead', 'ahead, from the left', 'the left', 'behind, from the left'];
+    $('wsV').textContent = s ? s + ' m/s' : 'calm';
+    $('wdV').textContent = names[Math.round(((from % 360) + 360) % 360 / 45) % 8];
+    // "from" 0 = behind the player (pushing the ball on), 90 = from the right, 180 = straight ahead (against)
+    const wv = { x: s * Math.cos(from * DEG), y: s * Math.sin(from * DEG) };   // where the wind blows to (x ahead, y to the left)
+    const calm = shot(CLUBS[2], 22, 1, { x: 0, y: 0 }), r = shot(CLUBS[2], 22, 1, wv);
+    const [g, w, h] = ctxOf($('windCv'));
+    g.fillStyle = '#3f9c4a'; g.fillRect(0, 0, w, h);
+    g.fillStyle = '#4fb35a'; g.fillRect(0, h / 2 - 34, w, 68);   // the fairway
+    const sx = m => 24 + m * (w - 48) / 200, sy = m => h / 2 - m * (w - 48) / 200 * 2.5;
+    for (let m = 50; m <= 200; m += 50) { g.fillStyle = 'rgba(255,255,255,.7)'; g.font = '11px system-ui'; g.fillText(m + ' m', sx(m) - 12, h - 8); g.fillRect(sx(m), h - 26, 1, 8); }
+    const draw = (p, col, dash) => { g.strokeStyle = col; g.lineWidth = 2.5; g.setLineDash(dash || []); g.beginPath(); p.forEach(([x, y], i) => { const X = sx(x), Y = sy(y); i ? g.lineTo(X, Y) : g.moveTo(X, Y); }); g.stroke(); g.setLineDash([]); };
+    draw(calm.path, 'rgba(255,255,255,.5)', [6, 6]);
+    draw(r.path, '#ffd60a');
+    g.fillStyle = '#fff'; g.beginPath(); g.arc(sx(r.end.x), sy(r.end.y), 5, 0, 7); g.fill();
+    // a wind arrow (where it blows to)
+    if (s) {
+      const cx = w - 60, cy = 34, L = 22, dx = Math.cos(from * DEG), dy = Math.sin(from * DEG);
+      g.strokeStyle = '#04264d'; g.fillStyle = '#04264d'; g.lineWidth = 3; g.beginPath(); g.moveTo(cx - dx * L, cy + dy * L); g.lineTo(cx + dx * L, cy - dy * L); g.stroke();
+      const a = Math.atan2(-dy, dx); g.beginPath(); g.moveTo(cx + dx * L, cy - dy * L); g.lineTo(cx + dx * L - 9 * Math.cos(a - 0.5), cy - dy * L - 9 * Math.sin(a - 0.5)); g.lineTo(cx + dx * L - 9 * Math.cos(a + 0.5), cy - dy * L - 9 * Math.sin(a + 0.5)); g.fill();
+      g.font = '11px system-ui'; g.fillText('wind', cx - 12, cy + 30);
+    }
+    const side = r.end.y, along = r.end.x - calm.end.x;
+    $('windRead').textContent = !s ? 'In a calm the ball flies straight and stops ' + calm.end.x.toFixed(0) + ' m away.'
+      : 'It stops ' + Math.abs(side).toFixed(1) + ' m ' + (side > 0 ? 'left' : 'right') + ' of the line and ' + Math.abs(along).toFixed(0) + ' m ' + (along >= 0 ? 'further' : 'shorter') + ' than in a calm.';
+  }
+  for (const id of ['ws', 'wd']) $(id).addEventListener('input', windDemo);
+
+  /* ---------- Demo: a putt on a sloping green (the game's roll and cup rule) ---------- */
+  function puttDemo() {
+    const pw = $('pp').value / 100, aim = +$('pa').value * DEG, slope = +$('ps').value / 100;   // slope: % down to the right
+    $('ppV').textContent = Math.round(pw * 100) + '%';
+    $('paV').textContent = Math.abs(+$('pa').value) < 0.25 ? 'at the cup' : Math.abs(+$('pa').value) + '° ' + (+$('pa').value > 0 ? 'left' : 'right');
+    $('psV').textContent = slope === 0 ? 'flat' : Math.abs(slope * 100) + '% down to the ' + (slope > 0 ? 'right' : 'left');
+    const cup = { x: 6, y: 0 }, v = 7.5 * pw;
+    const B = { x: 0, y: 0, vx: v * Math.cos(aim), vy: v * Math.sin(aim) }, path = [[0, 0]];
+    let state = 'roll', lip = false;
+    for (let i = 0; i < 240 * 30 && state === 'roll'; i++) {
+      const x0 = B.x, y0 = B.y, sp = Math.hypot(B.vx, B.vy);
+      B.vy -= G * slope * H;                                     // y is to the left: a slope down to the right pulls to -y
+      const sp2 = Math.hypot(B.vx, B.vy); if (sp2 > 0) { const f = Math.max(0, sp2 - GREEN.mu * G * H) / sp2; B.vx *= f; B.vy *= f; }
+      B.x += B.vx * H; B.y += B.vy * H;
+      // the cup, as in the game: the closest point of this tiny step to the cup
+      const dx = B.x - x0, dy = B.y - y0, L2 = dx * dx + dy * dy, k = L2 ? clamp(((cup.x - x0) * dx + (cup.y - y0) * dy) / L2, 0, 1) : 0;
+      const d = Math.hypot(x0 + dx * k - cup.x, y0 + dy * k - cup.y), capture = sp < 0.6 ? CUP_R * 2 : CUP_R * 1.35;
+      if (d < capture && sp < 1.7) { state = 'holed'; B.x = cup.x; B.y = cup.y; }
+      else if (d < CUP_R && sp < 3 && !lip) { const a = Math.atan2(B.vy, B.vx) + (dx * (cup.y - y0) - dy * (cup.x - x0) > 0 ? -0.35 : 0.35), s = sp * 0.6; B.vx = Math.cos(a) * s; B.vy = Math.sin(a) * s; lip = true; }
+      if (Math.hypot(B.vx, B.vy) < 0.04 && Math.abs(G * slope) < GREEN.mu * G) state = state === 'holed' ? 'holed' : 'rest';
+      if (i % 8 === 0) path.push([B.x, B.y]);
+    }
+    path.push([B.x, B.y]);
+    const [g, w, h] = ctxOf($('puttCv'));
+    g.fillStyle = '#2e8b3e'; g.fillRect(0, 0, w, h);
+    const sx = m => 40 + m * (w - 80) / 8, sy = m => h / 2 - m * (w - 80) / 8;
+    const gr = g.createRadialGradient(sx(4), h / 2, 20, sx(4), h / 2, w * 0.55); gr.addColorStop(0, '#5ccb6a'); gr.addColorStop(1, '#3fae4e');
+    g.fillStyle = gr; g.beginPath(); g.ellipse(sx(4), h / 2, w * 0.47, h * 0.47, 0, 0, 7); g.fill();
+    // slope arrows
+    if (slope) { g.strokeStyle = 'rgba(255,255,255,.35)'; g.fillStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 2;
+      for (const ax of [1.5, 4, 6.5]) for (const ay of [-1.2, 1.2]) { const X = sx(ax), Y = sy(ay), d = slope > 0 ? 1 : -1;
+        g.beginPath(); g.moveTo(X, Y - 10 * d); g.lineTo(X, Y + 10 * d); g.stroke(); g.beginPath(); g.moveTo(X, Y + 14 * d); g.lineTo(X - 5, Y + 7 * d); g.lineTo(X + 5, Y + 7 * d); g.fill(); } }
+    g.fillStyle = '#111'; g.beginPath(); g.arc(sx(cup.x), sy(cup.y), Math.max(5, CUP_R * (w - 80) / 8), 0, 7); g.fill();
+    g.strokeStyle = '#fff'; g.lineWidth = 2; g.beginPath(); g.moveTo(sx(cup.x), sy(cup.y)); g.lineTo(sx(cup.x), sy(cup.y) - 46); g.stroke();
+    g.fillStyle = '#c0392b'; g.beginPath(); g.moveTo(sx(cup.x), sy(cup.y) - 46); g.lineTo(sx(cup.x) + 22, sy(cup.y) - 40); g.lineTo(sx(cup.x), sy(cup.y) - 34); g.fill();
+    g.strokeStyle = '#ffd60a'; g.lineWidth = 2.5; g.setLineDash([5, 4]); g.beginPath();
+    path.forEach(([x, y], i) => { const X = sx(x), Y = sy(y); i ? g.lineTo(X, Y) : g.moveTo(X, Y); }); g.stroke(); g.setLineDash([]);
+    g.fillStyle = '#fff'; g.strokeStyle = '#333'; g.lineWidth = 1; g.beginPath(); g.arc(sx(B.x), sy(B.y), 6, 0, 7); g.fill(); g.stroke();
+    g.font = '11px system-ui'; g.fillStyle = 'rgba(255,255,255,.85)'; g.fillText('6 m to the cup', sx(0) - 10, h - 10);
+    const left = Math.hypot(B.x - cup.x, B.y - cup.y);
+    $('puttRead').textContent = state === 'holed' ? (lip ? 'In, after kissing the edge!' : 'In the cup!')
+      : (lip ? 'Lipped out: it caught the edge but was going too fast. ' : '') + 'It stopped ' + (left < 1 ? (left * 100).toFixed(0) + ' cm' : left.toFixed(1) + ' m') + ' from the cup' +
+        (left <= 0.75 ? ' (close enough to tap in).' : '.');
+  }
+  for (const id of ['pp', 'pa', 'ps']) $(id).addEventListener('input', puttDemo);
+
+  flyDemo(); windDemo(); puttDemo();
+})();
+</script>
+</body>
+</html>

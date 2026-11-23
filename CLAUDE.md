@@ -8,7 +8,7 @@ Games written with Claude Code, linked from the portal page `index.html`. Each g
 | Game 1: Car Race | `GAME1-CAR-RACE/` | `info/CAR-RACE-PLAN.html`, `info/HOW-CAR-RACE-WORKS.html` |
 | Game 2: Chintu | `GAME-2-Chintu/` | `info/CHINTU-GAME-PLAN.html`, `info/HOW-CHINTU-WORKS.html` |
 | Game 3: Javelin | `GAME-3-Javelin/` | `info/JAVELIN-GAME-PLAN.html`, `info/HOW-JAVELIN-WORKS.html` |
-| Game 4: Golf | `GAME-4-Golf/` | `info/GOLF-PLAN.html` (explainer `HOW-GOLF-WORKS.html` not written yet) |
+| Game 4: Golf | `GAME-4-Golf/` | `info/GOLF-PLAN.html`, `info/HOW-GOLF-WORKS.html` |
 | Game 5: Billiards | `GAME-5-Billiards/` | `info/BILLIARDS-GAME-PLAN.html`, `info/HOW-BILLIARDS-WORKS.html` |
 
 Javelin's tower physics is Matter.js 0.19.0 (MIT), pasted as one long line in the last `<script id="matter">` of
@@ -18,6 +18,8 @@ levels can be tested in Node. The demos in `HOW-JAVELIN-WORKS.html` copy the fli
 
 Golf (`golf.html`) has the same split: a `sim` script (course data, clubs, ball flight, bounce and roll; no DOM, so
 holes can be played in Node) and a `game-ui` script (side and top-down views, Willy, sound, menus). It uses no library.
+The demos in `HOW-GOLF-WORKS.html` copy constants from its `sim` script (G, DRAG, the CLUBS table, the fairway and
+green surfaces, CUP_R and the cup rule); change them there too if those change.
 
 Billiards (`billiards.html`, English billiards with white, yellow and red balls) has the same split: a `sim` script
 (table in real sizes but balls at twice real size (`SIZE = 2`) so they show on a phone, pockets at 1.6x (`POCKET`) so potting stays a little hard, pockets with jaws, sliding/rolling ball physics with exact hit times; no DOM) and a `game-ui`
