@@ -13,8 +13,8 @@
   (sliding then rolling, ball-on-ball, cushions, pockets, exact hit times), aiming, fine aim, Power, SHOOT, the
   aim guide with the ghost ball, and the Practice table (drag any ball anywhere and shoot; no rules).
   Phase 2: the referee (pots, in-offs, cannons, fouls, ball in hand, playing out of baulk, re-spotting the red),
-  turns and breaks, the coin toss, first to 50 / 100 / 200, a stand-in Rusty, and saving a game in progress.
-  Phase 4: Rusty, the computer player, at Easy, Medium or Hard: he tries shots in the same sim (pots, thick-to-thin
+  turns and breaks, the coin toss, first to 50 / 100 / 200, a stand-in Marker, and saving a game in progress.
+  Phase 4: Marker, the computer player, at Easy, Medium or Hard: he tries shots in the same sim (pots, thick-to-thin
   hits, paces and spin), scores each by points and the leave, looks ahead and plays safe on Hard, and has an aim
   wobble that shrinks with the level. The spin hint on the guide is shown in a game on Easy only.
   Phase 3: spin (top, screw and side, from where the cue tip hits the ball, picked on a big cue-ball picture),
@@ -26,6 +26,10 @@
   The only library is three.js r160 (MIT licence), used for the Eye view alone. It is pasted as one long line in the
   last <script id="three-src"> (plain text, run only when the Eye view is first opened); edit the other scripts, not
   that line. Without WebGL the game falls back to a hand-drawn Eye view.
+
+  Players: the computer is Marker (yellow; he was called Rusty while it was built, and the code still says cpu).
+  You pick one of 10 cartoon players first (AVATARS in game-ui; each name has at most 6 letters) and play the white
+  under that name; the choice is saved and can be changed from the title screen.
 
   Written by Claude Code (an AI coding agent): one self-contained file, no image or audio files, no network
   requests. The table, balls, cue, hand and every sound are made with code.
@@ -224,7 +228,7 @@
   .hud .hp.y{ color:#ffd60a; }
   .hud .dot, .pcard .dot{ display:inline-block; width:.75em; height:.75em; border-radius:50%; border:1px solid rgba(0,0,0,.45); flex:none; }
   @media (max-width:640px){ .hud .hp{ font-size:.75rem; padding:.1rem .45rem; } }
-  /* Archie and Rusty, one below the other on the left of the table (Top view) */
+  /* you and Marker, one below the other on the left of the table (Top view) */
   .players{ position:absolute; left:6px; top:44px; bottom:34px; width:66px; z-index:4; display:flex; flex-direction:column;
     gap:6px; justify-content:center; pointer-events:none; }
   .players[hidden]{ display:none; }
@@ -236,6 +240,18 @@
   .pcard.turn{ border-color:#ffd60a; box-shadow:0 0 10px rgba(255,214,10,.45); }
   .pcard.wait{ opacity:.7; }
   @media (max-height:330px){ .pcard canvas{ width:44px; height:48px; } .players{ width:58px; } .pcard span{ font-size:.62rem; gap:.15rem; } }
+  /* choosing your player: 10 portraits in two rows of five */
+  .avgrid{ display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); gap:.45rem; margin:.5rem 0 .3rem; }
+  .avbtn{ border:3px solid #c9d3e3; background:#04264d; border-radius:.6rem; padding:3px 3px 1px; cursor:pointer;
+    display:flex; flex-direction:column; align-items:center; transition:transform .12s, border-color .12s; }
+  .avbtn:hover, .avbtn:focus-visible{ border-color:var(--nav-yellow); transform:translateY(-2px); }
+  .avbtn.sel{ border-color:var(--archie-red); box-shadow:0 0 0 2px #fdecea; }
+  .avbtn canvas{ width:100%; aspect-ratio:56/62; border-radius:.4rem; display:block; }
+  .avbtn span{ color:#fff; font-weight:800; font-size:.8rem; padding:2px 0; }
+  .me{ display:flex; align-items:center; justify-content:center; gap:.5rem; margin:.35rem 0; }
+  .me canvas{ width:40px; height:44px; border-radius:.4rem; flex:none; }
+  .me .opt{ margin:0; }
+  @media (max-width:420px){ .avgrid{ gap:.3rem; } .avbtn span{ font-size:.68rem; } }
   #dbg{ position:absolute; left:6px; top:44px; z-index:4; background:rgba(0,0,0,.6); color:#9f9; font:11px/1.3 monospace; padding:4px 6px; border-radius:4px; pointer-events:none; white-space:pre; }
   #dbg[hidden]{ display:none; }
 
@@ -264,7 +280,7 @@
 <main>
   <div class="title-row">
     <h1>🎱 Billiards</h1>
-    <span class="phase-pill">Game 5 · Archie v Rusty</span>
+    <span class="phase-pill" id="pill">Game 5 · Billiards</span>
   </div>
 
   <div class="stage" id="stage">
@@ -280,8 +296,8 @@
       <div id="dbg" hidden></div>
       <div class="hud" id="hud" aria-live="polite"></div>
       <div class="players" id="players" hidden>
-        <div class="pcard" id="pcWhite"><canvas id="faceArchie" aria-label="Archie"></canvas><span><i class="dot" style="background:#f7f5ee"></i>Archie</span></div>
-        <div class="pcard" id="pcYellow"><canvas id="faceRusty" aria-label="Rusty"></canvas><span><i class="dot" style="background:#f2c300"></i>Rusty</span></div>
+        <div class="pcard" id="pcWhite"><canvas id="faceYou" aria-label="You"></canvas><span><i class="dot" style="background:#f7f5ee"></i><b id="nameYou">You</b></span></div>
+        <div class="pcard" id="pcYellow"><canvas id="faceMarker" aria-label="Marker"></canvas><span><i class="dot" style="background:#f2c300"></i>Marker</span></div>
       </div>
 
       <!-- Top view: the power cue -->
@@ -303,21 +319,33 @@
         </div>
       </div>
 
+      <!-- First: choose your player -->
+      <div class="overlay" id="ovAvatar" hidden>
+        <div class="panel" style="max-width:520px">
+          <div class="logo">BILLIARDS</div>
+          <h2 style="margin-top:.4rem">Choose your player</h2>
+          <p class="small">This is who you are in the game. You play the white against <strong>Marker</strong> (yellow).</p>
+          <div class="avgrid" id="avGrid"></div>
+          <p class="small">You can change your player later from the home screen.</p>
+        </div>
+      </div>
+
       <!-- Title -->
       <div class="overlay" id="ovTitle">
         <div class="panel">
           <div class="logo">BILLIARDS</div>
-          <div class="logo-sub">Archie v Rusty · English billiards</div>
+          <div class="logo-sub" id="titleSub">English billiards</div>
           <div class="balls3" aria-hidden="true"><i style="background:#f7f5ee"></i><i style="background:#f2c300"></i><i style="background:#c4161c"></i></div>
-          <p>You are <strong>Archie</strong> with the white; <strong>Rusty</strong> plays the yellow. Score with <strong>pots</strong>, <strong>in-offs</strong> and <strong>cannons</strong>; keep playing while you score.</p>
+          <div class="me"><canvas id="faceMe" aria-hidden="true"></canvas><span>You are <strong id="meName">Archie</strong></span><button class="opt" id="btnChange">Change player</button></div>
+          <p>You play the white; <strong>Marker</strong> plays the yellow. Score with <strong>pots</strong>, <strong>in-offs</strong> and <strong>cannons</strong>; keep playing while you score.</p>
           <div>
             <button class="btn-go" id="btnContinue" hidden>▶ Continue game</button>
-            <button class="btn-go" id="btnRusty">▶ Play Rusty</button>
+            <button class="btn-go" id="btnMarker">▶ Play Marker</button>
             <button class="btn-go green" id="btnPractice">Practice table</button>
             <button class="btn-go alt" id="btnSchool">Spin school</button>
           </div>
-          <div class="opts" id="levelOpts" aria-label="How good Rusty is">
-            <span class="small" style="align-self:center;font-weight:700">Rusty:</span>
+          <div class="opts" id="levelOpts" aria-label="How good Marker is">
+            <span class="small" style="align-self:center;font-weight:700">Marker:</span>
             <button class="opt" data-level="easy">Easy</button><button class="opt" data-level="medium">Medium</button><button class="opt" data-level="hard">Hard</button>
           </div>
           <div class="opts" id="targetOpts" aria-label="Points to win">
@@ -385,7 +413,7 @@
     <br><span style="font-size:.8rem">Tips: the dotted line runs to the first ball, the ring is where your ball touches it and the
     yellow line is where that ball goes; on Easy a light blue line shows where your white runs after. When your white is in hand,
     drag it anywhere in the D and play out of baulk. A potted red goes back on its spot; a potted cue ball comes back in the D on
-    its owner's turn. Rusty plays at Easy, Medium or Hard; the Spin school has five set-up shots that need top, screw or side;
+    its owner's turn. Marker plays at Easy, Medium or Hard; the Spin school has five set-up shots that need top, screw or side;
     on the Practice table you can drag any ball anywhere.</span>
   </p>
 
@@ -767,7 +795,7 @@ function makeBSIM() {
     return res;
   }
 
-  /* ---------- A match: Archie (white) against Rusty (yellow), first to the target ---------- */
+  /* ---------- A match: you (white) against Marker (yellow), first to the target ---------- */
   function newMatch(target, first, level) {
     const red = ball('red', SPOT.billiard.x, SPOT.billiard.y), w = ball('white', 0, 0), y = ball('yellow', 0, 0);
     w.on = y.on = false;               // both whites start in hand
@@ -798,12 +826,12 @@ function makeBSIM() {
     return res;
   }
 
-  /* ---------- Rusty, the computer player (Phase 4) ----------
-     Rusty makes a list of shots from where his ball lies (or, in hand, from the best spots in the D): a pot of each
+  /* ---------- Marker, the computer player (Phase 4) ----------
+     Marker makes a list of shots from where his ball lies (or, in hand, from the best spots in the D): a pot of each
      ball into each pocket it lines up with, and hits from thick to thin on each ball (for cannons and in-offs), at a
      few paces and with spin. He plays each one in this same sim, so his planning matches what really happens, and
      scores it: the points it makes, plus how good the leave is (an easy next shot for him if he scores; on Hard, a
-     hard one for Archie if he does not, which is safety play). On Hard he also looks one shot further ahead for his
+     hard one for you if he does not, which is safety play). On Hard he also looks one shot further ahead for his
      best few shots. Then he plays the best one with a wobble on his aim and pace: big on Easy, small on Hard.
      The work is done a few shots at a time (step), so the screen never freezes while he thinks. */
   const LEVELS = {
@@ -950,7 +978,7 @@ function makeBSIM() {
     };
     return plan;
   }
-  // the shot Rusty actually plays: his choice, with the wobble of his level on the aim and pace
+  // the shot Marker actually plays: his choice, with the wobble of his level on the aim and pace
   function cpuShot(plan, rnd) {
     rnd = rnd || Math.random;
     const b = plan.best(), P = plan.level;
@@ -1155,7 +1183,7 @@ window.addEventListener('DOMContentLoaded', () => {
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const DEG = Math.PI / 180;
   const NAME = { white: 'White', yellow: 'Yellow', red: 'Red' };
-  const PLAYER = { white: 'Archie', yellow: 'Rusty' };
+  const PLAYER = { white: 'Archie', yellow: 'Marker' };   // white is the player you chose (applyAvatar)
   const lerp = (a, b, k) => a + (b - a) * k;
   const ease = k => k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
   const angDiff = (a, b) => Math.atan2(Math.sin(b - a), Math.cos(b - a));
@@ -1174,7 +1202,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
   /* ---------------- Saving (guarded: works in private windows) ---------------- */
   const SAVE_KEY = 'billiards.save.v1';
-  const save = { sound: true, power: 0.4, target: 50, match: null, stats: { played: 0, won: 0, bestBreak: 0, rustyBest: 0 }, school: [] };
+  const save = { sound: true, power: 0.4, target: 50, match: null, stats: { played: 0, won: 0, bestBreak: 0, rustyBest: 0 }, school: [], avatar: null };   // rustyBest: Marker's best break (saved under his old name)
   try { const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); if (s && typeof s === 'object') Object.assign(save, s); } catch (e) {}
   if (!Array.isArray(save.school)) save.school = [];
   if (![50, 100, 200].includes(save.target)) save.target = 50;
@@ -1203,7 +1231,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const cr = $('corner').getBoundingClientRect(), cb = cr.bottom - r.top;
     topPx = Math.max(40, cb * LH / cssH + 4);
     cornerLeft = (cr.left - r.left) * LW / cssW;
-    // Top view: room on the left for Archie and Rusty, and on the right for the power cue
+    // Top view: room on the left for you and Marker, and on the right for the power cue
     const side = gaugeRoom(), gl = side && !$('players').hidden ? ($('players').getBoundingClientRect().width + 10) * LW / cssW : 0, gr = side ? 54 * LW / cssW : 0;
     const botPx = 30, availW = LW - 16 - gl - gr, availH = LH - topPx - botPx;
     K = Math.min(availW / (L + 2 * FRAME), availH / (W + 2 * FRAME));
@@ -1280,7 +1308,7 @@ window.addEventListener('DOMContentLoaded', () => {
   let screen = 'title', paused = false;
   const cueBall = () => BS.find(game.st, game.cue);
   const isMatch = () => game.mode === 'match' && game.m;
-  const humanAim = () => game.phase === 'aim';                      // 'aim' is only ever Archie's (or the practice) turn
+  const humanAim = () => game.phase === 'aim';                      // 'aim' is only ever your turn (or a practice one)
   const inHandNow = () => isMatch() && game.m.fromHand && game.m.turn === 'white';
   function aimAtBall(id) { const c = cueBall(), o = BS.find(game.st, id); if (c && o && o.on) game.aim = Math.atan2(o.y - c.y, o.x - c.x); }
   function aimAtNearest() {
@@ -1333,7 +1361,7 @@ window.addEventListener('DOMContentLoaded', () => {
     updateControls();
   }
 
-  /* ---------------- A match against Rusty ---------------- */
+  /* ---------------- A match against Marker ---------------- */
   const snapshot = m => JSON.parse(JSON.stringify(m));
   function storeMatch() { save.match = game.m && !game.m.over ? snapshot(game.m) : null; store(); }
   function startMatch(first) {
@@ -1342,7 +1370,7 @@ window.addEventListener('DOMContentLoaded', () => {
     game.texts = []; game.report = ''; game.view = 'top'; game.handTop = false; game.next = null; game.spin = noSpin();
     storeMatch();
     showScreen('play');
-    banner('Coin toss: ' + (f === 'white' ? 'you break' : 'Rusty breaks'), 'First to ' + save.target, 2.0);
+    banner('Coin toss: ' + (f === 'white' ? 'you break' : 'Marker breaks'), 'First to ' + save.target, 2.0);
     game.phase = 'between'; game.betweenT = -0.9;   // let the coin toss show, then the first turn
     game.st = BS.newState(game.m.balls);
     updateControls();
@@ -1367,7 +1395,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if (m.turn === 'yellow') {
       game.phase = 'cpu';
       game.cpu = { plan: BS.cpuPlanner(m, m.level, Math.random), t: 0, done: false, turnT: 0, from: game.aim, to: game.aim, spin: noSpin() };
-      banner("Rusty's turn", m.fromHand ? 'Ball in hand' : '', 1.1);
+      banner("Marker's turn", m.fromHand ? 'Ball in hand' : '', 1.1);
     } else {
       game.phase = 'aim'; game.power = clamp(save.power, 0.01, 1);
       banner('Your turn', m.fromHand ? 'Ball in hand: drag the white anywhere in the D' : (m.brk ? 'Break ' + m.brk : ''), m.fromHand ? 2.2 : 1.1);
@@ -1381,9 +1409,9 @@ window.addEventListener('DOMContentLoaded', () => {
     st.played++; if (won) st.won++;
     st.bestBreak = Math.max(st.bestBreak, m.best.white); st.rustyBest = Math.max(st.rustyBest, m.best.yellow);
     save.match = null; store();
-    $('endTitle').textContent = won ? '🏆 You win!' : 'Rusty wins';
-    $('endScore').textContent = 'Archie ' + m.score.white + ' – ' + m.score.yellow + ' Rusty';
-    $('endLine').textContent = 'First to ' + m.target + ' against ' + levelName(m.level) + ' Rusty · ' + m.shots + ' shots · your best break ' + m.best.white + ', Rusty\'s ' + m.best.yellow +
+    $('endTitle').textContent = won ? '🏆 ' + PLAYER.white + ' wins!' : 'Marker wins';
+    $('endScore').textContent = PLAYER.white + ' ' + m.score.white + ' – ' + m.score.yellow + ' Marker';
+    $('endLine').textContent = 'First to ' + m.target + ' against ' + levelName(m.level) + ' Marker · ' + m.shots + ' shots · your best break ' + m.best.white + ', Marker\'s ' + m.best.yellow +
       (m.best.white && m.best.white >= st.bestBreak ? ' (your best ever!)' : '');
     (won ? SFX.win : SFX.lose)();
     game.phase = 'over';
@@ -1417,7 +1445,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const topView = viewNow() === 'top';
     $('powerBox').hidden = $('shootBtn').hidden = topView;
     $('pullCue').hidden = !(topView && screen === 'play');
-    $('players').hidden = !(topView && (screen === 'play' || screen === 'pause') && isMatch());   // only in a game against Rusty
+    $('players').hidden = !(topView && (screen === 'play' || screen === 'pause') && isMatch());   // only in a game against Marker
     const turn = isMatch() ? (game.m.over ? null : game.m.turn) : 'white';
     $('pcWhite').classList.toggle('turn', turn === 'white'); $('pcYellow').classList.toggle('turn', turn === 'yellow');
     $('pcWhite').classList.toggle('wait', turn === 'yellow'); $('pcYellow').classList.toggle('wait', turn === 'white');
@@ -1431,54 +1459,143 @@ window.addEventListener('DOMContentLoaded', () => {
     if (!$('spinPop').hidden) { drawSpinBall($('spinBig'), spinBigSize(), true); spinWords(); }
   }
 
-  /* ---------------- Archie and Rusty: head-and-shoulders portraits, drawn in code ----------------
-     Archie: short dark hair, white shirt, black waistcoat, red bow tie. Rusty: red curly hair and freckles, white
-     shirt, maroon waistcoat, yellow bow tie (as in the plan). */
-  function drawFace(el, who) {
-    const w = 56, h = 62, dpr = Math.min(window.devicePixelRatio || 1, 3);
-    el.width = Math.round(w * dpr); el.height = Math.round(h * dpr);
-    const c = el.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const rusty = who === 'rusty', skin = '#f1c49c', skinDark = '#d9a47a';
+  /* ---------------- The players: head-and-shoulders portraits, drawn in code ----------------
+     First you choose one of 10 cartoon players (each name has at most 6 letters); you then play the white under that
+     name. Marker, the computer (yellow), has red curly hair and freckles, a maroon waistcoat and a yellow bow tie.
+     Everyone wears a white shirt, a waistcoat and a bow tie. hair: the style; fem: eyelashes and lip colour;
+     extra: moustache, goatee, freckles, earrings, hoops or a flower. */
+  const AVATARS = [
+    { id: 'archie', name: 'Archie', skin: '#f1c49c', skinDark: '#d9a47a', hair: 'short', hairCol: '#2b1d14', coat: '#1d1d22', tie: '#c4161c', bg: '#3a5a46' },
+    { id: 'kumar', name: 'Kumar', skin: '#c68a5e', skinDark: '#a06a43', hair: 'side', hairCol: '#16110e', coat: '#1f3a68', tie: '#ff8a3d', bg: '#5a4a2e', extra: 'mous' },
+    { id: 'lee', name: 'Lee', skin: '#f3d3ad', skinDark: '#d8b088', hair: 'fringe', hairCol: '#141414', coat: '#1d4d3a', tie: '#1aa6a6', bg: '#3d4a63' },
+    { id: 'jordan', name: 'Jordan', skin: '#7a4a2c', skinDark: '#5c361f', hair: 'crop', hairCol: '#120c09', coat: '#4a4f5a', tie: '#9b5fdf', bg: '#3a5a46', extra: 'goatee' },
+    { id: 'marcos', name: 'Marcos', skin: '#d39a6a', skinDark: '#b07a4e', hair: 'wavy', hairCol: '#3a2416', coat: '#5a3a22', tie: '#2e9e4f', bg: '#5a3a46', extra: 'stache' },
+    { id: 'linda', name: 'Linda', skin: '#f6d2b8', skinDark: '#dcae90', hair: 'long', hairCol: '#e2b84f', brow: '#a07a2a', coat: '#1a6b6b', tie: '#e0457b', bg: '#3d4a63', fem: true },
+    { id: 'maya', name: 'Maya', skin: '#bf8259', skinDark: '#9c643f', hair: 'part', hairCol: '#17100c', coat: '#6b2a5e', tie: '#f2a900', bg: '#2e5a5a', fem: true, extra: 'studs' },
+    { id: 'zen', name: 'Zen', skin: '#f5d8b6', skinDark: '#dab38c', hair: 'bob', hairCol: '#121212', coat: '#8f1d24', tie: '#e8c35a', bg: '#3a5a46', fem: true },
+    { id: 'rene', name: 'Rene', skin: '#6e4127', skinDark: '#52301c', hair: 'afro', hairCol: '#1a120d', coat: '#4b2a7a', tie: '#2ec4b6', bg: '#5a4a2e', fem: true, extra: 'hoops' },
+    { id: 'maria', name: 'Maria', skin: '#dba57a', skinDark: '#bb845a', hair: 'curls', hairCol: '#3b2214', coat: '#1f5a3a', tie: '#1f6fd1', bg: '#5a3a46', fem: true, extra: 'flower' },
+  ];
+  const MARKER = { id: 'marker', name: 'Marker', skin: '#f1c49c', skinDark: '#d9a47a', hair: 'curly', hairCol: '#c4501b', brow: '#a8400f', coat: '#7a1f2b', tie: '#f2c300', bg: '#3d4a63', extra: 'freckles' };
+  const BACK_HAIR = { long: 1, part: 1, bob: 1, afro: 1, curls: 1 };   // hair that hides the ears
+  function drawFace(el, a, cw = 56) {
+    const w = 56, h = 62, k = cw / w, dpr = Math.min(window.devicePixelRatio || 1, 3);
+    el.width = Math.round(cw * dpr); el.height = Math.round(h * k * dpr);
+    const c = el.getContext('2d'); c.setTransform(dpr * k, 0, 0, dpr * k, 0, 0);
+    const { skin, skinDark, hairCol: hc } = a, hx = w / 2, hy = 25;
     const bg = c.createRadialGradient(w / 2, h * 0.4, 4, w / 2, h * 0.45, w * 0.8);
-    bg.addColorStop(0, rusty ? '#3d4a63' : '#3a5a46'); bg.addColorStop(1, '#151c28');
+    bg.addColorStop(0, a.bg); bg.addColorStop(1, '#151c28');
     c.fillStyle = bg; c.fillRect(0, 0, w, h);
     const el2 = (x, y, rx, ry, col, rot = 0) => { c.fillStyle = col; c.beginPath(); c.ellipse(x, y, rx, ry, rot, 0, 7); c.fill(); };
+    const blobs = (pts, col = hc) => { c.fillStyle = col; for (const [x, y, r] of pts) { c.beginPath(); c.arc(hx + x, hy + y, r, 0, 7); c.fill(); } };
+    const cap = (yl, yr) => {   // hair over the top of the head, down to yl on the left and yr on the right
+      c.beginPath(); c.moveTo(hx - 13.5, hy + yl); c.quadraticCurveTo(hx - 15, hy - 18, hx, hy - 17); c.quadraticCurveTo(hx + 15, hy - 18, hx + 13.5, hy + yr);
+    };
+    // hair that falls behind the head and onto the shoulders
+    c.fillStyle = hc;
+    if (a.hair === 'long' || a.hair === 'part') {
+      c.beginPath(); c.moveTo(hx - 15, hy + 22); c.lineTo(hx - 16, hy - 4); c.quadraticCurveTo(hx - 16, hy - 19, hx, hy - 19);
+      c.quadraticCurveTo(hx + 16, hy - 19, hx + 16, hy - 4); c.lineTo(hx + 15, hy + 22); c.closePath(); c.fill();
+    } else if (a.hair === 'bob') {
+      c.beginPath(); c.moveTo(hx - 16, hy + 9); c.lineTo(hx - 16, hy - 4); c.quadraticCurveTo(hx - 16, hy - 19, hx, hy - 19);
+      c.quadraticCurveTo(hx + 16, hy - 19, hx + 16, hy - 4); c.lineTo(hx + 16, hy + 9); c.quadraticCurveTo(hx, hy + 12, hx - 16, hy + 9); c.fill();
+    } else if (a.hair === 'afro') blobs([[0, -10, 17], [-12, -2, 10], [12, -2, 10], [-13, 7, 7], [13, 7, 7]]);
+    else if (a.hair === 'curls') blobs([[0, -12, 13], [-13, -4, 7], [13, -4, 7], [-14, 5, 6.5], [14, 5, 6.5], [-14, 14, 6], [14, 14, 6], [-12, 21, 5], [12, 21, 5]]);
     // shoulders: white shirt, then the waistcoat in a V, the collar and the bow tie
     el2(w / 2, h + 6, 27, 20, '#f4f1ea');
-    c.fillStyle = rusty ? '#7a1f2b' : '#1d1d22';
+    c.fillStyle = a.coat;
     c.beginPath(); c.moveTo(3, h); c.quadraticCurveTo(6, h - 16, 18, h - 19); c.lineTo(w / 2 - 2, h); c.closePath(); c.fill();
     c.beginPath(); c.moveTo(w - 3, h); c.quadraticCurveTo(w - 6, h - 16, w - 18, h - 19); c.lineTo(w / 2 + 2, h); c.closePath(); c.fill();
     c.fillStyle = '#c9a13b'; for (const y of [h - 7, h - 2]) { c.beginPath(); c.arc(w / 2 + 4, y, 1, 0, 7); c.fill(); }
     c.fillStyle = skinDark; c.fillRect(w / 2 - 5, h - 26, 10, 9);                         // neck
     c.fillStyle = '#fff'; c.beginPath(); c.moveTo(w / 2 - 8, h - 19); c.lineTo(w / 2, h - 14); c.lineTo(w / 2 + 8, h - 19); c.lineTo(w / 2 + 6, h - 21); c.lineTo(w / 2, h - 17); c.lineTo(w / 2 - 6, h - 21); c.closePath(); c.fill();
-    const tie = rusty ? '#f2c300' : '#c4161c';
-    c.fillStyle = tie; c.beginPath(); c.moveTo(w / 2, h - 15); c.lineTo(w / 2 - 8, h - 19); c.lineTo(w / 2 - 8, h - 11); c.closePath(); c.fill();
+    c.fillStyle = a.tie; c.beginPath(); c.moveTo(w / 2, h - 15); c.lineTo(w / 2 - 8, h - 19); c.lineTo(w / 2 - 8, h - 11); c.closePath(); c.fill();
     c.beginPath(); c.moveTo(w / 2, h - 15); c.lineTo(w / 2 + 8, h - 19); c.lineTo(w / 2 + 8, h - 11); c.closePath(); c.fill();
-    el2(w / 2, h - 15, 2.4, 2.4, rusty ? '#c99a00' : '#8f0f14');
+    el2(w / 2, h - 15, 2.4, 2.4, a.tie); el2(w / 2, h - 15, 2.4, 2.4, 'rgba(0,0,0,.3)');
     // head and ears
-    const hx = w / 2, hy = 25;
-    el2(hx - 13, hy + 2, 3, 4.5, skinDark); el2(hx + 13, hy + 2, 3, 4.5, skinDark);
+    if (!BACK_HAIR[a.hair]) { el2(hx - 13, hy + 2, 3, 4.5, skinDark); el2(hx + 13, hy + 2, 3, 4.5, skinDark); }
     el2(hx, hy, 13, 15, skin);
-    // hair
-    if (rusty) {
-      c.fillStyle = '#c4501b';
-      for (const [x, y, r] of [[-11, -8, 5], [-6, -13, 5.5], [0, -15, 5.5], [6, -13, 5.5], [11, -8, 5], [-13, -2, 4], [13, -2, 4], [-3, -10, 4], [4, -10, 4]]) { c.beginPath(); c.arc(hx + x, hy + y, r, 0, 7); c.fill(); }
-      c.fillStyle = '#a8400f'; for (const [x, y] of [[-8, -12], [2, -15], [9, -10], [-12, -5]]) { c.beginPath(); c.arc(hx + x, hy + y, 1.6, 0, 7); c.fill(); }
-    } else {
-      c.fillStyle = '#2b1d14';
+    // hair on top
+    c.fillStyle = hc;
+    const shortHair = () => {
       c.beginPath(); c.moveTo(hx - 13.5, hy - 1); c.quadraticCurveTo(hx - 14, hy - 17, hx, hy - 16.5); c.quadraticCurveTo(hx + 14, hy - 17, hx + 13.5, hy - 1);
       c.quadraticCurveTo(hx + 10, hy - 9, hx + 2, hy - 10); c.quadraticCurveTo(hx - 6, hy - 6, hx - 13.5, hy - 1); c.fill();
+    };
+    switch (a.hair) {
+      case 'short': shortHair(); break;
+      case 'side':
+        shortHair(); blobs([[-6, -14, 4], [0, -15.5, 4], [6, -14, 4]]);
+        c.strokeStyle = 'rgba(255,255,255,.22)'; c.lineWidth = 0.9; c.beginPath(); c.moveTo(hx - 5, hy - 17); c.quadraticCurveTo(hx - 7, hy - 13, hx - 9, hy - 8); c.stroke(); break;
+      case 'curly':
+        blobs([[-11, -8, 5], [-6, -13, 5.5], [0, -15, 5.5], [6, -13, 5.5], [11, -8, 5], [-13, -2, 4], [13, -2, 4], [-3, -10, 4], [4, -10, 4]]);
+        blobs([[-8, -12, 1.6], [2, -15, 1.6], [9, -10, 1.6], [-12, -5, 1.6]], '#a8400f'); break;
+      case 'fringe':
+        cap(1, 1); c.lineTo(hx + 12, hy - 6);
+        for (let i = 0; i <= 8; i++) c.lineTo(hx + 10 - i * 2.5, hy - (i % 2 ? 9 : 7));
+        c.lineTo(hx - 12, hy - 6); c.closePath(); c.fill(); break;
+      case 'crop':
+        c.beginPath(); c.moveTo(hx - 13, hy - 3); c.quadraticCurveTo(hx - 13.5, hy - 16, hx, hy - 15.8); c.quadraticCurveTo(hx + 13.5, hy - 16, hx + 13, hy - 3);
+        c.quadraticCurveTo(hx + 11, hy - 10, hx, hy - 10.5); c.quadraticCurveTo(hx - 11, hy - 10, hx - 13, hy - 3); c.fill(); break;
+      case 'wavy': shortHair(); blobs([[-10, -12, 4.5], [-4, -15, 4.5], [2, -15.5, 4.5], [8, -13.5, 4.5], [12, -8, 3.5]]); break;
+      case 'long': cap(5, 5); c.quadraticCurveTo(hx + 11, hy - 6, hx + 4, hy - 9); c.quadraticCurveTo(hx - 6, hy - 4, hx - 13.5, hy + 5); c.fill(); break;
+      case 'curls':
+        cap(5, 5); c.quadraticCurveTo(hx + 6, hy - 4, hx - 4, hy - 9); c.quadraticCurveTo(hx - 11, hy - 6, hx - 13.5, hy + 5); c.fill();
+        blobs([[-8, -14, 3.5], [-2, -16, 3.5], [5, -15, 3.5], [11, -10, 3.5]]); break;
+      case 'part':
+        c.beginPath(); c.moveTo(hx, hy - 11); c.quadraticCurveTo(hx - 9, hy - 11, hx - 13.5, hy + 4); c.lineTo(hx - 14, hy - 4);
+        c.quadraticCurveTo(hx - 14, hy - 17, hx, hy - 17); c.quadraticCurveTo(hx + 14, hy - 17, hx + 14, hy - 4); c.lineTo(hx + 13.5, hy + 4);
+        c.quadraticCurveTo(hx + 9, hy - 11, hx, hy - 11); c.fill(); break;
+      case 'bob': cap(2, 2); c.lineTo(hx + 11, hy - 7); c.lineTo(hx - 11, hy - 7); c.closePath(); c.fill(); break;
+      case 'afro':
+        c.beginPath(); c.moveTo(hx - 13, hy - 2); c.quadraticCurveTo(hx - 12, hy - 15, hx, hy - 14); c.quadraticCurveTo(hx + 12, hy - 15, hx + 13, hy - 2);
+        c.quadraticCurveTo(hx + 10, hy - 10, hx, hy - 10); c.quadraticCurveTo(hx - 10, hy - 10, hx - 13, hy - 2); c.fill(); break;
     }
     // eyebrows, eyes, nose, smile
-    c.strokeStyle = rusty ? '#a8400f' : '#2b1d14'; c.lineWidth = 1.4; c.lineCap = 'round';
+    c.strokeStyle = a.brow || hc; c.lineWidth = 1.4; c.lineCap = 'round';
     for (const sx of [-1, 1]) { c.beginPath(); c.moveTo(hx + sx * 3, hy - 5); c.lineTo(hx + sx * 8, hy - 6); c.stroke(); }
     for (const sx of [-1, 1]) { el2(hx + sx * 5.2, hy - 1, 2.2, 2.4, '#fff'); el2(hx + sx * 5.2, hy - 0.8, 1.3, 1.5, '#2a2f45'); }
+    if (a.fem) { c.strokeStyle = '#1a1a1a'; c.lineWidth = 0.9; for (const sx of [-1, 1]) { c.beginPath(); c.moveTo(hx + sx * 7, hy - 2.2); c.lineTo(hx + sx * 8.8, hy - 3.6); c.stroke(); } }
     c.strokeStyle = skinDark; c.lineWidth = 1.2; c.beginPath(); c.moveTo(hx, hy); c.quadraticCurveTo(hx + 2, hy + 4, hx - 0.5, hy + 5); c.stroke();
-    c.strokeStyle = '#a5473c'; c.lineWidth = 1.4; c.beginPath(); c.arc(hx, hy + 6, 4.5, 0.35, Math.PI - 0.35); c.stroke();
+    if (a.extra === 'mous' || a.extra === 'stache' || a.extra === 'goatee') {
+      const t = a.extra === 'mous' ? 1.5 : 1.1;
+      el2(hx - 2.7, hy + 4, 3.2, t, hc, -0.15); el2(hx + 2.7, hy + 4, 3.2, t, hc, 0.15);
+    }
+    if (a.fem) { c.fillStyle = '#c2405a'; c.beginPath(); c.arc(hx, hy + 6, 4.3, 0.3, Math.PI - 0.3); c.closePath(); c.fill(); }
+    else { c.strokeStyle = '#a5473c'; c.lineWidth = 1.4; c.beginPath(); c.arc(hx, hy + 6, 4.5, 0.35, Math.PI - 0.35); c.stroke(); }
     el2(hx - 8, hy + 4, 2.4, 1.6, 'rgba(230,120,110,.35)'); el2(hx + 8, hy + 4, 2.4, 1.6, 'rgba(230,120,110,.35)');
-    if (rusty) { c.fillStyle = '#b8754a'; for (const [x, y] of [[-9, 2], [-7, 4], [-10, 5], [-6, 1.5], [9, 2], [7, 4], [10, 5], [6, 1.5], [-2, 2], [2, 2]]) { c.beginPath(); c.arc(hx + x, hy + y, 0.7, 0, 7); c.fill(); } }
+    if (a.extra === 'goatee') el2(hx, hy + 12.6, 2.6, 1.8, hc);
+    if (a.extra === 'freckles') blobs([[-9, 2, 0.7], [-7, 4, 0.7], [-10, 5, 0.7], [-6, 1.5, 0.7], [9, 2, 0.7], [7, 4, 0.7], [10, 5, 0.7], [6, 1.5, 0.7], [-2, 2, 0.7], [2, 2, 0.7]], '#b8754a');
+    if (a.extra === 'studs') { el2(hx - 13, hy + 6, 1.4, 1.4, '#f2c300'); el2(hx + 13, hy + 6, 1.4, 1.4, '#f2c300'); }
+    if (a.extra === 'hoops') { c.strokeStyle = '#f2c300'; c.lineWidth = 1.1; for (const sx of [-1, 1]) { c.beginPath(); c.arc(hx + sx * 13.2, hy + 8.5, 2.7, 0, 7); c.stroke(); } }
+    if (a.extra === 'flower') {
+      for (let i = 0; i < 5; i++) { const t = i * 1.2566; el2(hx + 11 + Math.cos(t) * 2.4, hy - 11 + Math.sin(t) * 2.4, 2, 2, '#e0303a'); }
+      el2(hx + 11, hy - 11, 1.3, 1.3, '#ffd60a');
+    }
   }
-  drawFace($('faceArchie'), 'archie'); drawFace($('faceRusty'), 'rusty');
+
+  /* choosing your player: the first screen until a player is picked, then "Change player" on the title */
+  const avatarNow = () => AVATARS.find(a => a.id === save.avatar) || AVATARS[0];
+  function applyAvatar() {
+    const a = avatarNow();
+    PLAYER.white = a.name;
+    drawFace($('faceYou'), a); $('faceYou').setAttribute('aria-label', a.name); $('nameYou').textContent = a.name;
+    $('meName').textContent = a.name;
+    $('pill').textContent = 'Game 5 · ' + (save.avatar ? a.name : 'You') + ' v Marker';
+    $('titleSub').textContent = a.name + ' v Marker · English billiards';
+  }
+  function avatarGrid() {
+    const g = $('avGrid');
+    if (!g.childElementCount) for (const a of AVATARS) {
+      const b = document.createElement('button'), cvs = document.createElement('canvas'), sp = document.createElement('span');
+      b.className = 'avbtn'; b.dataset.av = a.id; b.setAttribute('aria-label', 'Play as ' + a.name); sp.textContent = a.name;
+      b.append(cvs, sp); g.append(b);
+      drawFace(cvs, a, 84);
+      b.onclick = () => { SFX.click(); save.avatar = a.id; store(); applyAvatar(); showScreen('title'); };
+    }
+    for (const b of g.children) b.classList.toggle('sel', b.dataset.av === save.avatar);
+  }
+  $('btnChange').onclick = () => { SFX.click(); showScreen('avatar'); };
+  drawFace($('faceMarker'), MARKER); applyAvatar();
 
   /* ---------------- Top view: pull the power cue down to set the power, let go to shoot ----------------
      The further down it is pulled the harder the shot; the cue on the table draws back with it. Pushing it back to
@@ -1691,31 +1808,32 @@ window.addEventListener('DOMContentLoaded', () => {
   cv.addEventListener('pointercancel', endPointer);
 
   /* ---------------- Screens ---------------- */
-  const OVS = { title: 'ovTitle', pause: 'ovPause', end: 'ovEnd' };
+  const OVS = { avatar: 'ovAvatar', title: 'ovTitle', pause: 'ovPause', end: 'ovEnd' };
   function showScreen(name) {
     screen = name;
     for (const k in OVS) $(OVS[k]).hidden = k !== name;
     $('wrap').classList.toggle('menu', name !== 'play');   // phones: the game area grows to fit the menu (see the CSS)
     controls.hidden = !(name === 'play' || name === 'pause');
     $('pauseBtn').hidden = name !== 'play';
-    $('homeBtn').hidden = name === 'title';
+    $('homeBtn').hidden = name === 'title' || name === 'avatar';
     $('btnReset2').hidden = !!isMatch();
     $('pauseNote').textContent = isMatch() ? 'The game is saved after every shot, so you can leave and carry on later.' : '';
     paused = name === 'pause';
     if (name === 'title') titleInfo();
+    if (name === 'avatar') avatarGrid();
     resize();
     if (name === 'play') { try { wrap.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) {} }
   }
   function titleInfo() {
     const m = save.match;
     $('btnContinue').hidden = !m;
-    if (m) $('btnContinue').textContent = '▶ Continue: Archie ' + m.score.white + ' – ' + m.score.yellow + ' Rusty (' + levelName(m.level) + ')';
+    if (m) $('btnContinue').textContent = '▶ Continue: ' + PLAYER.white + ' ' + m.score.white + ' – ' + m.score.yellow + ' Marker (' + levelName(m.level) + ')';
     for (const b of document.querySelectorAll('[data-level]')) b.classList.toggle('sel', b.dataset.level === save.level);
     for (const b of document.querySelectorAll('[data-target]')) b.classList.toggle('sel', +b.dataset.target === save.target);
     const s = save.stats, parts = [];
     if (s.played) parts.push('Played ' + s.played + ', won ' + s.won);
     if (s.bestBreak) parts.push('your best break ' + s.bestBreak);
-    if (s.rustyBest) parts.push("Rusty's best " + s.rustyBest);
+    if (s.rustyBest) parts.push("Marker's best " + s.rustyBest);
     const made = save.school.filter(Boolean).length;
     if (made) parts.push('Spin school ' + made + ' of ' + BS.DRILLS.length + ' made');
     $('titleStats').textContent = parts.join(' · ');
@@ -1725,7 +1843,7 @@ window.addEventListener('DOMContentLoaded', () => {
     // a match is saved after every shot; leaving mid-shot keeps the position from before that shot
     game.phase = 'aim'; game.cpu = null; game.mode = 'practice'; game.m = null; game.next = null; game.camFix = null;
     $('spinPop').hidden = true;
-    showScreen('title'); $('homeBtn').blur();
+    showScreen(save.avatar ? 'title' : 'avatar'); $('homeBtn').blur();
   }
   function pause() { if (screen === 'play') showScreen('pause'); }
   $('homeBtn').onclick = goHome;
@@ -1734,7 +1852,7 @@ window.addEventListener('DOMContentLoaded', () => {
   $('btnReset2').onclick = () => { showScreen('play'); resetBalls(); };
   $('btnPractice').onclick = () => { SFX.click(); startPractice(); };
   $('btnSchool').onclick = () => { SFX.click(); const n = BS.DRILLS.findIndex((d, i) => !save.school[i]); startSchool(n < 0 ? 0 : n); };
-  $('btnRusty').onclick = () => { SFX.click(); startMatch(); };
+  $('btnMarker').onclick = () => { SFX.click(); startMatch(); };
   $('btnContinue').onclick = () => { SFX.click(); continueMatch(); };
   $('btnAgain').onclick = () => { SFX.click(); startMatch(); };
   $('btnEndHome').onclick = () => { SFX.click(); goHome(); };
@@ -2054,7 +2172,7 @@ window.addEventListener('DOMContentLoaded', () => {
   }
   function cuePull() {
     if (game.phase === 'aim') return 0.03 + game.power * 0.17;
-    if (game.phase === 'cpu') return 0.05 + 0.03 * Math.sin(performance.now() / 260);   // Rusty lines up
+    if (game.phase === 'cpu') return 0.05 + 0.03 * Math.sin(performance.now() / 260);   // Marker lines up
     if (game.phase === 'strike') return (0.03 + game.power * 0.17) * (1 - clamp(game.strikeT / 0.1, 0, 1));
     return null;
   }
@@ -2109,7 +2227,7 @@ window.addEventListener('DOMContentLoaded', () => {
   // elements in the same size as the Home button; when there is no room they shorten, then drop the last pill.
   function hudPill(text, cls, dot) { return '<span class="hp' + (cls ? ' ' + cls : '') + '">' + (dot ? '<i class="dot" style="background:' + COL[dot][1] + '"></i>' : '') + text + '</span>'; }
   function hudVersions() {
-    if (screen === 'title') return [''];
+    if (screen === 'title' || screen === 'avatar') return [''];
     const deg = ((game.aim / DEG) % 360 + 360) % 360;
     if (isMatch()) {
       const m = game.m, p = id => hudPill(PLAYER[id] + ' ' + m.score[id], m.turn === id && !m.over ? 'turn' : '', id);
@@ -2139,7 +2257,7 @@ window.addEventListener('DOMContentLoaded', () => {
     // shot report (or a warning) along the bottom
     let msg = game.phase === 'roll' || game.phase === 'strike' ? '' : game.report, warn = false;
     if (game.phase === 'aim' && game.warn) { msg = game.warn; warn = true; }
-    else if (game.phase === 'cpu') msg = levelName(game.m.level) + ' Rusty is thinking…';
+    else if (game.phase === 'cpu') msg = levelName(game.m.level) + ' Marker is thinking…';
     if (msg) {
       ctx.font = '600 12px system-ui, sans-serif'; ctx.textBaseline = 'middle';
       let s = msg; while (ctx.measureText(s).width > LW - 40 && s.length > 10) s = s.slice(0, -4) + '…';
@@ -2249,7 +2367,7 @@ window.addEventListener('DOMContentLoaded', () => {
     c.fillStyle = g; c.fillRect(0, 0, LW, LH);
     const lp = proj(0, L / 2, 0);
     if (lp) { const lg = c.createRadialGradient(lp[0], lp[1], 0, lp[0], lp[1], LW * 0.7); lg.addColorStop(0, 'rgba(255,214,150,.2)'); lg.addColorStop(1, 'rgba(255,214,150,0)'); c.fillStyle = lg; c.fillRect(0, 0, LW, LH); }
-    if (screen === 'title') return;
+    if (screen === 'title' || screen === 'avatar') return;
     // the four rails: wood from the cushion out to the frame edge, with a green cushion strip along the inside
     const rail = (k, w) => k === 'L' ? [[-HW, 0, H], [-HW, L, H], [-HW - w, L + w, H], [-HW - w, -w, H]]
       : k === 'R' ? [[HW, 0, H], [HW, L, H], [HW + w, L + w, H], [HW + w, -w, H]]
@@ -2428,7 +2546,7 @@ window.addEventListener('DOMContentLoaded', () => {
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.drawImage(tableCv, 0, 0);
       ctx.setTransform(scale, 0, 0, scale, 0, 0);
-      if (screen === 'title') return;
+      if (screen === 'title' || screen === 'avatar') return;
       if (isMatch() && game.m.fromHand && (game.phase === 'aim' || game.phase === 'cpu')) drawBaulkShade();
       drawTarget();
       if (game.phase === 'aim' && !game.drag) drawGuide();
@@ -2456,7 +2574,7 @@ window.addEventListener('DOMContentLoaded', () => {
   requestAnimationFrame(frame);
 
   /* ---------------- Start ---------------- */
-  showScreen('title');
+  showScreen(save.avatar ? 'title' : 'avatar');   // the first step: choose your player
   if (Q.has('school')) startSchool(clamp((parseInt(Q.get('drill'), 10) || 1) - 1, 0, BS.DRILLS.length - 1));
   else if (Q.has('practice')) startPractice();
   else if (Q.has('match')) startMatch(['white', 'yellow'].includes(Q.get('first')) ? Q.get('first') : null);

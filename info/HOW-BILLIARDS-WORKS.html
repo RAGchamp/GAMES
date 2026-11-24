@@ -8,7 +8,7 @@
 <!--
   How Billiards works: the "How it works" page for Game 5 (Phase 6 of the Billiards plan).
   Explains the table and sizes, how a ball slides then rolls (with top and screw), the 90° rule, side off a
-  cushion, how the referee reads a shot, how Rusty chooses his shot, the views and controls, and what Claude Code
+  cushion, how the referee reads a shot, how Marker chooses his shot, the views and controls, and what Claude Code
   built, with a dated timeline. The demos copy the formulas and constants from GAME-5-Billiards/billiards.html
   (the "sim" script): MU_S, MU_R, E_BALL, E_CUSH, CUSH_KEEP, MU_CUSH, VMAX, TIP_MAX, the ball size, the referee
   and the level wobbles. If those change, change them here too.
@@ -92,7 +92,7 @@
 
   <div class="about-box mb-4">
     <h2>What is this page and how does AI play a part?</h2>
-    <p class="mb-0">This page explains how <strong>Game 5: Billiards</strong> works inside: how a struck ball slides and then rolls, why screw brings it back, where two balls go when they meet, how side changes the angle off a cushion, how the referee scores a shot, and how Rusty, the computer, picks his shot. Claude Code (an AI coding agent) wrote the whole game from a <a href="BILLIARDS-GAME-PLAN.html">plan</a>, and a person tested every version on a computer and a phone. <strong>Players don't need any AI to play.</strong> The demos on this page use the same formulas and numbers as the game, so you can try them yourself.</p>
+    <p class="mb-0">This page explains how <strong>Game 5: Billiards</strong> works inside: how a struck ball slides and then rolls, why screw brings it back, where two balls go when they meet, how side changes the angle off a cushion, how the referee scores a shot, and how Marker, the computer, picks his shot. Claude Code (an AI coding agent) wrote the whole game from a <a href="BILLIARDS-GAME-PLAN.html">plan</a>, and a person tested every version on a computer and a phone. <strong>Players don't need any AI to play.</strong> The demos on this page use the same formulas and numbers as the game, so you can try them yourself.</p>
   </div>
 
   <h1 class="h3 fw-bold mb-1">🎱 How Billiards Works</h1>
@@ -102,8 +102,8 @@
     <div class="fact"><div class="val">1 file</div><div class="lbl"><code>billiards.html</code>: HTML, CSS and JavaScript together</div></div>
     <div class="fact"><div class="val">≈ 2,050</div><div class="lbl">lines written for the game, in 3 scripts: rules, 3D eye view, screen</div></div>
     <div class="fact"><div class="val">0</div><div class="lbl">image or sound files: the table, balls, hand, portraits and every sound are made with code</div></div>
-    <div class="fact"><div class="val">3</div><div class="lbl">balls: Archie's white, Rusty's yellow and the red</div></div>
-    <div class="fact"><div class="val">3</div><div class="lbl">levels for Rusty: Easy, Medium and Hard</div></div>
+    <div class="fact"><div class="val">3</div><div class="lbl">balls: your white, Marker's yellow and the red</div></div>
+    <div class="fact"><div class="val">3</div><div class="lbl">levels for Marker: Easy, Medium and Hard</div></div>
     <div class="fact"><div class="val">600</div><div class="lbl">physics steps a second, with every hit timed exactly</div></div>
   </div>
 
@@ -237,7 +237,7 @@ side_spin -= 2.5 * grip              <span class="c">// side is used up</span></
       <div class="row g-3">
         <div class="col-lg-7">
           <div class="demo">
-            <h3>Try it: pick a shot by Archie (white) and see the referee's decision</h3>
+            <h3>Try it: pick a shot with the white (yours) and see the referee's decision</h3>
             <div class="shotbtns" id="shotBtns"></div>
             <pre class="evlist" id="evList"></pre>
             <div class="verdict" id="verdict"></div>
@@ -261,15 +261,15 @@ side_spin -= 2.5 * grip              <span class="c">// side is used up</span></
     </div>
   </div>
 
-  <!-- 6. Rusty -->
+  <!-- 6. Marker -->
   <div class="card shadow-sm step-card mb-3">
     <div class="card-body">
-      <div class="step-title"><span class="step-num">6</span>How Rusty chooses his shot</div>
-      <p>Rusty isn't an AI that learned billiards. He is a short, plain program that <b>tries shots in the game's own physics</b> before he plays one, so his plans always match what will really happen.</p>
+      <div class="step-title"><span class="step-num">6</span>How Marker chooses his shot</div>
+      <p>Marker isn't an AI that learned billiards. He is a short, plain program that <b>tries shots in the game's own physics</b> before he plays one, so his plans always match what will really happen.</p>
       <div class="flow mb-3">
         <div class="box"><b>1. Make a list</b>From where his ball lies (or the best spots in the D): a pot of each ball into each pocket it lines up with, and hits from thick to thin for cannons and in-offs, at a few paces, with spin on Medium and Hard.</div>
         <div class="arrow">→</div>
-        <div class="box"><b>2. Try each one</b>Play it in the sim, ask the referee for the points, and look at where the balls stop: an easy next shot for him is good; on Hard, an easy shot for Archie is bad.</div>
+        <div class="box"><b>2. Try each one</b>Play it in the sim, ask the referee for the points, and look at where the balls stop: an easy next shot for him is good; on Hard, an easy shot for you is bad.</div>
         <div class="arrow">→</div>
         <div class="box"><b>3. Look ahead (Hard)</b>For his best two scoring shots, search again from where the balls stop, and add the best follow-up.</div>
         <div class="arrow">→</div>
@@ -278,8 +278,8 @@ side_spin -= 2.5 * grip              <span class="c">// side is used up</span></
       <div class="row g-3">
         <div class="col-lg-7">
           <div class="demo">
-            <h3>Try it: Rusty's wobble on a 2 m pot</h3>
-            <canvas id="wobCv" width="700" height="200" aria-label="Lines spreading from the white towards a pocket 2 m away show how far Rusty's aim strays at each level"></canvas>
+            <h3>Try it: Marker's wobble on a 2 m pot</h3>
+            <canvas id="wobCv" width="700" height="200" aria-label="Lines spreading from the white towards a pocket 2 m away show how far Marker's aim strays at each level"></canvas>
             <div class="shotbtns mt-2" id="wobBtns"></div>
             <p class="read mb-0" id="wobRead"></p>
           </div>
@@ -293,7 +293,7 @@ side_spin -= 2.5 * grip              <span class="c">// side is used up</span></
               <tr><td>Hard</td><td>±0.12°</td><td>up to 120, plus look-ahead</td><td>yes</td></tr>
             </tbody>
           </table>
-          <p class="small mb-0">Rusty thinks a few shots each frame, so the screen never freezes while his cue drifts across what he is considering. On a laptop Hard decides in about a third of a second; after 1.5 s of thinking he plays his best shot so far, so a slow phone never keeps you waiting. In 50 computer-v-computer games, <b>Hard scored 6.8 times as many points as Easy</b> and won all 50; <b>Medium beat Easy 50 times out of 51</b>.</p>
+          <p class="small mb-0">Marker thinks a few shots each frame, so the screen never freezes while his cue drifts across what he is considering. On a laptop Hard decides in about a third of a second; after 1.5 s of thinking he plays his best shot so far, so a slow phone never keeps you waiting. In 50 computer-v-computer games, <b>Hard scored 6.8 times as many points as Easy</b> and won all 50; <b>Medium beat Easy 50 times out of 51</b>.</p>
         </div>
       </div>
     </div>
@@ -310,7 +310,7 @@ side_spin -= 2.5 * grip              <span class="c">// side is used up</span></
             <li>The table from above, drawn once and kept, so each frame only draws the balls, the cue and the guide: smooth on phones.</li>
             <li><b>Aim</b> by pressing on the cue stick and swinging it round the white; fine aim with ◀ ▶.</li>
             <li><b>Shoot</b> by pulling the power cue on the right down and letting go: the further you pull, the harder the shot (push it back up to cancel).</li>
-            <li>In a game, Archie's and Rusty's portraits (drawn in code) sit beside the table, and the one whose turn it is is framed in yellow.</li>
+            <li>In a game, your portrait and Marker's (drawn in code) sit beside the table, and the one whose turn it is is framed in yellow.</li>
           </ul>
         </div>
         <div class="col-md-6">
@@ -331,7 +331,7 @@ side_spin -= 2.5 * grip              <span class="c">// side is used up</span></
       <div class="step-title"><span class="step-num">8</span>What Claude Code built, and how it was checked</div>
       <p class="small">Claude Code wrote the game from the plan. The only borrowed code is the three.js library for the Eye view. The game file has three scripts, plus three.js as plain text:</p>
       <div class="flow mb-3">
-        <div class="box"><b>sim: the rules</b>The table, the ball physics, the referee, the Spin school and Rusty. It draws nothing, so test programs can play whole games without a browser.</div>
+        <div class="box"><b>sim: the rules</b>The table, the ball physics, the referee, the Spin school and Marker. It draws nothing, so test programs can play whole games without a browser.</div>
         <div class="arrow">→</div>
         <div class="box"><b>eye3d: the 3D view</b>Builds the table, balls, cue and hand in three.js, and moves them each frame from the game.</div>
         <div class="arrow">→</div>
@@ -351,6 +351,7 @@ side_spin -= 2.5 * grip              <span class="c">// side is used up</span></
           <tr><td>23 Nov 2026</td><td><b>Phase 4, Rusty:</b> Easy, Medium and Hard, the shot search, look-ahead and safety play. The physics made about 4 times faster (with exactly the same results) so he can try enough shots.</td></tr>
           <tr><td>23 Nov 2026</td><td><span class="tag drop">dropped</span> <b>Phase 5:</b> Archie and Rusty drawn from above, walking to the table and cueing, plus a shot replay and applause. Seen from above they looked as if they were walking on the table, so it was taken out before it went live.</td></tr>
           <tr><td>23 Nov 2026</td><td><b>Phase 6:</b> this page and the full portal card.</td></tr>
+          <tr><td>23 Nov 2026</td><td><span class="tag chg">changed</span> The computer player renamed from Rusty to Marker. The first step is now to choose your player from 10 cartoon portraits (Archie, Kumar, Lee, Jordan, Marcos, Linda, Maya, Zen, Rene and Maria; at most 6 letters each), and the game calls you by that name. It is saved and can be changed from the home screen.</td></tr>
         </tbody>
       </table>
 
@@ -358,7 +359,7 @@ side_spin -= 2.5 * grip              <span class="c">// side is used up</span></
       <ul class="small mb-0">
         <li><b>Node tests</b> play shots with the real rules: screw brings the white back, top makes it follow, side changes the cushion angle by more than 5°, the same shot always gives the same result, and balls never overlap or leave the table.</li>
         <li><b>The Spin school</b> was built by a search over thousands of shots: no plain middle-of-the-ball hit makes any of the five, and the spin each one teaches does.</li>
-        <li><b>Computer-v-computer games</b> in Node (50 Hard v Easy, 51 Medium v Easy) checked that each level is stronger than the one below, and how long Rusty takes to choose.</li>
+        <li><b>Computer-v-computer games</b> in Node (50 Hard v Easy, 51 Medium v Easy) checked that each level is stronger than the one below, and how long Marker takes to choose.</li>
         <li><b>A test browser</b> opened the game, aimed, pulled the power cue, played drills and matches in both views, and took screenshots, checking for errors.</li>
         <li><b>People</b> played it on a laptop and a phone, which led to the bigger balls, the 1.6× pockets, the 3D eye view, the hand, the cue-stick aiming, the power cue and the portraits, and to dropping Phase 5.</li>
       </ul>
@@ -581,14 +582,14 @@ side_spin -= 2.5 * grip              <span class="c">// side is used up</span></
     const r = referee('white', events, s.start || far, !!s.hand);
     $('evList').textContent = (s.hand ? '(the white is in hand, played from the D)\n' : '') + lines.join('\n');
     const v = $('verdict');
-    if (r.foul) { v.className = 'verdict foul'; v.textContent = FOULS[r.foul] + ': ' + r.penalty + ' points to Rusty'; }
-    else { v.className = 'verdict ok'; v.textContent = r.parts.map(p => NAMES[p.k] + ' ' + p.pts).join(' + ') + (r.parts.length > 1 ? ' = ' + r.points : '') + ' points to Archie'; }
+    if (r.foul) { v.className = 'verdict foul'; v.textContent = FOULS[r.foul] + ': ' + r.penalty + ' points to Marker'; }
+    else { v.className = 'verdict ok'; v.textContent = r.parts.map(p => NAMES[p.k] + ' ' + p.pts).join(' + ') + (r.parts.length > 1 ? ' = ' + r.points : '') + ' points to you'; }
     [...$('shotBtns').children].forEach((b, k) => b.classList.toggle('on', k === i));
   }
   $('shotBtns').innerHTML = SHOTS.map((s, i) => '<button type="button" data-i="' + i + '">' + s.name + '</button>').join('');
   $('shotBtns').addEventListener('click', e => { const b = e.target.closest('button'); if (b) showShot(+b.dataset.i); });
 
-  /* ---------- Demo: Rusty's wobble (aim error spread over a 2 m pot) ---------- */
+  /* ---------- Demo: Marker's wobble (aim error spread over a 2 m pot) ---------- */
   const LV = { Easy: 1.4, Medium: 0.45, Hard: 0.12 };
   let lv = 'Medium';
   function wobDemo() {
@@ -599,7 +600,7 @@ side_spin -= 2.5 * grip              <span class="c">// side is used up</span></
     // the pocket, 2 m away (its opening, 1.6 times real size, about 0.13 m)
     const pw = 0.13 * px;
     c.fillStyle = '#0b0b0b'; c.fillRect(x0 + 2 * px, y0 - pw / 2, 26, pw);
-    // 40 shots with Rusty's wobble (a bell-shaped spread with this size)
+    // 40 shots with Marker's wobble (a bell-shaped spread with this size)
     let seed = 7, inside = 0;
     const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
     for (let i = 0; i < 40; i++) {

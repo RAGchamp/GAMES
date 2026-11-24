@@ -27,8 +27,14 @@ script, plus an `eye3d` script that draws the Eye view in 3D with three.js r160 
 line of plain text in the last `<script type="text/plain" id="three-src">` of `billiards.html` and run only when the Eye
 view is first opened; edit the scripts above it, not that line. If WebGL is missing the game falls back to the
 hand-drawn Eye view in `game-ui`. The Top view uses no library. Build it phase by phase from its plan, whose decisions
-(section 11) are agreed: computer opponent only (Rusty, yellow), you are Archie (white), 50 up by default, no pro
+(section 11) are agreed: computer opponent only, you play the white, 50 up by default, no pro
 rules, Top view plus an Eye view (3D, three.js).
+
+**Billiards players (23 Nov 2026).** The computer opponent (yellow) is now called **Marker** (he was Rusty; the
+plan and the explainer's timeline keep the old name as history, and the save keeps `stats.rustyBest`). The first
+screen asks you to choose your player from 10 cartoon portraits drawn in code (`AVATARS` in `game-ui`): Archie,
+Kumar, Lee, Jordan, Marcos, Linda, Maya, Zen, Rene, Maria (names at most 6 letters). The choice is saved
+(`save.avatar`), used as your name everywhere in the game, and can be changed from the title (Change player).
 
 **Billiards Phase 5 dropped (23 Nov 2026).** Phase 5 was built (Archie and Rusty drawn from above at the table,
 walking in and cueing, see-through over the cloth; a turning mark on the balls; a slow shot replay with ball paths;
