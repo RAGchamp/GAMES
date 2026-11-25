@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Snooker Game Plan</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<!--
+  Snooker game plan (Game 6): snooker with 15 reds (or 6 or 10), six colours and the white, against the computer.
+  Built on Billiards (GAME-5-Billiards/billiards.html): same page, controls, views, physics and players.
+  Same layout and style as the Billiards plan (BILLIARDS-GAME-PLAN.html). Decisions agreed 24 Nov 2026 are in section 11.
+-->
+<style>
+  :root{
+    --biz-blue:#0d6efd;
+    --biz-blue-dark:#084298;
+    --biz-yellow:#ffc107;
+    --biz-red:#dc3545;
+    --biz-green:#198754;
+    --biz-purple:#6f42c1;
+    --nav-blue:#04264d;
+    --nav-yellow:#ffd60a;
+  }
+  body{ background:#f7f8fa; margin:0; }
+
+  .topnav{
+    position:sticky; top:0; z-index:1030;
+    background:var(--nav-blue); color:var(--nav-yellow);
+    padding:.9rem 1.5rem; display:flex; justify-content:space-between; align-items:center;
+    box-shadow:0 .15rem .5rem rgba(0,0,0,.25);
+  }
+  .topnav .brand{ display:inline-flex; align-items:center; text-decoration:none; }
+  .topnav .brand-logo{ height:44px; width:auto; display:block; }
+  .topnav .tagline{ font-weight:600; font-size:1.05rem; color:var(--nav-yellow); letter-spacing:.15em; word-spacing:.6em; font-style:italic; }
+  @media (max-width:576px){ .topnav{ flex-direction:column; text-align:center; gap:.4rem; padding:.75rem 1rem; } }
+
+  .step-num{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:1.9rem; height:1.9rem; border-radius:50%;
+    background:var(--biz-yellow); color:#2b2b2b; font-weight:800; font-size:.95rem; margin-right:.55rem; flex:none;
+  }
+  .step-title{ display:flex; align-items:center; font-weight:700; font-size:1.1rem; margin-bottom:.75rem; }
+  .step-card{ border:2px solid #c9d3e3; border-radius:.6rem; }
+  .ctrl-label{ font-size:.75rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#6c757d; margin-bottom:.25rem; display:block; }
+
+  .prompt{ background:linear-gradient(120deg,var(--biz-blue-dark),var(--biz-blue)); color:#fff; border-radius:.6rem; padding:.9rem 1.1rem; font-size:1.02rem; }
+  .about-box{ background:#fde2ec; border:2px solid #f5a3c0; border-radius:.6rem; padding:.9rem 1.1rem; }
+  .about-box h2{ font-size:1.05rem; font-weight:700; color:#8a1f4a; margin-bottom:.4rem; }
+  .about-box p{ font-size:.92rem; color:#3b2a31; }
+
+  .now-box{ display:flex; gap:.75rem; flex-wrap:wrap; }
+  .now-card{ flex:1 1 220px; background:#fff; border:2px solid #dde3ec; border-radius:.6rem; padding:.7rem .9rem; }
+  .now-card.now{ border-color:#c79100; background:#fff8e1; }
+  .now-card .lbl{ font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#6c757d; }
+  .now-card .val{ font-size:1.15rem; font-weight:800; line-height:1.25; margin:.15rem 0 .25rem; }
+  .now-card .det{ font-size:.86rem; color:#5a6475; }
+
+  .phase{ border-left:5px solid var(--biz-blue); }
+  .phase.p2{ border-left-color:var(--biz-green); }
+  .phase.p3{ border-left-color:var(--biz-purple); }
+  .phase.p4{ border-left-color:#c79100; }
+  .phase.p5{ border-left-color:var(--biz-red); }
+  .phase.p6{ border-left-color:#0aa2c0; }
+  .phase ul{ margin-bottom:.4rem; }
+  .accept{ background:#eefaf3; border:1px solid #bfe3cf; border-radius:.45rem; padding:.5rem .75rem; font-size:.88rem; }
+  .accept b{ color:var(--biz-green); }
+
+  table.plan th{ background:#eef3fb; font-size:.8rem; text-transform:uppercase; letter-spacing:.04em; }
+  table.plan td, table.plan th{ font-size:.9rem; vertical-align:top; }
+  table.plan td.pts{ text-align:center; font-weight:800; white-space:nowrap; }
+
+  pre.tree{ background:#0f1b2d; color:#d7e3f4; border-radius:.5rem; padding:.9rem 1rem; font-size:.85rem; margin:0; overflow-x:auto; }
+  pre.tree .c{ color:#ffd60a; }
+
+  /* Game screen mock (top-down table) */
+  .screen{ position:relative; border-radius:.6rem; overflow:hidden; border:3px solid #1b2a44; background:#1d1410; }
+  .screen svg{ display:block; width:100%; height:auto; }
+  .screen .hud{ position:absolute; top:6px; left:8px; right:8px; display:flex; justify-content:space-between; gap:.4rem;
+                font:700 .72rem/1.2 system-ui,sans-serif; color:#fff; flex-wrap:wrap; pointer-events:none; }
+  .screen .meter{ background:rgba(4,38,77,.85); border-radius:1rem; padding:.15rem .55rem; }
+  .screen .meter.y{ color:#ffd60a; }
+  .screen .ctrls{ position:absolute; left:8px; bottom:8px; background:rgba(4,38,77,.88); color:#fff; border-radius:.5rem;
+                  padding:.35rem .6rem; font:700 .68rem/1.35 system-ui,sans-serif; width:200px; }
+  .screen .ctrls .row1{ display:flex; align-items:center; gap:.4rem; }
+  .screen .ctrls .trk{ flex:1; height:6px; background:#33507a; border-radius:3px; position:relative; }
+  .screen .ctrls .trk i{ position:absolute; top:-4px; width:14px; height:14px; border-radius:50%; background:var(--nav-yellow); }
+  .screen .spin{ position:absolute; right:92px; bottom:8px; width:46px; height:46px; border-radius:50%; background:#f4f1e8;
+                 border:2px solid #04264d; }
+  .screen .spin i{ position:absolute; left:19px; top:24px; width:8px; height:8px; border-radius:50%; background:var(--biz-red); }
+  .screen .shoot{ position:absolute; right:10px; bottom:14px; background:var(--biz-red); color:#fff; font:800 .8rem system-ui,sans-serif;
+                  padding:.45rem .9rem; border-radius:2rem; box-shadow:0 2px 0 #7a1620; }
+  @media (max-width:576px){ .screen .ctrls{ display:none; } .screen .spin{ display:none; } }
+
+  .ball{ display:inline-block; width:.95rem; height:.95rem; border-radius:50%; vertical-align:-2px; border:1px solid rgba(0,0,0,.35); margin-right:.3rem; position:relative; }
+  .ball.white{ background:#fbfaf4; }
+  .ball.red{ background:#c4161c; }
+  .ball.yellow{ background:#f5c400; }
+  .ball.green{ background:#0f7a43; border-color:#04331b; }
+  .ball.brown{ background:#7a4520; }
+  .ball.blue{ background:#1f5fd1; }
+  .ball.pink{ background:#ff8fb3; }
+  .ball.black{ background:#151515; }
+
+  .tag{ border-radius:.3rem; padding:0 .35rem; font-size:.7rem; font-weight:700; color:#fff; white-space:nowrap; }
+  .tag-must{ background:var(--biz-green); } .tag-nice{ background:#6c757d; } .tag-open{ background:var(--biz-red); }
+  .reuse{ border-radius:.3rem; padding:0 .35rem; font-size:.7rem; font-weight:700; background:#e7f1ff; color:#084298; border:1px solid #9ec5fe; white-space:nowrap; }
+  .new{ border-radius:.3rem; padding:0 .35rem; font-size:.7rem; font-weight:700; background:#fff3d6; color:#7a5600; border:1px solid #f0c75e; white-space:nowrap; }
+
+  footer{ background:var(--nav-blue); }
+  footer a{ color:#fff; }
+  kbd{ background:#04264d; }
+</style>
+</head>
+<body>
+
+<!-- STICKY TOP NAV -->
+<div class="topnav">
+  <a class="brand" href="../index.html"><img class="brand-logo" src="../logo.svg" alt="RAG Champ"></a>
+  <div class="tagline">AI Games Portal</div>
+</div>
+
+<main class="container my-4">
+
+  <!-- How AI plays a part (pink box) -->
+  <div class="about-box mb-4">
+    <h2>What is this plan and how does AI play a part?</h2>
+    <p class="mb-0">This page is the build plan for <strong>Game 6: Snooker</strong>, the sixth game in the RAG Champ Games portal. Snooker is played on the same 12 ft × 6 ft table as <a href="../GAME-5-Billiards/billiards.html">Billiards</a>, but with <b>22 balls</b>: 15 reds, six colours and the white. Like the other games, it will be written by an AI coding agent (Claude Code) as one HTML file with plain JavaScript and the Canvas API. There is no build step and no server. It is built on Billiards and looks and plays like it: the same page, players, controls, Top and Eye views, ball physics, sound and way of testing. What is new is the snooker rules, the pack of reds, and a computer opponent that knows about breaks and safety play. <strong>PLEASE NOTE: players don't need any AI to play the game.</strong> The AI is used only to write the code (the computer opponent's shots are planned by ordinary code, not AI).</p>
+  </div>
+
+  <h1 class="h3 fw-bold mb-1">🔴 Snooker: Development Plan</h1>
+  <p class="text-muted mb-3">Plan date: 24 Nov 2026 · Decisions agreed 24 Nov 2026 (section 11) · Status: <strong>Phases 1 to 5 built 24 Nov 2026 (<a href="../GAME-6-Snooker/snooker.html">play Snooker</a>: whole frames against Marker at Easy, Medium or Hard, the Snooker school, the Practice table, sounds and phone layouts); Phase 6 (the portal card and the explainer) is next</strong> · <a href="BILLIARDS-GAME-PLAN.html">Billiards plan</a> · <a href="HOW-BILLIARDS-WORKS.html">How Billiards works</a></p>
+
+  <div class="prompt mb-4">
+    <strong>Goal:</strong> Build <code class="text-warning">GAME-6-Snooker/snooker.html</code>, a game of <b>snooker</b> seen from above on a full-size table with six pockets. Both players use the same <b>white</b> cue ball. You score by potting a <b>red</b> (1 point), then a <b>colour</b> (2 to 7 points), then a red again, and so on; when the reds are gone, the colours are potted in order from yellow to black. A run of pots is a <b>break</b>. Fouls give points to the other player. The player with more points when the last ball is potted wins the <b>frame</b>. You first choose your player from the same 10 cartoon portraits as Billiards, and play <b>against the computer</b>, Marker. There are two views, switched at any time: <b>Top</b> (the default) and the 3D <b>Eye view</b> from behind the cue ball.
+  </div>
+
+  <div class="now-box mb-4">
+    <div class="now-card now"><div class="lbl">Balls</div><div class="val">22: <span class="ball white"></span>15 <span class="ball red"></span>+ <span class="ball yellow"></span><span class="ball green"></span><span class="ball brown"></span><span class="ball blue"></span><span class="ball pink"></span><span class="ball black"></span></div><div class="det">The white (both players' cue ball), 15 reds worth 1 each, and six colours worth 2 to 7.</div></div>
+    <div class="now-card"><div class="lbl">Scoring</div><div class="val">Red, colour, red, colour…</div><div class="det">Then yellow, green, brown, blue, pink, black. The best possible break is <b>147</b> with 15 reds.</div></div>
+    <div class="now-card"><div class="lbl">Opponent</div><div class="val">Marker · one full frame</div><div class="det">Easy, Medium or Hard. 15 reds by default (6 or 10 for a shorter frame); one frame, best of 3 or best of 5.</div></div>
+    <div class="now-card"><div class="lbl">Controls</div><div class="val">As in Billiards</div><div class="det">Drag to aim, fine aim, Power slider or pull back the cue, spin picker, SHOOT, ⇄ View.</div></div>
+  </div>
+
+  <!-- 1. The balls -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">1</span>The balls and where they start</div>
+      <div class="row g-3">
+        <div class="col-lg-6">
+          <table class="table table-sm table-bordered plan mb-2">
+            <thead><tr><th>Ball</th><th>Points</th><th>Starts on</th></tr></thead>
+            <tbody>
+              <tr><td><span class="ball white"></span><b>White</b></td><td class="pts">–</td><td>In hand: played from the D. Both players strike it.</td></tr>
+              <tr><td><span class="ball red"></span><b>Reds</b> (15, or 10 or 6)</td><td class="pts">1</td><td>A triangle (the pack), its point just behind the pink</td></tr>
+              <tr><td><span class="ball yellow"></span><b>Yellow</b></td><td class="pts">2</td><td>The right-hand corner of the D (seen from the baulk end)</td></tr>
+              <tr><td><span class="ball green"></span><b>Green</b></td><td class="pts">3</td><td>The left-hand corner of the D</td></tr>
+              <tr><td><span class="ball brown"></span><b>Brown</b></td><td class="pts">4</td><td>The middle of the baulk line</td></tr>
+              <tr><td><span class="ball blue"></span><b>Blue</b></td><td class="pts">5</td><td>The centre spot</td></tr>
+              <tr><td><span class="ball pink"></span><b>Pink</b></td><td class="pts">6</td><td>The pyramid spot, halfway between the centre and the top cushion</td></tr>
+              <tr><td><span class="ball black"></span><b>Black</b></td><td class="pts">7</td><td>The black spot, 324 mm from the top cushion (Billiards' "billiard spot")</td></tr>
+            </tbody>
+          </table>
+          <p class="small mb-0">The baulk line, the D and the spots are already in Billiards; snooker only adds the spots for the yellow, green and brown on the baulk line.</p>
+        </div>
+        <div class="col-lg-6">
+          <ul class="small mb-0">
+            <li><b>The pack:</b> the reds are racked in rows of 1, 2, 3, 4 and 5 with the point red as close as possible to the pink without touching it. With 10 reds the rows are 1–4, with 6 reds 1–3.</li>
+            <li><b>Telling the balls apart on a phone:</b> every ball has a thin dark rim, a shine and a soft shadow. The <b>green</b> is drawn darker and bluer than the cloth, and the <b>brown</b> clearly browner than a red. A <b>"Numbers on balls"</b> switch prints each ball's value on it (1 on reds), for small screens and for colour-blind players.</li>
+            <li><b>The ball on:</b> the balls you may hit next glow softly, and the HUD says <b>"On: a red"</b> or <b>"On: a colour"</b> or <b>"On: blue (5)"</b>.</li>
+            <li><b>Colours come back:</b> while there are reds on the table, a potted colour is put back on its own spot. If its spot is covered, it goes on the highest-value free spot; if every spot is covered, as close as possible to its own spot, towards the top cushion.</li>
+            <li><b>A potted red stays down.</b> So does a colour once all the reds are gone.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Scoring -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">2</span>Scoring and fouls</div>
+      <div class="row g-3">
+        <div class="col-lg-6">
+          <span class="ctrl-label">Order of play</span>
+          <ol class="small mb-2">
+            <li><b>While reds are left:</b> pot a red (1). Then you are on a <b>colour</b> of your choice; pot it for its value. Then a red again, and so on. Two or more reds potted in one shot all count.</li>
+            <li><b>Then the colours in order:</b> yellow 2, green 3, brown 4, blue 5, pink 6, black 7. They stay down.</li>
+            <li><b>The frame ends</b> when the black goes in (or on a foul with only the black left). The higher score wins. If the scores are level, the black is put back on its spot and the player who wins a coin toss chooses who plays at it from the D; the first score or foul wins.</li>
+          </ol>
+          <span class="ctrl-label">Choosing the colour (made simple)</span>
+          <p class="small mb-2">In real snooker you name ("nominate") the colour you are going for when it isn't obvious. Here you don't have to: <b>the first colour your white hits is the colour you chose.</b> Pot that one and it counts; hit one and pot another and it is a foul.</p>
+          <table class="table table-sm table-bordered plan mb-0">
+            <thead><tr><th>Frame</th><th>Points on the table</th><th>Best break</th></tr></thead>
+            <tbody>
+              <tr><td>6 reds</td><td class="pts">75</td><td class="pts">75</td></tr>
+              <tr><td>10 reds</td><td class="pts">107</td><td class="pts">107</td></tr>
+              <tr><td>15 reds (full frame)</td><td class="pts">147</td><td class="pts">147</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="col-lg-6">
+          <span class="ctrl-label">Fouls: the other player gets the points</span>
+          <table class="table table-sm table-bordered plan mb-2">
+            <thead><tr><th>Foul</th><th>Penalty</th></tr></thead>
+            <tbody>
+              <tr><td>The white hits nothing, or hits a ball that is not on first</td><td class="pts" rowspan="4">4 to 7</td></tr>
+              <tr><td>Potting a ball that is not on</td></tr>
+              <tr><td>The white goes into a pocket (in-off) or off the table</td></tr>
+              <tr><td>Playing from hand from outside the D</td></tr>
+            </tbody>
+          </table>
+          <ul class="small mb-2">
+            <li><b>How much:</b> the value of the ball on, or of the highest ball involved in the foul (hit or potted), whichever is more, and never less than 4. So hitting the black first when on a red gives away 7.</li>
+            <li><b>After a foul,</b> the other player chooses: <b>play on</b> from where the balls are, or <b>make the fouler play again</b>. A small box asks you; Marker chooses for himself.</li>
+            <li><b>After an in-off,</b> the next player plays from the D.</li>
+            <li><b>Free ball:</b> if a foul leaves you <b>snookered</b> (you can't hit both edges of any ball on in a straight line), the game says "Free ball". You may play any ball as if it were the ball on; it scores the same as the ball on.</li>
+            <li><b>Touching ball:</b> if the white rests against a ball, the game says so, and you must play away from it. If that ball is on, it counts as already hit.</li>
+          </ul>
+          <span class="ctrl-label">Help on screen</span>
+          <ul class="small mb-0">
+            <li>The HUD shows both scores, your break, the reds left and the <b>points remaining</b>. When a player is behind by more than is left, it shows <b>"Snookers needed"</b>.</li>
+            <li>A <b>Concede</b> button in the menu gives the frame away. Marker concedes when he needs snookers and only the pink and black are left.</li>
+          </ul>
+        </div>
+      </div>
+      <p class="small mb-0 mt-2"><b>Left out:</b> the "foul and a miss" rule (where a referee puts the balls back after a weak attempt to hit the ball on), the rule against snookering behind a free ball, the push shot and jump shot fouls, and the re-rack after a stalemate. They are hard to judge in a game against the computer and would hardly ever matter.</p>
+    </div>
+  </div>
+
+  <!-- 3. How a turn plays -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">3</span>How a turn plays</div>
+      <div class="row g-3">
+        <div class="col-lg-6">
+          <ol class="small mb-0">
+            <li><b>The break-off:</b> a coin toss decides who goes first. The first player places the white in the D and must hit a red. The usual shot is a thin hit on the end red of the back row, sending the white round the table and back into baulk.</li>
+            <li><b>Place the ball</b> if it is in hand: drag the white anywhere inside the D.</li>
+            <li><b>Aim, read the guide, choose spin, set Power and SHOOT</b>, exactly as in Billiards: drag on the table or use <kbd>←</kbd><kbd>→</kbd> (<kbd>Shift</kbd> for fine aim), the fine-aim wheel, the dotted guide with the ghost ball and the hit ball's line, the big cue-ball picture for top, screw and side, the Power slider or pulling back the cue, and <kbd>Space</kbd>.</li>
+            <li><b>The guide knows the ball on:</b> it turns red with a cross when the first ball the white would hit is not on, so a foul never comes as a surprise.</li>
+            <li><b>Watch</b> the balls roll. Each pot pops up ("Red 1", "Black 7 · Break 24"), and a foul is announced ("Foul: hit the pink first, 6 to Marker").</li>
+          </ol>
+        </div>
+        <div class="col-lg-6">
+          <span class="ctrl-label">Computer opponent: Marker</span>
+          <ul class="small mb-2">
+            <li>The same Marker as in Billiards (red curly hair, maroon waistcoat, yellow bow tie), now at the snooker table. He is the same on Easy, Medium and Hard; only his skill changes.</li>
+            <li>He tries many shots in the same <code>sim</code> as the real game: for each ball on and each pocket, a few paces and spins, plus a few thin and thick hits. Each try is scored by the points it makes and by <b>where it leaves the white for the next ball</b> (after a red: which colour is easiest, usually the black, pink or blue).</li>
+            <li>When there is no good pot he plays <b>safe</b>: a thin touch on a red that sends the white back to baulk, or a shot that leaves you snookered.</li>
+            <li><b>Easy</b> tries few shots, has a big wobble in his aim and rarely plays safe; <b>Medium</b> a small wobble and some safety; <b>Hard</b> looks two shots ahead and plays good safety.</li>
+            <li>He "thinks" for a moment with the cue moving, so you can see what he is aiming at, and the search is spread over several frames so the screen never freezes.</li>
+          </ul>
+          <span class="ctrl-label">Players</span>
+          <ul class="small mb-0">
+            <li>The first screen asks you to choose your player from the same <b>10 cartoon portraits</b> as Billiards (Archie, Kumar, Lee, Jordan, Marcos, Linda, Maya, Zen, Rene, Maria). If you already chose one in Billiards, Snooker starts with them picked. "Change player" is on the title screen.</li>
+            <li>Your portrait and Marker's sit beside the table with the scores, as in Billiards. <b>No players are drawn at the table</b> (that was tried in Billiards and dropped as confusing seen from above).</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Screen -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">4</span>What the screen looks like</div>
+      <div class="row g-3">
+        <div class="col-lg-7">
+          <div class="screen" aria-label="Mock-up of the snooker screen at the break-off: a green table seen from above with six pockets, the baulk line and D on the left with the green, brown and yellow on it, the blue in the middle, the pink with the triangle of 15 reds behind it and the black near the right end. The white in the D is aimed thinly at the end red of the back row.">
+            <svg viewBox="0 0 600 330" aria-hidden="true">
+              <!-- wooden frame and cushions -->
+              <rect x="0" y="0" width="600" height="330" fill="#5b3a22"/>
+              <rect x="12" y="12" width="576" height="306" rx="6" fill="#0f6b34"/>
+              <rect x="22" y="22" width="556" height="286" fill="#1c8a45"/>
+              <!-- pockets -->
+              <g fill="#0b0b0b">
+                <circle cx="22" cy="22" r="11"/><circle cx="578" cy="22" r="11"/>
+                <circle cx="22" cy="308" r="11"/><circle cx="578" cy="308" r="11"/>
+                <circle cx="300" cy="17" r="10"/><circle cx="300" cy="313" r="10"/>
+              </g>
+              <!-- baulk line and D -->
+              <line x1="137" y1="22" x2="137" y2="308" stroke="#e8f3ea" stroke-width="1.2"/>
+              <path d="M137 119 A 46 46 0 0 0 137 211" fill="none" stroke="#e8f3ea" stroke-width="1.2"/>
+              <!-- aim guide, ghost ball, red's line and the white's path after contact -->
+              <line x1="122" y1="196" x2="496" y2="203.6" stroke="#fff" stroke-width="1.5" stroke-dasharray="3 5"/>
+              <circle cx="497" cy="203.8" r="6.3" fill="none" stroke="#fff" stroke-width="1.2" opacity=".75"/>
+              <line x1="498" y1="196" x2="503" y2="188" stroke="#ffd60a" stroke-width="1.5" stroke-dasharray="2 3"/>
+              <polyline points="503,206 578,262 470,308 180,236" fill="none" stroke="#fff" stroke-width="1.1" stroke-dasharray="1.5 5" opacity=".7"/>
+              <!-- colours -->
+              <g stroke="rgba(0,0,0,.45)" stroke-width="1">
+                <circle cx="137" cy="211" r="6.3" fill="#f5c400"/>
+                <circle cx="137" cy="119" r="6.3" fill="#0f7a43"/>
+                <circle cx="137" cy="165" r="6.3" fill="#7a4520"/>
+                <circle cx="300" cy="165" r="6.3" fill="#1f5fd1"/>
+                <circle cx="439" cy="165" r="6.3" fill="#ff8fb3"/>
+                <circle cx="527.6" cy="165" r="6.3" fill="#151515" stroke="#555"/>
+              </g>
+              <!-- the pack of 15 reds -->
+              <g fill="#c4161c" stroke="#5c0a0d" stroke-width="1">
+                <circle cx="452" cy="165" r="6.3"/>
+                <circle cx="463.3" cy="158.5" r="6.3"/><circle cx="463.3" cy="171.5" r="6.3"/>
+                <circle cx="474.6" cy="152" r="6.3"/><circle cx="474.6" cy="165" r="6.3"/><circle cx="474.6" cy="178" r="6.3"/>
+                <circle cx="485.9" cy="145.5" r="6.3"/><circle cx="485.9" cy="158.5" r="6.3"/><circle cx="485.9" cy="171.5" r="6.3"/><circle cx="485.9" cy="184.5" r="6.3"/>
+                <circle cx="497.2" cy="139" r="6.3"/><circle cx="497.2" cy="152" r="6.3"/><circle cx="497.2" cy="165" r="6.3"/><circle cx="497.2" cy="178" r="6.3"/><circle cx="497.2" cy="191" r="6.3"/>
+              </g>
+              <!-- glow on the end red (the ball on) -->
+              <circle cx="497.2" cy="191" r="9" fill="none" stroke="#ffd60a" stroke-width="1.2" opacity=".8"/>
+              <!-- shine -->
+              <g fill="#fff" opacity=".55">
+                <circle cx="135" cy="209" r="1.6"/><circle cx="135" cy="117" r="1.6"/><circle cx="135" cy="163" r="1.6"/><circle cx="298" cy="163" r="1.6"/><circle cx="437" cy="163" r="1.6"/><circle cx="525.6" cy="163" r="1.6"/>
+              </g>
+              <!-- white -->
+              <circle cx="122" cy="196" r="6.3" fill="#fbfaf4" stroke="#7a7a70" stroke-width="1"/>
+              <!-- cue -->
+              <line x1="112" y1="195.8" x2="30" y2="194.1" stroke="#e9cf98" stroke-width="5" stroke-linecap="round"/>
+              <line x1="66" y1="194.9" x2="4" y2="193.6" stroke="#3b2414" stroke-width="7" stroke-linecap="round"/>
+              <line x1="112" y1="195.8" x2="107" y2="195.7" stroke="#4aa0e0" stroke-width="5"/>
+            </svg>
+            <div class="hud">
+              <span class="meter"><span class="ball white" style="width:.7rem;height:.7rem"></span>Maya 0 · Break 0</span>
+              <span class="meter y">On: a red · Reds 15 · Left 147</span>
+              <span class="meter">Marker 0</span>
+            </div>
+            <div class="ctrls">
+              <div class="row1">POWER <span class="trk"><i style="left:70%"></i></span> 75%</div>
+              <div class="row1" style="margin-top:2px">FINE AIM <span class="trk"><i style="left:55%"></i></span> 0.3°</div>
+              <div class="row1" style="margin-top:2px">⇄ View: <span style="color:#ffd60a">Top</span></div>
+            </div>
+            <div class="spin" title="Spin: tap where to hit the cue ball"><i></i></div>
+            <div class="shoot">SHOOT</div>
+          </div>
+          <p class="small text-muted mt-2 mb-0">Mock-up only, not the final art: the break-off of a full frame. The white in the D is aimed thinly at the end red of the back row (glowing, as it is on), with a touch of side; the faint line shows the white running off the top cushion, the side cushion and back into baulk. Baulk is on the left, as in Billiards. On a phone held upright the table stays the same way round, as in Billiards (decided 24 Nov 2026), with the controls below it; it is bigger with the phone held sideways. Home, Full screen, Sound and Pause are in the top-right corner, as in the other games.</p>
+        </div>
+        <div class="col-lg-5">
+          <ul class="small mb-0">
+            <li><b>Top view (default)</b> of the whole table. <b>⇄ View</b> (or <kbd>V</kbd>) switches to the <b>Eye view</b>, the 3D view from low behind the white, the same as Billiards (three.js, run only when the Eye view is first opened, with the hand-drawn view if there is no WebGL). Both views draw the same balls from the same <code>sim</code>.</li>
+            <li><b>HUD:</b> your portrait, name, score and break; Marker's portrait and score; and in the middle the ball on, the reds left and the points left. In a match it also shows the frames won, for example "(1) Frames (0)".</li>
+            <li><b>Spin picker</b>, Power and fine aim as in Billiards.</li>
+            <li><b>Score pop-ups:</b> "Red 1", "Pink 6 · Break 31", "Free ball", "Foul: in-off, 4 to Marker".</li>
+            <li><b>Foul choice box:</b> "Play on" or "Marker plays again".</li>
+            <li><b>Frame end:</b> the winner, the scores, the best break of the frame and, for a match, the frame score.</li>
+            <li><b>Table and room:</b> the cloth, frame, brass corners and lamp from Billiards.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. Table -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">5</span>The table, in real sizes, and how big the balls are</div>
+      <div class="row g-3">
+        <div class="col-lg-6">
+          <table class="table table-sm table-bordered plan mb-2">
+            <thead><tr><th>Part</th><th>Size (millimetres)</th></tr></thead>
+            <tbody>
+              <tr><td>Playing area (inside the cushions)</td><td>3569 × 1778, as in Billiards</td></tr>
+              <tr><td>Real ball diameter</td><td>52.5</td></tr>
+              <tr><td>Baulk line from the bottom cushion</td><td>737 (brown in the middle, yellow and green at the ends of the D)</td></tr>
+              <tr><td>Radius of the D</td><td>292</td></tr>
+              <tr><td>Black spot from the top cushion</td><td>324</td></tr>
+              <tr><td>Pink spot</td><td>halfway between the centre spot and the top cushion</td></tr>
+              <tr><td>Gap from pink spot to black spot</td><td>568</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="col-lg-6">
+          <p class="small mb-2"><b>The balls can't be twice real size this time.</b> Billiards plays its 3 balls at twice real size (<code>SIZE = 2</code>) so they are easy to see on a phone. In snooker the pack has to fit between the pink and the black: from the pink to the back row and on to the black takes about 10.9 ball radii, and there are only 568 mm. That allows balls up to about 1.98 times real size, so at 2x the back row would overlap the black, and 22 big balls would also crowd the table.</p>
+          <p class="small mb-0"><b>Plan:</b> balls at <b>1.6x real size</b> (84 mm), which leaves a clear gap behind the pack and is still easy to see on a phone held sideways. The pockets are scaled the same way as the balls, so they have the same feel as a real snooker table. Both numbers are tried and tuned in Phase 1, as was done for Billiards (where careful pots were checked to go in about half the time).</p>
+          <p class="small mt-2 mb-0"><b>Tuned in Phase 1 (24 Nov 2026):</b> the same set of careful pots (random positions, a small wobble on the aim) went in 54% of the time with pockets at 1.6x, against 55% in Billiards; at 1.4x, 47%. So the pockets stay at 1.6x (<code>POCKET = 1.6</code>), and potting is about as hard as in Billiards.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. Physics -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">6</span>How the balls move (the physics)</div>
+      <div class="row g-3">
+        <div class="col-lg-6">
+          <p class="small">The ball physics is copied from the <code>sim</code> script of Billiards, which is already tested: balls slide and then roll, top, screw and side, the 90° rule, cushions that side can change the angle off, pocket jaws, and exact hit times so nothing ever passes through anything. The cloth numbers start the same (sliding friction 0.2, rolling 0.01, ball-on-ball bounce 0.95, cushion bounce 0.75). What snooker adds:</p>
+          <ul class="small mb-0">
+            <li><b>Balls that touch.</b> Billiards never has more than three balls, and they are hardly ever touching. A snooker pack is 15 balls packed together, so the break-off sends a hit through a chain of touching balls in one instant. The reds are racked with a tiny gap (about 0.1 mm) between them, so the <code>sim</code> handles the chain one exact hit at a time, in a fixed order, and the same break-off always spreads the pack the same way.</li>
+            <li><b>22 balls instead of 3:</b> 231 pairs of balls to check each small step instead of 3. Balls that are still are skipped, and the quick box test Billiards uses for cushions (skip what a ball cannot reach in this step) is used for pairs of balls too.</li>
+            <li><b>A white touching a ball</b> is found and reported, so the touching-ball rule works.</li>
+            <li><b>Line of sight:</b> a small helper checks whether the white can hit both edges of a ball in a straight line. It tells the referee when a player is snookered (for the free ball), lets the aim guide warn of a foul, and helps Marker choose safety shots.</li>
+            <li><b>Spots:</b> the code that puts a colour back on its spot (or the next free one) also makes sure it never lands on top of another ball.</li>
+          </ul>
+        </div>
+        <div class="col-lg-6">
+          <span class="ctrl-label">The shot record and the referee (planned code)</span>
+<pre class="tree"><span class="c">// The sim records every touch in a shot:</span>
+{t:0.42, hit:'red7'}           <span class="c">// first ball hit</span>
+{t:0.90, cushion:'left'}
+{t:1.31, pocket:'TR', ball:'red7'}
+{t:2.05, pocket:'ML', ball:'white'}
+
+<span class="c">// The referee reads only the record and the state:</span>
+referee(state, record) -> {
+  points:  0,                  <span class="c">// what the striker scored</span>
+  foul:    {why:'in-off', value:4},
+  next:    'cpu',              <span class="c">// whose turn</span>
+  on:      'red' | 'colour' | 'blue',
+  respot:  ['pink'],           <span class="c">// colours to put back</span>
+  inHand:  true,               <span class="c">// white is played from the D</span>
+  freeBall:false, frameOver:false
+}</pre>
+          <p class="small mt-2 mb-0">As in Billiards, the referee has no drawing code, so every rule is tested in Node with set-up shots. The same shot with the same settings always gives exactly the same result, so Marker's planning matches what really happens.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. Reuse -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">7</span>What is reused from Billiards, and what is new</div>
+      <div class="table-responsive">
+        <table class="table table-sm table-bordered plan mb-0">
+          <thead><tr><th>Part</th><th></th><th>How</th></tr></thead>
+          <tbody>
+            <tr><td>Page, top bar, corner buttons, menus and overlays</td><td><span class="reuse">reused</span></td><td>Copied from <code>billiards.html</code>: Home, Full screen, Sound, Pause; the player picker, title, pause and end screens; menus that grow to fit on phones.</td></tr>
+            <tr><td>The <code>sim</code> / <code>eye3d</code> / <code>game-ui</code> split</td><td><span class="reuse">reused</span></td><td>A <code>sim</code> script with the table, balls, physics and rules and no DOM (whole frames can be played in Node), an <code>eye3d</code> script for the 3D Eye view, and a <code>game-ui</code> script for the screen.</td></tr>
+            <tr><td>Ball physics with spin, cushions, pocket jaws</td><td><span class="reuse">reused</span></td><td>From the Billiards <code>sim</code>, with the new ball size and the changes in section 6.</td></tr>
+            <tr><td>Controls</td><td><span class="reuse">reused</span></td><td>Aim by drag and keys, fine aim, Power slider and pulling back the cue, spin picker, SHOOT, placing the white in the D.</td></tr>
+            <tr><td>Top view and Eye view (three.js r160)</td><td><span class="reuse">reused</span></td><td>The same drawing, with 22 balls in their colours, the spots for the colours, and the glow on the ball on. three.js is pasted as one long line of plain text at the end of the file and run only when the Eye view is first opened.</td></tr>
+            <tr><td>Players (10 portraits and Marker)</td><td><span class="reuse">reused</span></td><td>The <code>AVATARS</code> list and portrait drawing, and Marker. The chosen player is read from the Billiards save if there is one.</td></tr>
+            <tr><td>Sound</td><td><span class="reuse">reused</span></td><td>Cue tip, ball clack, cushion thud, ball dropping in a pocket. New: a louder crack for the break-off and polite applause for a break of 50 or more (or a clearance).</td></tr>
+            <tr><td>Saving and testing</td><td><span class="reuse">reused</span></td><td>Browser saving with a safe fallback (works in a private window), Node tests and headless-browser checks.</td></tr>
+            <tr><td>Snooker rules and referee</td><td><span class="new">new</span></td><td>Ball on, red then colour, colours in order, fouls with their values, re-spotting, play on or play again, free ball, touching ball, respotted black, concede.</td></tr>
+            <tr><td>The pack and the six colours</td><td><span class="new">new</span></td><td>Racking 6, 10 or 15 reds, the colour spots, touching-ball chains.</td></tr>
+            <tr><td>Marker at snooker</td><td><span class="new">new</span></td><td>Choosing a colour after a red, position for the next ball, the break-off, safety play and snookers, conceding.</td></tr>
+            <tr><td>Snooker school</td><td><span class="new">new</span></td><td>Set-up practice shots (Phase 3), in place of Billiards' Spin school.</td></tr>
+            <tr><td>Frames and matches</td><td><span class="new">new</span></td><td>One frame, best of 3 or best of 5; frame score; best breaks saved.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8. Deliverables / technical -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">8</span>Deliverables and technical design</div>
+      <div class="row g-3">
+        <div class="col-lg-5">
+<pre class="tree">GAMES/
+├── index.html                <span class="c">← new "Game 6" card</span>
+├── CLAUDE.md                 <span class="c">← add Snooker to the table</span>
+├── GAME-6-Snooker/
+│   └── snooker.html          <span class="c">← the whole game, one file</span>
+└── info/
+    ├── SNOOKER-GAME-PLAN.html <span class="c">← this page</span>
+    └── HOW-SNOOKER-WORKS.html <span class="c">← explainer (Phase 6)</span></pre>
+        </div>
+        <div class="col-lg-7">
+          <ul class="small mb-0">
+            <li><b>Units:</b> metres, seconds and radians, as in Billiards. The origin is the middle of the bottom (baulk) cushion; the table runs "up" to the top cushion.</li>
+            <li><b>Ball names:</b> <code>white</code>, <code>red1</code>…<code>red15</code>, <code>yellow</code>, <code>green</code>, <code>brown</code>, <code>blue</code>, <code>pink</code>, <code>black</code>.</li>
+            <li><b>Game state</b> (ball positions, scores, whose turn, the ball on, white in hand, the break, frames won) is one plain object saved after every shot under <code>snooker.save.v1</code>, so leaving and coming back carries on the frame.</li>
+            <li><b>Drawing:</b> in Top view the table is drawn once to an off-screen canvas; each frame draws only the balls, the cue and the guide on top, so it stays smooth on phones with 22 balls.</li>
+            <li><b>Test hooks</b> as in Billiards: <code>?practice</code> (Practice table), <code>?match</code> (start a frame; <code>?reds=6|10|15</code>, <code>?first=you|cpu</code>), <code>?school</code> (<code>?drill=1..5</code>), <code>?eye</code> (start in the Eye view), <code>?debug</code> (readout and <code>window.__snk</code>).</li>
+            <li><b>No outside files,</b> no network requests, works from <code>file:///</code>. The only library is three.js r160 (MIT), pasted in, for the Eye view alone.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Phases -->
+  <h2 class="h5 fw-bold mt-4 mb-3">Build phases</h2>
+
+  <div class="card shadow-sm mb-3 phase">
+    <div class="card-body">
+      <h2 class="h6 fw-bold">Phase 1: The table, the pack and the physics</h2>
+      <ul>
+        <li><code>snooker.html</code> started from a copy of <code>billiards.html</code>: the page, the <code>sim</code> / <code>eye3d</code> / <code>game-ui</code> split, the loop, the controls and both views.</li>
+        <li>The 22 balls in their colours, the colour spots, racking 6, 10 or 15 reds; the ball size (1.6x) and pocket size tuned.</li>
+        <li>The physics changes: chains of touching balls, skipping still balls and far-apart pairs, the touching-ball check and the line-of-sight helper.</li>
+        <li>A Practice table: drag any ball anywhere and shoot, no rules, with a "Rack" button.</li>
+      </ul>
+      <div class="accept"><b>Done when:</b> the same break-off always spreads the pack the same way; no ball ever overlaps another or passes through a cushion, even when a full-power shot hits the pack; a full-ball hit on one end of a straight line of touching reds sends only the far red away; and a frame's worth of shots runs smoothly on a phone.</div>
+      <p class="small text-muted mt-2 mb-0"><b>Built 24 Nov 2026.</b> The pockets stay at 1.6x (careful pots go in 54% of the time, as in Billiards). In Node, 10,000 random full-power shots into a full pack never left two balls overlapping or a ball off the table, and the same break-off always gave the same result. One change was needed: balls lying against each other, pushed together by their spin, made thousands of tiny hits under 1 mm/s (one frame worked out 1,157). Now two balls that meet that slowly part at 2 mm/s (<code>V_SEP</code>), and at most 60 hits are worked out in a 1/600 s step (<code>MAX_HITS</code>): a full-power shot into the pack makes about 50 hits, and a frame of play takes about 0.25 ms to work out on a laptop. Checked in Chrome at laptop and phone sizes; not yet tried on a real phone.</p>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mb-3 phase p2">
+    <div class="card-body">
+      <h2 class="h6 fw-bold">Phase 2: The rules, frames and turns</h2>
+      <ul>
+        <li>The referee: ball on, red then colour, the first colour hit as the chosen colour, colours in order, foul values (4 to 7), re-spotting colours, white in hand after an in-off, play on or play again, free ball, touching ball, the respotted black, conceding.</li>
+        <li>The HUD: ball on, reds left, points left, "Snookers needed"; the guide's foul warning.</li>
+        <li>Frames of 6, 10 or 15 reds; one frame, best of 3 or best of 5; the coin toss; the frame and match end screens.</li>
+        <li>A simple stand-in Marker (plays a plain pot at the easiest ball on) so whole frames can be played before Phase 4.</li>
+        <li>Saving a frame in progress, best breaks (per frame size) and wins.</li>
+        <li>Node tests: a list of set-up shots, each with the points, fouls, ball on and re-spots the referee must give.</li>
+      </ul>
+      <div class="accept"><b>Done when:</b> every row of the scoring and foul tables has a Node test that passes (including a foul on the black worth 7, two reds in one shot, a free ball, a colour re-spotted when its spot is covered, and a respotted black on a tie), and a whole 6-red frame can be played against the stand-in Marker.</div>
+      <p class="small text-muted mt-2 mb-0"><b>Built 24 Nov 2026.</b> 44 Node tests pass: every scoring and foul rule from made-up shots (with 3,000 random ones checking that every penalty is 4 to 7), and 40 whole frames (6 and 15 reds) played by the stand-in Marker against himself in the real physics. Every frame finished, and every score added up to its shots. They averaged 48 shots, with 11% fouls and a best break of 24. In the browser: the coin toss, break-off from the D, Marker's turn, the "play on or play again" box, conceding, the end screen, the next frame and carrying on after leaving. Free ball needs the white to be unable to hit <i>both</i> edges of every ball on. The stand-in Marker plays on after your foul when he has a fair pot (or a free ball), and otherwise asks you to play again; he concedes when he needs snookers with only the pink and black left. The light blue spin hint shows in a frame on Easy only.</p>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mb-3 phase p3">
+    <div class="card-body">
+      <h2 class="h6 fw-bold">Phase 3: Snooker school and the Eye view</h2>
+      <ul>
+        <li>The Eye view with 22 balls: the ball colours and spots in 3D, the glow on the ball on, and the hand-drawn fallback updated the same way.</li>
+        <li>A "Numbers on balls" switch (both views).</li>
+        <li>A <b>Snooker school</b> of five set-up shots, each with a target circle for the white: (1) the long pot down the table, (2) red then stun for the black, (3) screw back for the pink, (4) the break-off back into baulk, (5) escape a snooker off one cushion. A sixth, timed challenge: clear the colours from yellow to black.</li>
+      </ul>
+      <div class="accept"><b>Done when:</b> every Snooker school shot can be made, the aim guide in the Eye view lines up with the same ball as in Top view, and a whole frame can be played from the Eye view alone.</div>
+      <p class="small text-muted mt-2 mb-0"><b>Built 24 Nov 2026.</b> The drills were placed with a search in Node over aim, pace and spin, and 18 tests check them. Every drill can be made. The stun circle can't be reached with a middle-of-the-ball hit: over that distance a stun needs a touch of screw, so the hint says "just below the middle". The screw circle can only be reached with screw, and the long pot is mostly made with top. The clearance is judged by the frame's own referee (a miss or a foul ends it), with a clock and a saved best. The school uses the same guide and glow as a frame. The red ring warns before the white would hit the wrong ball, and only the white in hand can be moved, inside the D. "Numbers on balls" (<kbd>N</kbd>) works in the Top view and both Eye views. In the browser, drill 3 was made through the page and the game moved on to drill 4. The clearance scored the yellow and moved on to the green. With the Eye view only (the Top/Eye switch after ball in hand, the Power slider and SHOOT), four turns of a frame were played, Marker's included; a whole frame wasn't played through, because headless Chrome draws the Eye view at about 2 frames a second (Billiards is the same there). The guide in both views comes from the same <code>firstContact</code>, so it always picks the same ball.</p>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mb-3 phase p4">
+    <div class="card-body">
+      <h2 class="h6 fw-bold">Phase 4: Marker, the computer opponent</h2>
+      <ul>
+        <li>Shot search in the <code>sim</code>, built on Billiards' Marker: pots at each ball on into each pocket, a few paces and spins, scored by points and the leave for the next ball; choosing the best colour after a red.</li>
+        <li>Safety play and snookers; a proper break-off; choosing "play on" or "play again" after your foul; conceding.</li>
+        <li>Easy, Medium and Hard, with aim wobble and, on Hard, two-shot planning.</li>
+        <li>Fewer shots tried when there are many balls on, so the search stays fast with 15 reds.</li>
+      </ul>
+      <div class="accept"><b>Done when:</b> in Node, over 30 six-red frames, Hard beats Easy in nearly all of them and Medium beats Easy most of the time; Hard makes breaks of 30 or more in full frames; and no shot takes more than 2 seconds to choose on a phone.</div>
+      <p class="small text-muted mt-2 mb-0"><b>Built 24 Nov 2026.</b> In Node, with Marker's planner playing both sides: over 30 six-red frames Hard beat Easy 30–0 (1,831 points to 288, 14 breaks of 30 or more, best 60), and Medium beat Easy 30–0 (1,409 to 516, best break 36). In five full 15-red frames Hard won all five, against Easy and Medium, with breaks of 30 or more (best 42). Run on its own on a laptop, a full search takes 0.4 s on average with 15 reds, and 1.5 s at most. In the game he thinks about 10 ms each frame and chooses when he has tried everything, or after 1.5 s of work or 2 s on the clock, whichever comes first, so on a phone his choice never takes more than 2 s; then the cue turns to his shot for about a second. On a slow device he tries fewer shots, in an order that still covers the break-offs, his likeliest pots and some safeties. Before this, the physics step was made 1.5 times faster without changing any result (290 shots compared ball by ball with the Phase 2 sim). In the browser, Hard Marker broke off and cleared up to win a six-red frame 64–6. Not yet tried on a real phone.</p>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mb-3 phase p5">
+    <div class="card-body">
+      <h2 class="h6 fw-bold">Phase 5: Look, sound, phones and polish</h2>
+      <ul>
+        <li>The ball look (rim, shine, shadow, rolling highlight) checked with all colours on the cloth, in both views and in a dim room.</li>
+        <li>Sounds for every event, the break-off crack and the applause; score pop-ups; the foul choice box.</li>
+        <li>Phone layouts, full screen, and testing on a laptop and a phone. <em>Changed 24 Nov 2026:</em> on a phone held upright the table does not turn on its side; it stays as in Billiards.</li>
+        <li>No players at the table (see the note in section 3).</li>
+      </ul>
+      <div class="accept"><b>Done when:</b> every event has a sound, nothing sounds before the first tap, a full 15-red frame plays smoothly on a phone, every ball can be told apart on a phone screen, and no control ever hides a ball.</div>
+      <p class="small text-muted mt-2 mb-0"><b>Built 24 Nov 2026.</b> <b>Sounds:</b> a crack for a shot into the pack (the break-off), a soft tock when a colour goes back on its spot, and polite applause for a break of 50, a century, a clearance that wins the frame on the black, and a full clearance in the Snooker school. In Chrome, every kind of event was checked to make a sound, and no sound plays before the first tap. <b>Pop-ups</b> now name what was potted ("+2 2 reds · break 9", "+7 Black"), and "Break of 50!" or "Century break!" shows when a break gets there. <b>Phones:</b> the table had been very small on a phone (balls about 5 px across). On a narrow screen the portraits beside the table are now left out, since the scores along the top show both names. That made the table 35% wider when upright (balls 6 px). On a phone held sideways the game area may use nearly the whole screen height. The top bar scrolls away, and the page scrolls the whole game area into view when play starts. That doubled the table (balls about 9.5 px; 20 px on a laptop, 13.5 on a tablet). At phone, tablet and laptop sizes no control or portrait covers the cloth. <b>Balls:</b> every ball has a dark rim (so the green shows on the cloth), and "Numbers on balls" helps on small screens. Still to do: a full frame on a real phone. Everything was checked in Chrome at phone sizes and in Node, where Marker's choices and the physics are unchanged.</p>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mb-3 phase p6">
+    <div class="card-body">
+      <h2 class="h6 fw-bold">Phase 6: Portal and explainer</h2>
+      <ul>
+        <li>A "Game 6: Snooker" card in <code>GAMES/index.html</code> with Play, Plan and How it works buttons.</li>
+        <li><code>info/HOW-SNOOKER-WORKS.html</code>: how the referee decides the ball on and the foul value, why the balls are 1.6x and not 2x, how a hit travels through the pack, how Marker chooses a colour and plays safe, with hands-on demos (copying their constants from the <code>sim</code> script) and a dated timeline.</li>
+        <li>Add the game to the table in <code>CLAUDE.md</code>.</li>
+      </ul>
+      <div class="accept"><b>Done when:</b> the game opens from the portal, and the explainer links back to the game and the portal.</div>
+    </div>
+  </div>
+
+  <!-- 9. Tests -->
+  <div class="card shadow-sm step-card mb-3 mt-4">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">9</span>Test checklist</div>
+      <div class="row">
+        <div class="col-md-6">
+          <ul class="mb-0">
+            <li>Opens from <code>file:///</code> in Chrome, Edge and Firefox with no console errors.</li>
+            <li>The same shot always gives the same result, including the break-off.</li>
+            <li>No ball ever leaves the table, overlaps another ball or passes through a cushion, over 10,000 random full-power shots into a full pack in Node.</li>
+            <li>Every scoring and foul rule has a Node test, including the foul values, the free ball and the respotted black.</li>
+            <li>A re-spotted colour never lands on another ball, even with every spot covered.</li>
+            <li>The points left and "Snookers needed" are always right.</li>
+          </ul>
+        </div>
+        <div class="col-md-6">
+          <ul class="mb-0">
+            <li>Playing from hand: the white can only be placed in the D.</li>
+            <li>Scores, breaks, frames and the winner are right at the end of a frame and of a match.</li>
+            <li>Leaving mid-frame and coming back keeps the balls, scores, ball on and whose turn it is.</li>
+            <li>Switching tabs pauses the game, including while Marker is thinking.</li>
+            <li>The game still works in a private window (saving blocked).</li>
+            <li>Rotating a phone keeps the table sharp and the controls clear of the balls.</li>
+            <li>Switching views at any moment shows the same balls in the same places; every frame starts in Top view.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 10. Out of scope -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">10</span>Not in this version</div>
+      <ul class="small mb-0">
+        <li>Two people playing each other, on one device or online. This version is against the computer only.</li>
+        <li>The "foul and a miss" rule, snookering behind a free ball, push and jump shot fouls, and the stalemate re-rack.</li>
+        <li>Naming the colour out loud: the first colour hit is the chosen one.</li>
+        <li>Players drawn at the table (tried in Billiards and dropped).</li>
+        <li>The rest (a cue rest for shots across the table) and a free camera round the room.</li>
+        <li>Pool and other cue games.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 11. Decisions -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">11</span>Decisions (agreed 24 Nov 2026)</div>
+      <p class="small">Agreed with the owner on 24 Nov 2026, one question at a time. The only change from the first draft is the default frame size (15 reds, not 6).</p>
+      <ul class="mb-0">
+        <li><span class="tag tag-must">agreed</span> <strong>Frame size: the full 15-red frame by default.</strong> 147 points on the table, about 25 minutes against the computer. Shorter frames of 10 reds (107) and 6 reds (75, about 10 minutes) are in the menu.</li>
+        <li><span class="tag tag-must">agreed</span> <strong>Match length: one frame by default</strong>, with best of 3 and best of 5 in the menu.</li>
+        <li><span class="tag tag-must">agreed</span> <strong>Ball size 1.6x real</strong> (not 2x as in Billiards, which does not fit the pack), with pockets scaled the same way; both tuned in Phase 1.</li>
+        <li><span class="tag tag-must">agreed</span> <strong>Computer opponent: Marker again</strong>, the same character as in Billiards, at Easy, Medium or Hard. You choose your player from the same 10 portraits. No players at the table.</li>
+        <li><span class="tag tag-must">agreed</span> <strong>Against the computer only.</strong> No two-player mode in this version.</li>
+        <li><span class="tag tag-must">agreed</span> <strong>Rules made simple where it helps:</strong> the first colour hit is the chosen colour; free ball, touching ball, play on or play again and the respotted black are in; the "foul and a miss" rule and the others in section 10 are left out.</li>
+        <li><span class="tag tag-must">agreed</span> <strong>Two views, as in Billiards:</strong> Top (the default) and the 3D Eye view with three.js (MIT), pasted into the file, with the hand-drawn fallback.</li>
+        <li><span class="tag tag-must">fixed</span> <strong>Genre, not a copy.</strong> The game uses the standard rules of snooker, which belong to everyone, with its own table art, sounds and opponent. No graphics, names or music from any existing snooker game or TV coverage are used.</li>
+      </ul>
+    </div>
+  </div>
+
+</main>
+
+<footer class="text-white py-4 mt-5">
+  <div class="container text-center small">AI Games Portal · Snooker plan · <a href="BILLIARDS-GAME-PLAN.html">🎱 Billiards plan</a> · <a href="GOLF-PLAN.html">⛳ Golf plan</a> · <a href="JAVELIN-GAME-PLAN.html">🎯 Javelin plan</a> · <a href="CHINTU-GAME-PLAN.html">🏃 Chintu plan</a> · <a href="CAR-RACE-PLAN.html">🏎️ Car Race plan</a> · <a href="../index.html">🏠 Games Home</a></div>
+</footer>
+
+</body>
+</html>

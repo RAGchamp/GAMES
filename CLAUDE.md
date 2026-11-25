@@ -10,6 +10,7 @@ Games written with Claude Code, linked from the portal page `index.html`. Each g
 | Game 3: Javelin | `GAME-3-Javelin/` | `info/JAVELIN-GAME-PLAN.html`, `info/HOW-JAVELIN-WORKS.html` |
 | Game 4: Golf | `GAME-4-Golf/` | `info/GOLF-PLAN.html`, `info/HOW-GOLF-WORKS.html` |
 | Game 5: Billiards | `GAME-5-Billiards/` | `info/BILLIARDS-GAME-PLAN.html`, `info/HOW-BILLIARDS-WORKS.html` |
+| Game 6: Snooker (being built) | `GAME-6-Snooker/` | `info/SNOOKER-GAME-PLAN.html` (explainer comes in Phase 6) |
 
 Javelin's tower physics is Matter.js 0.19.0 (MIT), pasted as one long line in the last `<script id="matter">` of
 `javelin.html`; edit the `sim` and `game-ui` scripts above it, not that line. The `sim` script has no DOM code so
@@ -44,6 +45,34 @@ table again unless the owner asks. The portraits beside the table (Top view, in 
 portal card and `info/HOW-BILLIARDS-WORKS.html`) is done. The explainer's demos copy constants and the referee from
 the `sim` script of `billiards.html` (friction, bounce, cushion grip, VMAX, TIP_MAX, ball size, level wobbles); change
 them there too if those change.
+
+**Snooker (`GAME-6-Snooker/snooker.html`, started 24 Nov 2026).** Built phase by phase from its plan, whose
+decisions (section 11) are agreed: a full 15-red frame by default (10 and 6 reds in the menu), one frame by default
+(best of 3 and 5 in the menu), computer opponent Marker only, the first colour hit counts as the chosen colour, no
+"foul and a miss" rule, Top view plus the 3D Eye view. It started as a copy of `billiards.html` and has the same split
+(`sim` with no DOM, `eye3d`, `game-ui`, three.js as the last plain-text `three-src` line; edit the scripts above it).
+Balls are 1.6x real size (`SIZE`; 2x does not fit the pack between the pink and the black) and pockets 1.6x
+(`POCKET`, tuned so careful pots go in about as often as in Billiards). Reds are `red1`..`red15` in the sim. The
+pack is racked with a 0.1 mm gap (`RACK_GAP`) so the break-off is the same every time; `V_SEP` and `MAX_HITS` keep
+clusters of touching balls from making thousands of tiny hits. Phases 1 (the Practice table) and 2 (the rules,
+frames, foul choice, free ball, respotted black, and a stand-in Marker in `cpuChoose`, which Phase 4 replaces) are
+done. Players in a match are `'you'` and `'cpu'`; `m.on` is `'red'`, `'colour'` or a colour's name. Both phases were
+made by `GAME-6-Snooker/S-PAD/build/make-snooker.js` (it copies `billiards.html` and swaps in the parts in
+`build/parts/`). Phase 3 (Snooker school: `DRILLS`, `drillBalls`, `drillCheck` in the sim, and a timed clearance;
+"Numbers on balls") was edited into `snooker.html` directly, and so should everything after it. Node tests are in
+`GAME-6-Snooker/S-PAD/tests/` (git-ignored): `node phase1.test.js ../../snooker.html`, and the same for phase2 and
+phase3; `school.js` and `match.js` drive the page in headless Chrome (`node cdp.js school.js`). If a drill set-up is
+changed, rerun phase3 (it checks every drill can still be made).
+Phase 4 (Marker's shot search, `cpuPlanner` / `cpuPlannedShot` in the sim, levels in `LEVELS`) is done; the Phase 2
+stand-in `cpuChoose` / `cpuShot` stays as a quick fallback and for the phase2 frame tests. Marker's planning calls
+the same `simulate` and `applyShot` as the game, so any physics or rule change changes him too. `advance` reuses its
+ball lists and skips still pairs for speed; keep results identical (`S-PAD/tests/same.js` compares against the
+Phase 2 sim). `node phase4.test.js ../../snooker.html hard easy 6 6 1` plays level against level.
+Phase 5 (sounds, pop-ups, phone layouts) is done. Decided 24 Nov 2026: on a phone held upright the table stays the
+same way round, as in Billiards (it does not turn on its side). The portraits beside the table are left out when the
+game area is under 600 px wide (`playersShown`), and on short screens (sideways phones) the game area uses nearly the
+whole height. Browser checks: `S-PAD/tests/phase5.js` and `phones5.js` (run through `cdp.js` with W, H, DPR, MOBILE).
+Still not done: a full frame on a real phone.
 
 ## Abandoned: Geography game (22 Nov 2026)
 
