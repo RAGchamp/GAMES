@@ -74,7 +74,8 @@ Phase 5 (sounds, pop-ups, phone layouts) is done. Decided 24 Nov 2026: on a phon
 same way round, as in Billiards (it does not turn on its side). The portraits beside the table are left out when the
 game area is under 600 px wide (`playersShown`), and on short screens (sideways phones) the game area uses nearly the
 whole height. Browser checks: `S-PAD/tests/phase5.js` and `phones5.js` (run through `cdp.js` with W, H, DPR, MOBILE).
-Still not done: a full frame on a real phone.
+Tested on a real phone by the owner on 25 Nov 2026: the first try led to 1.8x balls and readable text; the second
+was all good.
 Phase 6 (the portal card and `info/HOW-SNOOKER-WORKS.html`) is done, so all six phases are built. The explainer's
 demos copy numbers and rules from the `sim` script of `snooker.html` (the table and spots, `SIZE`, `R`, `RACK_GAP`,
 `E_BALL`, `V_SEP`, `VALUE`, the referee's foul values, the aim wobbles in `LEVELS`); change them there too if those
