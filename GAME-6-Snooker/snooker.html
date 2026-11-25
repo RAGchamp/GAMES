@@ -481,13 +481,14 @@ function makeSSIM() {
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
   /* ---------- The table (real sizes, inside the cushions) ----------
-     SIZE: the balls are played at 1.6 times real size, so they are easy to see on a phone. (Billiards uses 2x, but
-     in snooker the pack of reds has to fit between the pink and the black: that allows at most about 1.98x, and
-     22 big balls would crowd the table.)
+     SIZE: the balls are played at 1.8 times real size, so they are easy to see on a phone. (Billiards uses 2x, but
+     in snooker the pack of reds has to fit between the pink and the black: that allows at most about 1.98x. The
+     balls were 1.6x until a phone test on 25 Nov 2026 found them too small; at 1.8x there are 5 cm behind the pack.)
      POCKET: the pockets against real size. Bigger balls and pockets on the same table make pots easier, since the
-     pocket looks wider from the ball. At POCKET 1.6 (the same as the balls, as on a real table) careful pots in a
-     test go in 54% of the time, the same as in Billiards (55%); at 1.4, 47%. */
-  const SIZE = 1.6;
+     pocket looks wider from the ball; bigger balls in the same pockets make them harder. With 1.8x balls and 1.6x
+     pockets, careful pots in a test go in 55% of the time, the same as in Billiards (55%) and as with the earlier
+     1.6x balls (54%); 1.8x pockets would make it 63%. */
+  const SIZE = 1.8;
   const POCKET = 1.6;      // pocket size against real size
   const L = 3.569, W = 1.778, HW = W / 2, R = 0.02625 * SIZE;
   const BAULK = 0.737, D_R = 0.292;
@@ -1508,15 +1509,24 @@ window.addEventListener('DOMContentLoaded', () => {
   let LW = 960, LH = 540, scale = 1, cssW = 960, cssH = 540, running = false, topPx = 44, cornerLeft = 700;
   let K = 240, OX = 0, OY = 0;                    // screen x = OX + y*K, screen y = OY + x*K (baulk on the left)
   const E3 = { state: 'none', eye: null, shown: false };   // the 3D Eye view (three.js), made the first time it is needed
-  const FRAME = 0.2, CUSH = 0.05;                 // wooden frame and cushion widths (m); wide enough for the big pockets
+  // wooden frame and cushion widths (m), as drawn; the frame is wide enough for the brass plates round the pockets.
+  // On a short screen (a phone held sideways) it is drawn narrower, so the cloth and balls get more of the height.
+  let FRAME = 0.2;
+  const CUSH = 0.05;
   const toS = (x, y) => [OX + y * K, OY + x * K];
   const toW = (sx, sy) => ({ x: (sy - OY) / K, y: (sx - OX) / K });
   const tableCv = document.createElement('canvas'), tctx = tableCv.getContext('2d');
+  const TX = { msg: 12, title: 26, sub: 14, pop: 16 };   // sizes of the text drawn on the table (logical px; set in resize)
   function resize() {
     const r = wrap.getBoundingClientRect();
     cssW = Math.max(1, r.width); cssH = Math.max(1, r.height);
-    const BW = cssW < 640 ? 640 : 960, BH = BW * 9 / 16, k = Math.min(cssW / BW, cssH / BH);
+    // the drawing's own size (logical pixels): the smaller one on a narrow or a short screen (a phone, either way
+    // round), so the picture is not shrunk to half size there
+    const BW = cssW < 640 || cssH < 420 ? 640 : 960, BH = BW * 9 / 16, k = Math.min(cssW / BW, cssH / BH);
     LW = Math.round(cssW / k); LH = Math.round(cssH / k);
+    // text drawn on the table is never smaller than this on the screen (CSS pixels): the message along the bottom,
+    // the banner (title and the line under it) and the pop-ups. Phone test, 25 Nov 2026: they had been about 6 px.
+    TX.msg = Math.max(12, 11.5 / k); TX.title = Math.max(26, 19 / k); TX.sub = Math.max(14, 13 / k); TX.pop = Math.max(16, 14 / k);
     const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
     cv.width = Math.round(cssW * dpr); cv.height = Math.round(cssH * dpr);
     scale = cv.width / LW;
@@ -1526,7 +1536,8 @@ window.addEventListener('DOMContentLoaded', () => {
     // Top view: room on the left for you and Marker (not on a narrow screen), and on the right for the power cue
     $('players').hidden = !playersShown();
     const side = gaugeRoom(), gl = side && !$('players').hidden ?($('players').getBoundingClientRect().width + 10) * LW / cssW : 0, gr = side ? 54 * LW / cssW : 0;
-    const botPx = 30, availW = LW - 16 - gl - gr, availH = LH - topPx - botPx;
+    FRAME = cssH < 420 ? 0.14 : 0.2;
+    const botPx = TX.msg + 14, availW = LW - 16 - gl - gr, availH = LH - topPx - botPx;   // room for the message line
     K = Math.min(availW / (L + 2 * FRAME), availH / (W + 2 * FRAME));
     OX = gl + (LW - gl - gr - L * K) / 2; OY = topPx + availH / 2;
     $('hud').style.maxWidth = Math.max(60, cr.left - r.left - 16) + 'px'; hudKey = '';
@@ -2701,11 +2712,15 @@ window.addEventListener('DOMContentLoaded', () => {
     const a = clamp(Math.min(b.t / 0.3, (b.d - b.t) / 0.2), 0, 1);
     ctx.globalAlpha = a; ctx.textAlign = 'center';
     const [cx, cy] = viewNow() === 'eye' ? [LW / 2, LH * 0.42] : toS(0, L / 2);
-    ctx.font = '900 26px system-ui, sans-serif';
-    const w = Math.max(ctx.measureText(b.title).width, b.sub ? (ctx.font = '700 14px system-ui, sans-serif', ctx.measureText(b.sub).width) : 0) + 40;
-    pill(cx, cy - 34, Math.min(w, LW - 20), b.sub ? 64 : 44, 'center');
-    ctx.font = '900 26px system-ui, sans-serif'; ctx.fillStyle = '#fff'; ctx.fillText(b.title, cx, cy - 12);
-    if (b.sub) { ctx.font = '700 14px system-ui, sans-serif'; ctx.fillStyle = '#ffd60a'; ctx.fillText(b.sub, cx, cy + 15); }
+    const ft = '900 ' + TX.title.toFixed(1) + 'px system-ui, sans-serif', fs = '700 ' + TX.sub.toFixed(1) + 'px system-ui, sans-serif';
+    const hT = TX.title, hS = b.sub ? TX.sub * 1.35 : 0, ph = hT + hS + 18;   // the pill: title, the line under it, and a margin
+    ctx.font = ft;
+    const w = Math.max(ctx.measureText(b.title).width, b.sub ? (ctx.font = fs, ctx.measureText(b.sub).width) : 0) + 40;
+    pill(cx, cy - ph / 2, Math.min(w, LW - 20), ph, 'center');
+    ctx.textBaseline = 'middle';
+    ctx.font = ft; ctx.fillStyle = '#fff'; ctx.fillText(b.title, cx, cy - ph / 2 + 9 + hT / 2);
+    if (b.sub) { ctx.font = fs; ctx.fillStyle = '#ffd60a'; ctx.fillText(b.sub, cx, cy - ph / 2 + 9 + hT + hS / 2); }
+    ctx.textBaseline = 'alphabetic';
     ctx.globalAlpha = 1;
   }
   // the pills along the top: what is set on the Practice table. They are page
@@ -2778,15 +2793,16 @@ window.addEventListener('DOMContentLoaded', () => {
       if (t.length) msg = 'Touching ball: the white is against ' + theName(t[0]) + (t.length > 1 ? ' and ' + (t.length - 1) + ' more' : '') + '. Play away from it.';
     }
     if (msg) {
-      ctx.font = '600 12px system-ui, sans-serif'; ctx.textBaseline = 'middle';
+      const fz = TX.msg, h = fz + 10, y0 = LH - h - 4;
+      ctx.font = '600 ' + fz.toFixed(1) + 'px system-ui, sans-serif'; ctx.textBaseline = 'middle';
       let s = msg; while (ctx.measureText(s).width > LW - 40 && s.length > 10) s = s.slice(0, -4) + '…';
-      const w = ctx.measureText(s).width + 22; pill(LW / 2, LH - 26, w, 22, 'center');
-      if (warn) { ctx.strokeStyle = '#ff6b5e'; ctx.lineWidth = 2; rr(ctx, LW / 2 - w / 2, LH - 26, w, 22, 11); ctx.stroke(); }
-      ctx.fillStyle = warn ? '#ffb3ab' : '#fff'; ctx.textAlign = 'center'; ctx.fillText(s, LW / 2, LH - 15);
+      const w = ctx.measureText(s).width + 22; pill(LW / 2, y0, w, h, 'center');
+      if (warn) { ctx.strokeStyle = '#ff6b5e'; ctx.lineWidth = 2; rr(ctx, LW / 2 - w / 2, y0, w, h, h / 2); ctx.stroke(); }
+      ctx.fillStyle = warn ? '#ffb3ab' : '#fff'; ctx.textAlign = 'center'; ctx.fillText(s, LW / 2, y0 + h / 2 + 1);
     }
     for (const tx of game.texts) {
       const [x, y] = viewNow() === 'eye' ? (proj(tx.x, tx.y, 0.05) || [LW / 2, LH * 0.4]) : toS(tx.x, tx.y), a = clamp(1.8 - tx.t, 0, 1);
-      ctx.globalAlpha = a; ctx.font = '900 16px system-ui, sans-serif'; ctx.textAlign = 'center';
+      ctx.globalAlpha = a; ctx.font = '900 ' + TX.pop.toFixed(1) + 'px system-ui, sans-serif'; ctx.textAlign = 'center';
       const px = clamp(x, 60, LW - 60), py = clamp(y - 14 - tx.t * 18, 50, LH - 40);
       ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(0,0,0,.7)'; ctx.strokeText(tx.s, px, py);
       ctx.fillStyle = tx.col; ctx.fillText(tx.s, px, py);

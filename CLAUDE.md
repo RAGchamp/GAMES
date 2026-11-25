@@ -51,8 +51,10 @@ decisions (section 11) are agreed: a full 15-red frame by default (10 and 6 reds
 (best of 3 and 5 in the menu), computer opponent Marker only, the first colour hit counts as the chosen colour, no
 "foul and a miss" rule, Top view plus the 3D Eye view. It started as a copy of `billiards.html` and has the same split
 (`sim` with no DOM, `eye3d`, `game-ui`, three.js as the last plain-text `three-src` line; edit the scripts above it).
-Balls are 1.6x real size (`SIZE`; 2x does not fit the pack between the pink and the black) and pockets 1.6x
-(`POCKET`, tuned so careful pots go in about as often as in Billiards). Reds are `red1`..`red15` in the sim. The
+Balls are 1.8x real size (`SIZE`; 2x does not fit the pack between the pink and the black; they were 1.6x until
+the first phone test on 25 Nov 2026) and pockets 1.6x (`POCKET`, tuned so careful pots go in about as often as in
+Billiards). Text drawn on the canvas has a smallest on-screen size (`TX`, set in `resize`), and on short screens the
+drawn wooden frame is narrower (`FRAME`). Reds are `red1`..`red15` in the sim. The
 pack is racked with a 0.1 mm gap (`RACK_GAP`) so the break-off is the same every time; `V_SEP` and `MAX_HITS` keep
 clusters of touching balls from making thousands of tiny hits. Phases 1 (the Practice table) and 2 (the rules,
 frames, foul choice, free ball, respotted black, and a stand-in Marker in `cpuChoose`, which Phase 4 replaces) are

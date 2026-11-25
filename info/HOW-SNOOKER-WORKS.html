@@ -7,7 +7,7 @@
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <!--
   How Snooker works: the "How it works" page for Game 6 (Phase 6 of the Snooker plan).
-  Explains why the balls are 1.6 times real size, how a hit runs through the pack, how the referee works out the ball
+  Explains why the balls are 1.8 times real size, how a hit runs through the pack, how the referee works out the ball
   on and the foul value, free ball, touching ball and the respotted black, how Marker chooses his shot, the Snooker
   school, the views and controls, and what Claude Code built, with a dated timeline. Same layout as
   HOW-BILLIARDS-WORKS.html. The demos copy numbers and rules from GAME-6-Snooker/snooker.html (the "sim" script):
@@ -94,7 +94,7 @@
 
   <div class="about-box mb-4">
     <h2>What is this page and how does AI play a part?</h2>
-    <p class="mb-0">This page explains how <strong>Game 6: Snooker</strong> works inside. It covers why the balls are 1.6 times real size, how a hit runs through the pack of reds, how the referee knows which ball you were on and what a foul is worth, and how Marker, the computer, picks his shot. Claude Code (an AI coding agent) wrote the whole game from a <a href="SNOOKER-GAME-PLAN.html">plan</a>, starting from a copy of <a href="../GAME-5-Billiards/billiards.html">Billiards</a>. <strong>Players don't need any AI to play.</strong> The demos on this page use the same numbers and rules as the game, so you can try them yourself.</p>
+    <p class="mb-0">This page explains how <strong>Game 6: Snooker</strong> works inside. It covers why the balls are 1.8 times real size, how a hit runs through the pack of reds, how the referee knows which ball you were on and what a foul is worth, and how Marker, the computer, picks his shot. Claude Code (an AI coding agent) wrote the whole game from a <a href="SNOOKER-GAME-PLAN.html">plan</a>, starting from a copy of <a href="../GAME-5-Billiards/billiards.html">Billiards</a>. <strong>Players don't need any AI to play.</strong> The demos on this page use the same numbers and rules as the game, so you can try them yourself.</p>
   </div>
 
   <h1 class="h3 fw-bold mb-1">🔴 How Snooker Works</h1>
@@ -112,28 +112,28 @@
   <!-- 1. The table and the ball size -->
   <div class="card shadow-sm step-card mb-3">
     <div class="card-body">
-      <div class="step-title"><span class="step-num">1</span>The table, and why the balls are 1.6 times real size</div>
+      <div class="step-title"><span class="step-num">1</span>The table, and why the balls are 1.8 times real size</div>
       <p>Snooker uses the same table as Billiards: <b>3.57 m × 1.78 m</b> inside the cushions. The game works in metres, so every distance is real. The yellow, brown and green sit on the baulk line (yellow on the right of the D as you look up the table), the blue on the centre spot, the pink halfway between the centre and the top cushion, and the black <b>32.4 cm</b> from the top cushion.</p>
-      <p>Billiards plays its three balls at <b>twice real size</b>, so they show up on a phone. Snooker can't: the pack of 15 reds sits between the pink and the black, and the gap is only <b>56.8 cm</b>. From the pink to the far side of the black takes about 10.9 ball radii, so the balls can be at most about <b>1.98 times</b> real size. At 2x the back row of reds would overlap the black. Try it:</p>
+      <p>Billiards plays its three balls at <b>twice real size</b>, so they show up on a phone. Snooker can't: the pack of 15 reds sits between the pink and the black, and the gap is only <b>56.8 cm</b>. From the pink to the far side of the black takes about 10.9 ball radii, so the balls can be at most about <b>1.98 times</b> real size. At 2x the back row of reds would overlap the black. The game started at 1.6x; after a test on a phone found the balls too small, they were made <b>1.8x</b>, which still leaves 5 cm behind the pack. Try it:</p>
       <div class="row g-3">
         <div class="col-lg-7">
           <div class="demo">
             <h3>Try it: the pack between the pink and the black, at any ball size</h3>
             <canvas id="packCv" width="700" height="200" aria-label="The pink, the triangle of 15 reds and the black, drawn to scale; the gap between the back row and the black is marked"></canvas>
-            <label class="mt-2">Ball size, against real size <span id="packV"></span></label><input type="range" id="packSize" min="100" max="220" step="5" value="160">
+            <label class="mt-2">Ball size, against real size <span id="packV"></span></label><input type="range" id="packSize" min="100" max="220" step="5" value="180">
             <p class="read mb-0 mt-1" id="packRead"></p>
           </div>
         </div>
         <div class="col-lg-5">
           <span class="ctrl-label">The numbers (from snooker.html)</span>
 <pre class="code">L = 3.569, W = 1.778            <span class="c">// the playing area, metres</span>
-SIZE = 1.6                      <span class="c">// balls against real size</span>
-R = 0.02625 * SIZE              <span class="c">// ball radius: 4.2 cm</span>
+SIZE = 1.8                      <span class="c">// balls against real size</span>
+R = 0.02625 * SIZE              <span class="c">// ball radius: 4.7 cm</span>
 POCKET = 1.6                    <span class="c">// pockets against real size</span>
 pink  = L * 0.75                <span class="c">// halfway to the top cushion</span>
 black = L - 0.324
 RACK_GAP = 0.0001               <span class="c">// 0.1 mm between racked reds</span></pre>
-          <p class="small mt-2 mb-0"><b>The pockets</b> are 1.6 times real size too, the same as a real table. In a test of careful pots (random positions, a small wobble on the aim) 54% went in, against 55% in Billiards. With 1.4x pockets it was 47%. The physics (sliding, rolling, spin, cushions, pocket jaws) is the one from Billiards: see <a href="HOW-BILLIARDS-WORKS.html">How Billiards works</a>.</p>
+          <p class="small mt-2 mb-0"><b>The pockets</b> are 1.6 times real size. Bigger balls in the same pockets make potting harder, and bigger pockets make it easier, so the two were tested together. In a test of careful pots (random positions, a small wobble on the aim), 1.8x balls with 1.6x pockets go in 55% of the time: the same as in Billiards (55%), and as with the first 1.6x balls (54%). With 1.8x pockets it would be 63%. The physics (sliding, rolling, spin, cushions, pocket jaws) is the one from Billiards: see <a href="HOW-BILLIARDS-WORKS.html">How Billiards works</a>.</p>
         </div>
       </div>
     </div>
@@ -283,7 +283,7 @@ b1.v -= j;  b2.v += j;</pre>
           <span class="ctrl-label">Sound and phones</span>
           <ul class="small mb-0">
             <li>Every sound is made in code: the cue, the clack of the balls, a crack for the break-off, the cushions, a ball dropping, a tock when a colour goes back on its spot, and applause for a break of 50, a century or a clearance.</li>
-            <li>On a narrow phone the portraits beside the table are left out, and on a phone held sideways the game area uses nearly the whole screen. That doubled the table, so a ball is about 9.5 px across.</li>
+            <li>On a narrow phone the portraits beside the table are left out, and on a phone held sideways the game area uses nearly the whole screen. Drawn text never gets smaller than a readable size, and in full screen on a phone held sideways a ball is about 9 px across (22 px on a laptop).</li>
           </ul>
         </div>
       </div>
@@ -315,6 +315,7 @@ b1.v -= j;  b2.v += j;</pre>
           <tr><td>24 Nov 2026</td><td><b>Phase 4, Marker:</b> the shot search at Easy, Medium and Hard, with safety, snookers and look-ahead; the physics made 1.5 times faster with the same results.</td></tr>
           <tr><td>24 Nov 2026</td><td><b>Phase 5, sound, pop-ups and phones:</b> the break-off crack, the respot tock, applause, pop-ups that name the balls, and a bigger table on phones. <span class="tag chg">decided</span> On a phone held upright the table stays the same way round, as in Billiards, rather than turning on its side.</td></tr>
           <tr><td>24 Nov 2026</td><td><b>Phase 6:</b> this page and the portal card.</td></tr>
+          <tr><td>25 Nov 2026</td><td><span class="tag chg">changed</span> After the first test on a phone: the balls made 1.8x real size instead of 1.6x (the pockets stay 1.6x, so potting is no easier), the table's wooden frame drawn narrower on short screens, and the text on the table (the message along the bottom, the banner's second line and the pop-ups) made readable on a phone. It had been drawn about 6 px tall. All the tests were run again: every drill can still be made, Hard beat Easy, and Medium beat Easy 29–1 over 30 frames.</td></tr>
         </tbody>
       </table>
 
