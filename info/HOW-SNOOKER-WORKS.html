@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How Snooker Works</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<!--
+  How Snooker works: the "How it works" page for Game 6 (Phase 6 of the Snooker plan).
+  Explains why the balls are 1.6 times real size, how a hit runs through the pack, how the referee works out the ball
+  on and the foul value, free ball, touching ball and the respotted black, how Marker chooses his shot, the Snooker
+  school, the views and controls, and what Claude Code built, with a dated timeline. Same layout as
+  HOW-BILLIARDS-WORKS.html. The demos copy numbers and rules from GAME-6-Snooker/snooker.html (the "sim" script):
+  the table sizes and spots, R, SIZE, RACK_GAP, E_BALL, V_SEP, VALUE, the referee (onSet, the foul values) and the
+  level wobbles in LEVELS. If those change, change them here too.
+-->
+<style>
+  :root{
+    --biz-blue:#0d6efd;
+    --biz-blue-dark:#084298;
+    --biz-yellow:#ffc107;
+    --biz-red:#dc3545;
+    --biz-green:#198754;
+    --nav-blue:#04264d;
+    --nav-yellow:#ffd60a;
+  }
+  body{ background:#f7f8fa; margin:0; }
+  .topnav{
+    position:sticky; top:0; z-index:1030;
+    background:var(--nav-blue); color:var(--nav-yellow);
+    padding:.9rem 1.5rem; display:flex; justify-content:space-between; align-items:center;
+    box-shadow:0 .15rem .5rem rgba(0,0,0,.25);
+  }
+  .topnav .brand{ display:inline-flex; align-items:center; text-decoration:none; }
+  .topnav .brand-logo{ height:44px; width:auto; display:block; }
+  .topnav .tagline{ font-weight:600; font-size:1.05rem; color:var(--nav-yellow); letter-spacing:.15em; word-spacing:.6em; font-style:italic; }
+  @media (max-width:576px){ .topnav{ flex-direction:column; text-align:center; gap:.4rem; padding:.75rem 1rem; } }
+
+  .step-num{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:1.9rem; height:1.9rem; border-radius:50%;
+    background:var(--biz-yellow); color:#2b2b2b; font-weight:800; font-size:.95rem; margin-right:.55rem; flex:none;
+  }
+  .step-title{ display:flex; align-items:center; font-weight:700; font-size:1.1rem; margin-bottom:.75rem; }
+  .step-card{ border:2px solid #c9d3e3; border-radius:.6rem; }
+  .ctrl-label{ font-size:.75rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#6c757d; margin-bottom:.25rem; display:block; }
+  .about-box{ background:#fde2ec; border:2px solid #f5a3c0; border-radius:.6rem; padding:.9rem 1.1rem; }
+  .about-box h2{ font-size:1.05rem; font-weight:700; color:#8a1f4a; margin-bottom:.4rem; }
+  .about-box p{ font-size:.92rem; color:#3b2a31; }
+  .facts{ display:flex; flex-wrap:wrap; gap:.6rem; }
+  .fact{ flex:1 1 140px; background:#fff; border:2px solid #dde3ec; border-radius:.6rem; padding:.5rem .75rem; }
+  .fact .val{ font-size:1.35rem; font-weight:800; line-height:1.15; color:var(--nav-blue); }
+  .fact .lbl{ font-size:.75rem; color:#5a6475; }
+  pre.code{ background:#0f1b2d; color:#d7e3f4; border-radius:.5rem; padding:.7rem .9rem; font-size:.8rem; margin:0; white-space:pre-wrap; }
+  pre.code .c{ color:#8fa7c7; }
+  table.ref th{ background:#eef3fb; font-size:.78rem; text-transform:uppercase; letter-spacing:.04em; }
+  table.ref td, table.ref th{ font-size:.88rem; vertical-align:top; }
+  .demo{ background:#fff; border:2px dashed #9ec5fe; border-radius:.6rem; padding:.75rem .9rem; }
+  .demo h3{ font-size:.95rem; font-weight:800; color:var(--biz-blue-dark); margin:0 0 .4rem; }
+  .demo canvas{ width:100%; display:block; border-radius:.45rem; background:#1c8a45; }
+  .demo label{ font-size:.8rem; font-weight:700; color:#3b4656; display:flex; justify-content:space-between; }
+  .demo input[type=range]{ width:100%; }
+  .read{ font-size:.9rem; font-weight:700; }
+  .flow{ display:flex; flex-wrap:wrap; align-items:stretch; gap:.4rem; }
+  .flow .box{ flex:1 1 130px; background:#eef3fb; border:2px solid #c9d3e3; border-radius:.5rem; padding:.45rem .6rem; font-size:.84rem; }
+  .flow .box b{ display:block; color:var(--nav-blue); }
+  .flow .arrow{ align-self:center; font-weight:800; color:#6c757d; }
+  @media (max-width:700px){ .flow .arrow{ display:none; } }
+  .timeline td:first-child{ white-space:nowrap; }
+  .tag{ border-radius:.3rem; padding:0 .35rem; font-size:.7rem; font-weight:700; color:#fff; background:#6c757d; white-space:nowrap; }
+  .tag.chg{ background:var(--biz-red); }
+  .shotbtns{ display:flex; flex-wrap:wrap; gap:.35rem; margin-bottom:.45rem; align-items:center; }
+  .shotbtns .lab{ font-size:.75rem; font-weight:800; color:#5a6475; text-transform:uppercase; letter-spacing:.04em; min-width:5.2rem; }
+  .shotbtns button{ border:2px solid #c9d3e3; background:#fff; border-radius:2rem; padding:.12rem .6rem; font-size:.8rem; font-weight:700; color:var(--nav-blue); }
+  .shotbtns button.on{ border-color:#c4161c; background:#fdecea; color:#c4161c; }
+  .shotbtns button .dot{ display:inline-block; width:.7rem; height:.7rem; border-radius:50%; vertical-align:-1px; margin-right:.25rem; border:1px solid rgba(0,0,0,.4); }
+  .verdict{ font-weight:800; font-size:1rem; margin-top:.4rem; }
+  .verdict.foul{ color:#b02a37; } .verdict.ok{ color:#146c43; } .verdict.none{ color:#5a6475; }
+  .ball{ display:inline-block; width:.9rem; height:.9rem; border-radius:50%; vertical-align:-2px; border:1px solid rgba(0,0,0,.35); margin-right:.25rem; }
+  kbd{ background:#04264d; }
+  footer{ background:var(--nav-blue); }
+  footer a{ color:#fff; }
+</style>
+</head>
+<body>
+
+<!-- STICKY TOP NAV -->
+<div class="topnav">
+  <a class="brand" href="../index.html"><img class="brand-logo" src="../logo.svg" alt="RAG Champ"></a>
+  <div class="tagline">AI Games Portal</div>
+</div>
+
+<main class="container my-4">
+
+  <div class="about-box mb-4">
+    <h2>What is this page and how does AI play a part?</h2>
+    <p class="mb-0">This page explains how <strong>Game 6: Snooker</strong> works inside. It covers why the balls are 1.6 times real size, how a hit runs through the pack of reds, how the referee knows which ball you were on and what a foul is worth, and how Marker, the computer, picks his shot. Claude Code (an AI coding agent) wrote the whole game from a <a href="SNOOKER-GAME-PLAN.html">plan</a>, starting from a copy of <a href="../GAME-5-Billiards/billiards.html">Billiards</a>. <strong>Players don't need any AI to play.</strong> The demos on this page use the same numbers and rules as the game, so you can try them yourself.</p>
+  </div>
+
+  <h1 class="h3 fw-bold mb-1">🔴 How Snooker Works</h1>
+  <p class="text-muted mb-3"><a href="../GAME-6-Snooker/snooker.html">▶ Play Snooker</a> · <a href="SNOOKER-GAME-PLAN.html">📋 The development plan</a> · <a href="HOW-BILLIARDS-WORKS.html">💡 How Billiards works</a> · <a href="../index.html">🏠 Games Home</a></p>
+
+  <div class="facts mb-4">
+    <div class="fact"><div class="val">1 file</div><div class="lbl"><code>snooker.html</code>: HTML, CSS and JavaScript together</div></div>
+    <div class="fact"><div class="val">≈ 2,630</div><div class="lbl">lines in 3 scripts (rules, 3D eye view, screen), much of it shared with Billiards</div></div>
+    <div class="fact"><div class="val">22</div><div class="lbl">balls: the white, 15 reds and six colours worth 2 to 7</div></div>
+    <div class="fact"><div class="val">147</div><div class="lbl">the most points in a frame of 15 reds (10 reds: 107, 6 reds: 75)</div></div>
+    <div class="fact"><div class="val">3</div><div class="lbl">levels for Marker: Easy, Medium and Hard</div></div>
+    <div class="fact"><div class="val">95</div><div class="lbl">Node tests of the physics, the rules and the Snooker school, plus 60 computer-v-computer frames</div></div>
+  </div>
+
+  <!-- 1. The table and the ball size -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">1</span>The table, and why the balls are 1.6 times real size</div>
+      <p>Snooker uses the same table as Billiards: <b>3.57 m × 1.78 m</b> inside the cushions. The game works in metres, so every distance is real. The yellow, brown and green sit on the baulk line (yellow on the right of the D as you look up the table), the blue on the centre spot, the pink halfway between the centre and the top cushion, and the black <b>32.4 cm</b> from the top cushion.</p>
+      <p>Billiards plays its three balls at <b>twice real size</b>, so they show up on a phone. Snooker can't: the pack of 15 reds sits between the pink and the black, and the gap is only <b>56.8 cm</b>. From the pink to the far side of the black takes about 10.9 ball radii, so the balls can be at most about <b>1.98 times</b> real size. At 2x the back row of reds would overlap the black. Try it:</p>
+      <div class="row g-3">
+        <div class="col-lg-7">
+          <div class="demo">
+            <h3>Try it: the pack between the pink and the black, at any ball size</h3>
+            <canvas id="packCv" width="700" height="200" aria-label="The pink, the triangle of 15 reds and the black, drawn to scale; the gap between the back row and the black is marked"></canvas>
+            <label class="mt-2">Ball size, against real size <span id="packV"></span></label><input type="range" id="packSize" min="100" max="220" step="5" value="160">
+            <p class="read mb-0 mt-1" id="packRead"></p>
+          </div>
+        </div>
+        <div class="col-lg-5">
+          <span class="ctrl-label">The numbers (from snooker.html)</span>
+<pre class="code">L = 3.569, W = 1.778            <span class="c">// the playing area, metres</span>
+SIZE = 1.6                      <span class="c">// balls against real size</span>
+R = 0.02625 * SIZE              <span class="c">// ball radius: 4.2 cm</span>
+POCKET = 1.6                    <span class="c">// pockets against real size</span>
+pink  = L * 0.75                <span class="c">// halfway to the top cushion</span>
+black = L - 0.324
+RACK_GAP = 0.0001               <span class="c">// 0.1 mm between racked reds</span></pre>
+          <p class="small mt-2 mb-0"><b>The pockets</b> are 1.6 times real size too, the same as a real table. In a test of careful pots (random positions, a small wobble on the aim) 54% went in, against 55% in Billiards. With 1.4x pockets it was 47%. The physics (sliding, rolling, spin, cushions, pocket jaws) is the one from Billiards: see <a href="HOW-BILLIARDS-WORKS.html">How Billiards works</a>.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. The pack -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">2</span>How a hit runs through the pack</div>
+      <p>Billiards never has more than three balls on the table, and they hardly ever touch. A snooker pack is fifteen balls packed together, so the break-off sends a hit through a chain of touching balls in one instant. The game racks the reds <b>a tenth of a millimetre apart</b>, so every contact in the chain has its own exact time. It then works them out one at a time, in a fixed order, which is why the same break-off always spreads the pack the same way.</p>
+      <div class="row g-3">
+        <div class="col-lg-7">
+          <div class="demo">
+            <h3>Try it: the white hits a straight line of touching reds full on</h3>
+            <canvas id="chainCv" width="700" height="190" aria-label="The white and a line of reds; bars show how fast each ball moves after the hit"></canvas>
+            <label class="mt-2">Reds in the line <span id="chainV"></span></label><input type="range" id="chainN" min="1" max="6" value="4">
+            <p class="read mb-0 mt-1" id="chainRead"></p>
+          </div>
+        </div>
+        <div class="col-lg-5">
+          <span class="ctrl-label">Ball meets ball (from snooker.html)</span>
+<pre class="code"><span class="c">// vrel: how fast the two close along the line of centres</span>
+j = (1 + E_BALL) / 2 * vrel;     <span class="c">// E_BALL = 0.95</span>
+j = max(j, (vrel + V_SEP) / 2);  <span class="c">// V_SEP = 0.002 m/s</span>
+b1.v -= j;  b2.v += j;</pre>
+          <p class="small mt-2 mb-0">Balls keep 95% of their energy, so each one in the chain keeps a little speed and the push mostly passes on, like a Newton's cradle. <b>V_SEP</b> came from testing. Balls lying against each other in a cluster, pushed together by their spin, were bumping thousands of times at under 1 mm/s (one frame of a test worked out 1,157 hits). Now two balls that meet that slowly part at 2 mm/s, which you could never see. A full-power shot into the pack makes about 50 hits instead of 150. At most 60 hits are worked out in one 1/600 s step, so a frame never takes long.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. The referee -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">3</span>The ball on, and what a foul is worth</div>
+      <p>At every shot you are <b>on</b> something: <b>a red</b>, or after potting a red <b>any colour</b>, or, once the reds are gone, <b>one colour</b> (yellow, green, brown, blue, pink, then black). Real snooker players name the colour they are going for; in this game you don't have to: <b>the first colour your white hits is the one you chose</b>. While the balls run, the game writes down what happens: which ball the white hit first, which balls dropped. Then a <b>referee</b> function reads that list and decides.</p>
+      <div class="row g-3">
+        <div class="col-lg-7">
+          <div class="demo">
+            <h3>Try it: what you are on, what the white hits first, what goes in</h3>
+            <div class="shotbtns" id="onBtns"><span class="lab">You are on</span></div>
+            <div class="shotbtns" id="firstBtns"><span class="lab">White hits</span></div>
+            <div class="shotbtns" id="potBtns"><span class="lab">Goes in</span></div>
+            <div class="verdict" id="refVerdict"></div>
+            <p class="small text-muted mb-0" id="refWhy"></p>
+          </div>
+        </div>
+        <div class="col-lg-5">
+          <table class="table table-sm table-bordered ref mb-2">
+            <thead><tr><th>Foul</th><th>The other player gets</th></tr></thead>
+            <tbody>
+              <tr><td>The white hits no ball</td><td rowspan="4">the value of the ball on, or of the highest ball in the foul, whichever is more; <b>never less than 4</b> (so 4 to 7)</td></tr>
+              <tr><td>It hits a ball that is not on first</td></tr>
+              <tr><td>A ball that is not on goes in</td></tr>
+              <tr><td>The white goes in (in-off)</td></tr>
+            </tbody>
+          </table>
+          <p class="small mb-0">Values: <span class="ball" style="background:#c4161c"></span>red 1 · <span class="ball" style="background:#f2c300"></span>yellow 2 · <span class="ball" style="background:#0e7a40"></span>green 3 · <span class="ball" style="background:#6e3d1c"></span>brown 4 · <span class="ball" style="background:#1f5fd1"></span>blue 5 · <span class="ball" style="background:#ff8fb3"></span>pink 6 · <span class="ball" style="background:#1c1c1c"></span>black 7. While reds are left, a potted colour goes back on its spot (or, if that is covered, the highest free spot). The referee is tested in Node with a made-up shot for each rule, and 3,000 random ones to check every penalty is 4 to 7.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Free ball, touching ball, respotted black -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">4</span>Free ball, touching ball and the respotted black</div>
+      <div class="row g-3">
+        <div class="col-md-4">
+          <span class="ctrl-label">After a foul</span>
+          <p class="small mb-1">The other player chooses: <b>play on</b> from where the balls are, or make the fouler <b>play again</b>. A box asks you; Marker decides for himself (he plays on when he has a fair pot).</p>
+          <p class="small mb-0"><b>Free ball:</b> if the foul leaves you unable to hit <i>both edges</i> of any ball on in a straight line, any ball counts as the ball on, and scores as the ball on. A <b>line-of-sight</b> helper works this out: it tries nine straight lines from one edge of each ball on to the other.</p>
+        </div>
+        <div class="col-md-4">
+          <span class="ctrl-label">Touching ball</span>
+          <p class="small mb-0">When the white comes to rest against a ball (within 2 mm), the game says so and you play away from it. If that ball is on, it counts as already hit, so playing away is not a miss.</p>
+        </div>
+        <div class="col-md-4">
+          <span class="ctrl-label">The end of a frame</span>
+          <p class="small mb-1">The first score or foul on the last black ends the frame. If the scores are then level, the black goes back on its spot, a coin toss says who plays at it from the D, and the first score or foul wins.</p>
+          <p class="small mb-0">The game shows the points left and when a player <b>needs snookers</b> (more behind than there is to score). Left out, as agreed in the plan: the "foul and a miss" rule.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. Marker -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">5</span>How Marker chooses his shot</div>
+      <p>Marker isn't an AI that learned snooker. He is a short, plain program that <b>tries shots in the game's own physics</b>, with the game's own referee, before he plays one, so his plans always match what will really happen.</p>
+      <div class="flow mb-3">
+        <div class="box"><b>1. Make a list</b>From where the white lies (or the best places in the D): a pot of each ball on into each pocket it lines up with, at a few paces and spins, easiest first; thin and thick safety hits on the nearest balls on; and, at the start of a frame, a few break-offs.</div>
+        <div class="arrow">→</div>
+        <div class="box"><b>2. Try each one</b>Play it in the sim and let the referee score it. Points count (less for a hard pot he might miss), plus how easy his next ball is: that is how he picks his colour after a red. If he doesn't score, a hard shot for you is good, and leaving you snookered is better.</div>
+        <div class="arrow">→</div>
+        <div class="box"><b>3. Look ahead (Hard)</b>For his best two pots, search again from where the balls stop, and add the best follow-up.</div>
+        <div class="arrow">→</div>
+        <div class="box"><b>4. Play it, with a wobble</b>His aim and pace are a little off, by a random amount that shrinks with the level.</div>
+      </div>
+      <div class="row g-3">
+        <div class="col-lg-7">
+          <div class="demo">
+            <h3>Try it: Marker's wobble on a 2 m pot</h3>
+            <canvas id="wobCv" width="700" height="190" aria-label="Lines spreading from the white towards a pocket 2 m away show how far Marker's aim strays at each level"></canvas>
+            <div class="shotbtns mt-2" id="wobBtns"></div>
+            <p class="read mb-0" id="wobRead"></p>
+          </div>
+        </div>
+        <div class="col-lg-5">
+          <table class="table table-sm table-bordered ref mb-2">
+            <thead><tr><th>Level</th><th>Aim wobble</th><th>Shots tried</th><th>Safety</th></tr></thead>
+            <tbody>
+              <tr><td>Easy</td><td>±1.4°</td><td>up to 14 pots, 4 safeties</td><td>hardly</td></tr>
+              <tr><td>Medium</td><td>±0.45°</td><td>up to 36 pots (with top and screw), 12 safeties</td><td>some</td></tr>
+              <tr><td>Hard</td><td>±0.12°</td><td>up to 60 pots (with spin), 20 safeties, plus look-ahead</td><td>full</td></tr>
+            </tbody>
+          </table>
+          <p class="small mb-0">Each tried shot is a full shot with 22 balls, so to give him time the physics step was made about <b>1.5 times faster</b>, with exactly the same results (290 shots compared ball by ball). He thinks about 10 ms each frame while his cue drifts across what he is considering, and he chooses within 2 seconds even on a slow phone. In Node, over 30 six-red frames each, <b>Hard beat Easy 30–0</b> (1,831 points to 288, best break 60) and <b>Medium beat Easy 30–0</b>. In five full 15-red frames Hard made breaks of 30 or more, the best 42.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. School, views and controls -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">6</span>The Snooker school, the two views, and how you play</div>
+      <div class="row g-3">
+        <div class="col-md-4">
+          <span class="ctrl-label">Snooker school</span>
+          <ul class="small mb-0">
+            <li>Five set-up shots: the long pot, stun for the black, screw back for the pink, the break-off and escaping a snooker; most have a circle the white must stop in.</li>
+            <li>Each was placed by a search over thousands of shots in the sim. Every one can be made. In the stun drill no middle-of-the-ball hit stays in the circle (over that distance a stun needs a touch of screw), and in the screw drill only screw does.</li>
+            <li>A sixth, timed challenge: clear the colours from yellow to black. The frame's own referee judges it, and your best is kept.</li>
+          </ul>
+        </div>
+        <div class="col-md-4">
+          <span class="ctrl-label">Top view and Eye view</span>
+          <ul class="small mb-0">
+            <li><b>Top:</b> the table from above. Aim by swinging the cue stick round the white; shoot by pulling the power cue on the right down and letting go. The balls you may hit glow, and the ring turns red if the white would hit the wrong ball first.</li>
+            <li><b>Eye:</b> low behind the white, in 3D with three.js, as in Billiards; Power slider and SHOOT. Without WebGL it falls back to a hand-drawn eye view.</li>
+            <li><b>Numbers on balls</b> (<kbd>N</kbd>) prints each ball's value on it, for small screens and colour-blind players.</li>
+          </ul>
+        </div>
+        <div class="col-md-4">
+          <span class="ctrl-label">Sound and phones</span>
+          <ul class="small mb-0">
+            <li>Every sound is made in code: the cue, the clack of the balls, a crack for the break-off, the cushions, a ball dropping, a tock when a colour goes back on its spot, and applause for a break of 50, a century or a clearance.</li>
+            <li>On a narrow phone the portraits beside the table are left out, and on a phone held sideways the game area uses nearly the whole screen. That doubled the table, so a ball is about 9.5 px across.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. What Claude Code built -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">7</span>What Claude Code built, and how it was checked</div>
+      <p class="small">Claude Code wrote the game from the plan, starting from a copy of Billiards. The only borrowed code is the three.js library for the Eye view. The game file has three scripts, plus three.js as plain text:</p>
+      <div class="flow mb-3">
+        <div class="box"><b>sim: the rules</b>The table, the 22 balls and their physics, the referee, the Snooker school and Marker. It draws nothing, so test programs can play whole frames without a browser.</div>
+        <div class="arrow">→</div>
+        <div class="box"><b>eye3d: the 3D view</b>Builds the table, the balls in their colours, the cue and the hand in three.js, and moves them each frame from the game.</div>
+        <div class="arrow">→</div>
+        <div class="box"><b>game-ui: the screen</b>The Top view, controls, menus, sound and saving. It asks the rules what happened and shows it.</div>
+      </div>
+
+      <span class="ctrl-label">Timeline</span>
+      <p class="small mb-2"><span class="tag chg">decided</span> marks choices the owner made.</p>
+      <table class="table table-sm table-bordered ref timeline mb-3">
+        <thead><tr><th>When</th><th>What was built</th></tr></thead>
+        <tbody>
+          <tr><td>24 Nov 2026</td><td><b>The plan:</b> snooker against Marker, built on Billiards, in 6 phases. <span class="tag chg">decided</span> The decisions were agreed one question at a time: a full 15-red frame by default (the plan had suggested 6 reds), one frame by default, 1.6x balls, Marker again, the first colour hit counts as the chosen one, no "foul and a miss", and Top plus the 3D Eye view.</td></tr>
+          <tr><td>24 Nov 2026</td><td><b>Phase 1, the table and the pack:</b> the 22 balls, the colour spots, racking 15, 10 or 6 reds, the Practice table, the touching-ball and line-of-sight helpers. Pockets tested at 1.4x and 1.6x, then kept at 1.6x. Clusters of touching balls were making thousands of tiny hits, which V_SEP and MAX_HITS fixed. 10,000 full-power shots into the pack never left two balls overlapping.</td></tr>
+          <tr><td>24 Nov 2026</td><td><b>Phase 2, the rules:</b> the referee, fouls, colours going back on their spots, play on or play again, free ball, touching ball, the respotted black, conceding, frames and best of 3 or 5, saving, and a simple stand-in Marker.</td></tr>
+          <tr><td>24 Nov 2026</td><td><b>Phase 3, the Snooker school:</b> five set-up shots and the timed clearance, numbers on balls, and the glow and target circle in the Eye views.</td></tr>
+          <tr><td>24 Nov 2026</td><td><b>Phase 4, Marker:</b> the shot search at Easy, Medium and Hard, with safety, snookers and look-ahead; the physics made 1.5 times faster with the same results.</td></tr>
+          <tr><td>24 Nov 2026</td><td><b>Phase 5, sound, pop-ups and phones:</b> the break-off crack, the respot tock, applause, pop-ups that name the balls, and a bigger table on phones. <span class="tag chg">decided</span> On a phone held upright the table stays the same way round, as in Billiards, rather than turning on its side.</td></tr>
+          <tr><td>24 Nov 2026</td><td><b>Phase 6:</b> this page and the portal card.</td></tr>
+        </tbody>
+      </table>
+
+      <span class="ctrl-label">How it was checked</span>
+      <ul class="small mb-0">
+        <li><b>Node tests</b> (95 in all) play shots with the real rules. The pack fits and the same break-off always gives the same result. A line of touching reds passes the hit to the far one. No ball ever overlaps another or leaves the table. Every scoring and foul rule is checked, 40 whole frames all finish with scores that add up, and every Snooker school shot can be made.</li>
+        <li><b>Computer-v-computer frames</b> in Node checked that each level of Marker is stronger than the one below, and how long he takes to choose.</li>
+        <li><b>A test browser</b> opened the game at laptop, tablet and phone sizes. It aimed, pulled the power cue, played frames, drills and the clearance in both views, and checked the sounds, the layout and that no control covers the cloth.</li>
+        <li><b>Still to do:</b> a person playing it on a real phone. The Billiards changes that came from phone testing (bigger balls, the 3D eye view, the cue-stick aiming) are already in, because Snooker started from Billiards.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="text-center my-4">
+    <a class="btn btn-lg fw-bold text-white px-4" style="background:#04264d;border:3px solid #ffd60a;border-radius:2rem;color:#ffd60a!important" href="../GAME-6-Snooker/snooker.html">▶ Play Snooker</a>
+    <a class="btn btn-lg fw-bold px-4 ms-2" style="border:2px solid #04264d;color:#04264d;border-radius:2rem" href="../index.html">🏠 Games Home</a>
+  </div>
+  <p class="small text-muted text-center">Eye view: three.js by the three.js authors (MIT licence). Everything else written with Claude Code.</p>
+
+</main>
+
+<footer class="text-white py-4 mt-5">
+  <div class="container text-center small">AI Games Portal · How Snooker works · <a href="../GAME-6-Snooker/snooker.html">🔴 Play Snooker</a> · <a href="SNOOKER-GAME-PLAN.html">📋 Snooker plan</a> · <a href="HOW-BILLIARDS-WORKS.html">💡 How Billiards works</a> · <a href="HOW-GOLF-WORKS.html">💡 How Golf works</a> · <a href="HOW-JAVELIN-WORKS.html">💡 How Javelin works</a> · <a href="../index.html">🏠 Games Home</a></div>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+  /* ---------- The game's numbers (copied from the sim script in snooker.html) ---------- */
+  const L = 3.569, R0 = 0.02625, PINK = L * 0.75, BLACK = L - 0.324, RACK_GAP = 1e-4;
+  const E_BALL = 0.95, V_SEP = 0.002;
+  const VALUE = { red: 1, yellow: 2, green: 3, brown: 4, blue: 5, pink: 6, black: 7 };
+  const COLOURS = ['yellow', 'green', 'brown', 'blue', 'pink', 'black'];
+  const COL = { white: '#f3efe2', red: '#c4161c', yellow: '#f2c300', green: '#0e7a40', brown: '#6e3d1c', blue: '#1f5fd1', pink: '#ff8fb3', black: '#1c1c1c' };
+  const LEVELS = { easy: { name: 'Easy', aim: 1.4 }, medium: { name: 'Medium', aim: 0.45 }, hard: { name: 'Hard', aim: 0.12 } };
+
+  function setupCanvas(cv) {   // sharp on high-density screens; draw in the canvas's own width/height units
+    const w = cv.width, h = cv.height, dpr = Math.min(window.devicePixelRatio || 1, 2);
+    if (!cv.dataset.w) { cv.dataset.w = w; cv.dataset.h = h; cv.width = w * dpr; cv.height = h * dpr; }
+    const c = cv.getContext('2d'); c.setTransform(cv.width / +cv.dataset.w, 0, 0, cv.height / +cv.dataset.h, 0, 0);
+    return [c, +cv.dataset.w, +cv.dataset.h];
+  }
+  function ball(c, x, y, r, col) {
+    const g = c.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.1, x, y, r * 1.05);
+    g.addColorStop(0, 'rgba(255,255,255,.75)'); g.addColorStop(0.35, col); g.addColorStop(1, col);
+    c.fillStyle = g; c.beginPath(); c.arc(x, y, r, 0, 7); c.fill();
+    c.strokeStyle = 'rgba(0,0,0,.5)'; c.lineWidth = Math.max(0.6, r * 0.09); c.stroke();
+  }
+
+  /* ---------- 1. The pack between the pink and the black ---------- */
+  function drawPack() {
+    const [c, w, h] = setupCanvas($('packCv')), size = $('packSize').value / 100, R = R0 * size, d = 2 * R + RACK_GAP, step = d * Math.sqrt(3) / 2;
+    $('packV').textContent = size.toFixed(2) + 'x';
+    // the scale: the strip from the pink to the black fits the width, and the widest pack (2.2x, 5 balls across) the height
+    const y0 = PINK - 0.09, y1 = BLACK + 0.09, packMax = 5 * (2 * R0 * 2.2) + 0.02;
+    const k = Math.min((w - 20) / (y1 - y0), (h - 44) / packMax), left = (w - (y1 - y0) * k) / 2;
+    const X = y => left + (y - y0) * k, Y = x => h / 2 - 6 + x * k;
+    c.fillStyle = '#1c8a45'; c.fillRect(0, 0, w, h);
+    c.fillStyle = 'rgba(235,245,235,.8)'; for (const s of [PINK, BLACK]) { c.beginPath(); c.arc(X(s), Y(0), 2, 0, 7); c.fill(); }
+    const apex = PINK + d, back = apex + 4 * step;
+    // the reds
+    for (let r = 0; r < 5; r++) for (let j = 0; j <= r; j++) ball(c, X(apex + r * step), Y((j - r / 2) * d), R * k, COL.red);
+    ball(c, X(PINK), Y(0), R * k, COL.pink);
+    const gap = (BLACK - R) - (back + R);
+    ball(c, X(BLACK), Y(0), R * k, COL.black);
+    // the gap behind the pack
+    c.strokeStyle = gap >= 0 ? '#ffd60a' : '#ff6b5e'; c.lineWidth = 2; c.setLineDash([4, 3]);
+    c.beginPath(); c.moveTo(X(back + R), Y(0) + 2.6 * d * k + 8); c.lineTo(X(BLACK - R), Y(0) + 2.6 * d * k + 8); c.stroke(); c.setLineDash([]);
+    c.font = '700 12px system-ui, sans-serif'; c.fillStyle = '#fff'; c.textAlign = 'center';
+    c.fillText('pink', X(PINK), Y(0) - R * k - 6); c.fillText('black', X(BLACK), Y(0) - R * k - 6);
+    const r = $('packRead');
+    r.textContent = gap >= 0 ? 'At ' + size.toFixed(2) + 'x the balls are ' + (2 * R * 100).toFixed(1) + ' cm across, and there are ' + (gap * 1000).toFixed(0) + ' mm between the back row and the black.'
+      : 'At ' + size.toFixed(2) + 'x the back row would overlap the black by ' + (-gap * 1000).toFixed(0) + ' mm: it does not fit.';
+    r.style.color = gap >= 0 ? '' : '#b02a37';
+  }
+  $('packSize').addEventListener('input', drawPack);
+
+  /* ---------- 2. A hit through a line of touching reds (the game's ball-on-ball rule, in one dimension) ---------- */
+  function chain(n, v0) {
+    const v = [v0].concat(Array(n).fill(0));
+    // the contacts happen one after another along the line; repeat until no two neighbours are closing
+    for (let pass = 0; pass < 500; pass++) {
+      let any = false;
+      for (let i = 0; i < n; i++) {
+        const vrel = v[i] - v[i + 1];
+        if (vrel > 0) { const j = Math.max((1 + E_BALL) / 2 * vrel, (vrel + V_SEP) / 2); v[i] -= j; v[i + 1] += j; any = true; }
+      }
+      if (!any) break;
+    }
+    return v;
+  }
+  function drawChain() {
+    const [c, w, h] = setupCanvas($('chainCv')), n = +$('chainN').value, v0 = 3, v = chain(n, v0);
+    $('chainV').textContent = n;
+    c.fillStyle = '#1c8a45'; c.fillRect(0, 0, w, h);
+    const r = 16, gx = 2 * r + 2, x0 = 60, y = 56;
+    c.strokeStyle = 'rgba(255,255,255,.6)'; c.setLineDash([4, 5]); c.beginPath(); c.moveTo(20, y); c.lineTo(x0 - r - 4, y); c.stroke(); c.setLineDash([]);
+    for (let i = 0; i <= n; i++) ball(c, x0 + i * gx, y, r, i ? COL.red : COL.white);
+    // bars: each ball's speed after the hit, as a share of the white's speed before it
+    const base = h - 22, top = 100, bw = Math.min(46, (w - 80) / (n + 1) - 8);
+    c.font = '700 11px system-ui, sans-serif'; c.textAlign = 'center';
+    for (let i = 0; i <= n; i++) {
+      const x = x0 + i * Math.max(gx, bw + 10), share = Math.abs(v[i]) / v0, bh = (base - top) * share;
+      c.fillStyle = i ? '#ffb3ab' : '#fff'; c.fillRect(x - bw / 2, base - bh, bw, Math.max(1, bh));
+      c.fillStyle = '#fff'; c.fillText(Math.round(share * 100) + '%', x, base - bh - 4 < top - 2 ? top - 2 : base - bh - 4);
+      c.fillText(i ? 'red ' + i : 'white', x, base + 14);
+    }
+    const others = Math.max(...v.slice(0, n).map(Math.abs)) / v0;
+    $('chainRead').textContent = 'The far red leaves at ' + Math.round(v[n] / v0 * 100) + '% of the white\'s speed; the white and the touching reds behind it keep at most ' + Math.round(others * 100) + '%.';
+  }
+  $('chainN').addEventListener('input', drawChain);
+
+  /* ---------- 3. The referee (the game's rules for the ball on and the foul values) ---------- */
+  const ref = { on: 'red', first: 'red', pots: new Set(['red']) };
+  const onLabel = { red: 'A red', colour: 'A colour' };
+  function referee(on, first, pots) {
+    const isOn = id => on === 'red' ? id === 'red' : on === 'colour' ? COLOURS.includes(id) : id === on;
+    const onVal = on === 'red' ? 1 : on === 'colour' ? (first && COLOURS.includes(first) ? VALUE[first] : 0) : VALUE[on];
+    const fouls = [];
+    if (!first) fouls.push([onVal, 'the white hit no ball']);
+    else if (!isOn(first)) fouls.push([Math.max(onVal, VALUE[first]), 'the white hit the ' + first + ' first, and that was not on']);
+    const mayPot = id => on === 'red' ? id === 'red' : id === first && isOn(id);
+    for (const id of pots) {
+      if (id === 'white') fouls.push([onVal, 'the white went in (in-off)']);
+      else if (!mayPot(id)) fouls.push([Math.max(onVal, VALUE[id]), 'the ' + id + ' went in, and that was not on']);
+    }
+    if (fouls.length) return { foul: true, penalty: clamp(Math.max(4, ...fouls.map(f => f[0])), 4, 7), why: fouls.map(f => f[1]) };
+    const pts = [...pots].filter(mayPot).reduce((s, id) => s + VALUE[id], 0);
+    return { foul: false, points: pts };
+  }
+  function refButtons() {
+    const mk = (box, items, isSel, onClick) => {
+      const el = $(box); el.querySelectorAll('button').forEach(b => b.remove());
+      for (const [id, text, col] of items) {
+        const b = document.createElement('button'); b.className = isSel(id) ? 'on' : '';
+        b.innerHTML = (col ? '<i class="dot" style="background:' + col + '"></i>' : '') + text; b.onclick = () => { onClick(id); refButtons(); };
+        el.appendChild(b);
+      }
+    };
+    mk('onBtns', [['red', 'A red', COL.red], ['colour', 'A colour'], ...COLOURS.map(c => [c, c[0].toUpperCase() + c.slice(1), COL[c]])], id => ref.on === id, id => { ref.on = id; });
+    mk('firstBtns', [[null, 'Nothing'], ['red', 'A red', COL.red], ...COLOURS.map(c => [c, c[0].toUpperCase() + c.slice(1), COL[c]])], id => ref.first === id, id => { ref.first = id; });
+    mk('potBtns', [['red', 'A red', COL.red], ...COLOURS.map(c => [c, c[0].toUpperCase() + c.slice(1), COL[c]]), ['white', 'The white', COL.white]], id => ref.pots.has(id), id => { ref.pots.has(id) ? ref.pots.delete(id) : ref.pots.add(id); });
+    const r = referee(ref.on, ref.first, ref.pots), v = $('refVerdict');
+    if (r.foul) { v.className = 'verdict foul'; v.textContent = 'Foul: ' + r.penalty + ' to the other player'; $('refWhy').textContent = 'Because ' + r.why.join('; ') + '. The penalty is the highest of these, and at least 4.'; }
+    else if (r.points) {
+      v.className = 'verdict ok'; v.textContent = '+' + r.points + ': keep playing';
+      $('refWhy').textContent = ref.on === 'red' ? 'Next you are on a colour.' + (ref.pots.size ? ' (In the game, two reds in one shot score 2.)' : '') : ref.on === 'colour' ? 'The first colour hit was the one chosen. While reds are left it goes back on its spot, and you are on a red again.' : 'In the clearance the colour stays down, and you are on the next one.';
+    } else { v.className = 'verdict none'; v.textContent = 'No score: the other player\'s turn'; $('refWhy').textContent = 'A fair shot, but nothing that was on went in.'; }
+  }
+
+  /* ---------- 4. Marker's wobble (the aim wobble of each level, from LEVELS in snooker.html) ---------- */
+  let wobLevel = 'medium';
+  function drawWob() {
+    const [c, w, h] = setupCanvas($('wobCv')), P = LEVELS[wobLevel], D = 2, k = (w - 80) / D, x0 = 40, y = h / 2;
+    c.fillStyle = '#1c8a45'; c.fillRect(0, 0, w, h);
+    const mouth = 0.085 * 1.6 * Math.SQRT2 / 2;   // half the corner pocket's opening (the game's corner mouth), metres
+    c.fillStyle = '#0b0b0b'; c.fillRect(x0 + D * k - 4, y - mouth * k, 14, 2 * mouth * k);
+    let s = 7, inside = 0; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
+    c.strokeStyle = 'rgba(255,255,255,.5)'; c.lineWidth = 1;
+    for (let i = 0; i < 60; i++) {
+      const g = Math.sqrt(-2 * Math.log(rnd() + 1e-12)) * Math.cos(2 * Math.PI * rnd()), a = g * P.aim * Math.PI / 180, off = Math.tan(a) * D;
+      if (Math.abs(off) < mouth) inside++;
+      c.beginPath(); c.moveTo(x0, y); c.lineTo(x0 + D * k, y + off * k); c.stroke();
+    }
+    ball(c, x0, y, 0.042 * k, COL.white);
+    c.fillStyle = '#fff'; c.font = '700 12px system-ui, sans-serif'; c.textAlign = 'right'; c.fillText('pocket, 2 m away', w - 12, 18);
+    for (const b of $('wobBtns').querySelectorAll('button')) b.classList.toggle('on', b.dataset.lv === wobLevel);
+    $('wobRead').textContent = P.name + ': his aim strays by ' + P.aim + '° on a typical shot, ' + (Math.tan(P.aim * Math.PI / 180) * D * 100).toFixed(1) + ' cm at 2 m; ' + inside + ' of these 60 tries reach the pocket opening (on a real shot the ball he hits has to go in, which is harder still).';
+  }
+  for (const lv of ['easy', 'medium', 'hard']) {
+    const b = document.createElement('button'); b.dataset.lv = lv; b.textContent = LEVELS[lv].name; b.onclick = () => { wobLevel = lv; drawWob(); };
+    $('wobBtns').appendChild(b);
+  }
+
+  drawPack(); drawChain(); refButtons(); drawWob();
+})();
+</script>
+</body>
+</html>

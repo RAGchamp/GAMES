@@ -10,7 +10,7 @@ Games written with Claude Code, linked from the portal page `index.html`. Each g
 | Game 3: Javelin | `GAME-3-Javelin/` | `info/JAVELIN-GAME-PLAN.html`, `info/HOW-JAVELIN-WORKS.html` |
 | Game 4: Golf | `GAME-4-Golf/` | `info/GOLF-PLAN.html`, `info/HOW-GOLF-WORKS.html` |
 | Game 5: Billiards | `GAME-5-Billiards/` | `info/BILLIARDS-GAME-PLAN.html`, `info/HOW-BILLIARDS-WORKS.html` |
-| Game 6: Snooker (being built) | `GAME-6-Snooker/` | `info/SNOOKER-GAME-PLAN.html` (explainer comes in Phase 6) |
+| Game 6: Snooker | `GAME-6-Snooker/` | `info/SNOOKER-GAME-PLAN.html`, `info/HOW-SNOOKER-WORKS.html` |
 
 Javelin's tower physics is Matter.js 0.19.0 (MIT), pasted as one long line in the last `<script id="matter">` of
 `javelin.html`; edit the `sim` and `game-ui` scripts above it, not that line. The `sim` script has no DOM code so
@@ -73,6 +73,10 @@ same way round, as in Billiards (it does not turn on its side). The portraits be
 game area is under 600 px wide (`playersShown`), and on short screens (sideways phones) the game area uses nearly the
 whole height. Browser checks: `S-PAD/tests/phase5.js` and `phones5.js` (run through `cdp.js` with W, H, DPR, MOBILE).
 Still not done: a full frame on a real phone.
+Phase 6 (the portal card and `info/HOW-SNOOKER-WORKS.html`) is done, so all six phases are built. The explainer's
+demos copy numbers and rules from the `sim` script of `snooker.html` (the table and spots, `SIZE`, `R`, `RACK_GAP`,
+`E_BALL`, `V_SEP`, `VALUE`, the referee's foul values, the aim wobbles in `LEVELS`); change them there too if those
+change, along with its quoted test results.
 
 ## Abandoned: Geography game (22 Nov 2026)
 
