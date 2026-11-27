@@ -93,6 +93,14 @@ between tabs of one browser, `?as=NAME` fixes a tab's player, `?grace=N` shorten
 database rules are in `F-PAD/build/database.rules.json` (paste into the Firebase console after changing them), and
 setup steps are in `F-PAD/build/FIREBASE-SETUP.md`. `ping-test.html` is the Phase 1 test page (not linked).
 Tests are in `F-PAD/tests/` (git-ignored): `node phase1.js` (headless Chrome, several tabs, `?fake`).
+Phase 2 (Billiards with a friend) is done in `billiards-friend.html`'s `game-ui`. A game is a list of moves in the room,
+applied in order by both pages (`netApply`): `toss` (creator: match number, who breaks, target), `shot` (striker:
+white's place, aim, power, spin), `result` (striker: the whole match after `applyShot`; the striker's page has the
+final say and the friend's page slides its balls to it), `concede`, `rematch` (both ask, the creator tosses again and
+the other player breaks). A page skips the echo of its own shot and result (by id); after a reload the moves rebuild the
+game without animations. The creator is `'white'`, the friend `'yellow'` (`NET.me`), so the sim is unchanged. Saves
+go under `friend.save.v1` (shared with Snooker; `store()` keeps only its own fields). `node phase2.js` plays two pages
+against each other (200 shots, a reload, give up, rematch, a full 50-up game; `SHOTS=20` for a short run).
 
 ## Abandoned: Geography game (22 Nov 2026)
 

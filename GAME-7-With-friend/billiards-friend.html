@@ -13,6 +13,14 @@
   there by F-PAD/build/make-friend.js: make physics and rule fixes in the original game and run that script; do
   not edit those three parts here. The "game-ui" script and the styles belong to this page.
 
+  Phase 2 (Billiards with a friend): sign in with Google, create a game (first to 50, 100 or 200) and send the code or
+  link, or join one; the coin toss and the two portraits; every shot is a numbered move in the room: the striker's page
+  plays and scores it (applyShot) and sends the whole match as the result, the friend's page plays the same shot from
+  its numbers and then takes the result as final (any ball that ended a little off slides to its place); give up,
+  rematch (the other player breaks), and results against each friend. You play from your own side: the creator is
+  white ('white' in the sim), the friend yellow. Saves under friend.save.v1 (shared with snooker-friend.html).
+  Test hooks: ?fake (online.js stand-in between tabs), ?as=NAME, ?room=CODE, ?debug (window.__bil), ?fast=N.
+
   The comment below is the original game's own description.
 -->
 <!--
@@ -262,6 +270,17 @@
   .me{ display:flex; align-items:center; justify-content:center; gap:.5rem; margin:.35rem 0; }
   .me canvas{ width:40px; height:44px; border-radius:.4rem; flex:none; }
   .me .opt{ margin:0; }
+  /* Play with a friend: the room code, the two portraits before the break, a friend who chose the same portrait */
+  .roomcode{ font-size:2.4rem; font-weight:900; letter-spacing:.25em; color:var(--nav-blue); margin:.2rem 0 .4rem; font-family:ui-monospace, Consolas, monospace; }
+  .codein{ font:inherit; font-weight:800; letter-spacing:.2em; text-transform:uppercase; width:7.5rem; padding:.3rem .5rem; border:2px solid #c9d3e3; border-radius:.5rem; text-align:center; }
+  .vs{ display:flex; align-items:center; justify-content:center; gap:1rem; margin:.5rem 0; }
+  .vs > div{ display:flex; flex-direction:column; align-items:center; gap:.2rem; font-weight:800; }
+  .vs canvas{ width:72px; height:80px; border-radius:.5rem; display:block; }
+  .vs .v{ font-size:1.4rem; font-weight:900; color:var(--archie-red); }
+  .pcard.same canvas, .vs .same canvas{ outline:3px solid #2ec4b6; outline-offset:-3px; }
+  .err{ color:#c4161c; font-weight:700; font-size:.85rem; min-height:1.1em; margin:.2rem 0; }
+  .friends{ font-size:.8rem; color:#5a6475; margin:.3rem 0; }
+  a.lnk{ color:var(--nav-blue); font-weight:700; }
   @media (max-width:420px){ .avgrid{ gap:.3rem; } .avbtn span{ font-size:.68rem; } }
   #dbg{ position:absolute; left:6px; top:44px; z-index:4; background:rgba(0,0,0,.6); color:#9f9; font:11px/1.3 monospace; padding:4px 6px; border-radius:4px; pointer-events:none; white-space:pre; }
   #dbg[hidden]{ display:none; }
@@ -290,8 +309,8 @@
 
 <main>
   <div class="title-row">
-    <h1>🎱 Billiards</h1>
-    <span class="phase-pill" id="pill">Game 5 · Billiards</span>
+    <h1>🎱 Billiards with a Friend</h1>
+    <span class="phase-pill" id="pill">Game 7 · Billiards with a friend</span>
   </div>
 
   <div class="stage" id="stage">
@@ -308,7 +327,7 @@
       <div class="hud" id="hud" aria-live="polite"></div>
       <div class="players" id="players" hidden>
         <div class="pcard" id="pcWhite"><canvas id="faceYou" aria-label="You"></canvas><span><i class="dot" style="background:#f7f5ee"></i><b id="nameYou">You</b></span></div>
-        <div class="pcard" id="pcYellow"><canvas id="faceMarker" aria-label="Marker"></canvas><span><i class="dot" style="background:#f2c300"></i>Marker</span></div>
+        <div class="pcard" id="pcYellow"><canvas id="faceMarker" aria-label="Marker"></canvas><span><i class="dot" style="background:#f2c300"></i><b id="nameYellow">Friend</b></span></div>
       </div>
 
       <!-- Top view: the power cue -->
@@ -335,7 +354,7 @@
         <div class="panel" style="max-width:520px">
           <div class="logo">BILLIARDS</div>
           <h2 style="margin-top:.4rem">Choose your player</h2>
-          <p class="small">This is who you are in the game. You play the white against <strong>Marker</strong> (yellow).</p>
+          <p class="small">This is who you are in the game. Your friend sees this name and picture.</p>
           <div class="avgrid" id="avGrid"></div>
           <p class="small">You can change your player later from the home screen.</p>
         </div>
@@ -348,24 +367,59 @@
           <div class="logo-sub" id="titleSub">English billiards</div>
           <div class="balls3" aria-hidden="true"><i style="background:#f7f5ee"></i><i style="background:#f2c300"></i><i style="background:#c4161c"></i></div>
           <div class="me"><canvas id="faceMe" aria-hidden="true"></canvas><span>You are <strong id="meName">Archie</strong></span><button class="opt" id="btnChange">Change player</button></div>
-          <p>You play the white; <strong>Marker</strong> plays the yellow. Score with <strong>pots</strong>, <strong>in-offs</strong> and <strong>cannons</strong>; keep playing while you score.</p>
-          <div>
-            <button class="btn-go" id="btnContinue" hidden>▶ Continue game</button>
-            <button class="btn-go" id="btnMarker">▶ Play Marker</button>
-            <button class="btn-go green" id="btnPractice">Practice table</button>
-            <button class="btn-go alt" id="btnSchool">Spin school</button>
+          <p>Play English billiards against a friend, each on your own computer or phone. One of you creates a game and sends the link; the other opens it and joins.</p>
+          <div id="signedOut">
+            <button class="btn-go" id="btnSignIn">Sign in with Google</button>
+            <p class="small">Google is used only to sign you in. Your friend sees just your player's name and picture.</p>
           </div>
-          <div class="opts" id="levelOpts" aria-label="How good Marker is">
-            <span class="small" style="align-self:center;font-weight:700">Marker:</span>
-            <button class="opt" data-level="easy">Easy</button><button class="opt" data-level="medium">Medium</button><button class="opt" data-level="hard">Hard</button>
+          <div id="signedIn" hidden>
+            <button class="btn-go" id="btnContinue" hidden>▶ Back to the game</button>
+            <div class="opts" id="targetOpts" aria-label="Points to win">
+              <button class="btn-go" id="btnCreate" style="margin:0">▶ Create a game</button>
+              <span class="small" style="align-self:center;font-weight:700">first to</span>
+              <button class="opt" data-target="50">50</button><button class="opt" data-target="100">100</button><button class="opt" data-target="200">200</button>
+            </div>
+            <div class="opts"><input class="codein" id="codeIn" maxlength="6" placeholder="CODE" aria-label="Room code" autocomplete="off" spellcheck="false"><button class="btn-go alt" id="btnJoin" style="margin:0">Join with a code</button></div>
+            <p class="friends" id="titleStats"></p>
           </div>
-          <div class="opts" id="targetOpts" aria-label="Points to win">
-            <span class="small" style="align-self:center;font-weight:700">First to:</span>
-            <button class="opt" data-target="50">50</button><button class="opt" data-target="100">100</button><button class="opt" data-target="200">200</button>
-            <button class="opt" id="optSound">Sound</button>
-          </div>
-          <p class="small" id="titleStats"></p>
-          <p class="small">Keys: <kbd>←</kbd><kbd>→</kbd> aim (<kbd>Shift</kbd> for fine) · <kbd>↑</kbd><kbd>↓</kbd> power (in the Eye view: raise or lower the eye; <kbd>PgUp</kbd><kbd>PgDn</kbd> power) · <kbd>I</kbd><kbd>K</kbd><kbd>J</kbd><kbd>L</kbd> spin, <kbd>O</kbd> middle · <kbd>V</kbd> view · <kbd>Space</kbd> shoot · <kbd>P</kbd> pause · <kbd>H</kbd> home · on the Practice table <kbd>C</kbd> cue ball, <kbd>R</kbd> reset</p>
+          <div class="err" id="titleErr"></div>
+          <div class="opts"><button class="opt" id="optSound">Sound</button><button class="opt" id="btnSignOut" hidden>Sign out</button></div>
+          <p class="small">To play Marker, or for the Practice table and Spin school, open <a class="lnk" href="../GAME-5-Billiards/billiards.html">Billiards</a>.</p>
+          <p class="small">Keys: <kbd>←</kbd><kbd>→</kbd> aim (<kbd>Shift</kbd> for fine) · <kbd>↑</kbd><kbd>↓</kbd> power (in the Eye view: raise or lower the eye; <kbd>PgUp</kbd><kbd>PgDn</kbd> power) · <kbd>I</kbd><kbd>K</kbd><kbd>J</kbd><kbd>L</kbd> spin, <kbd>O</kbd> middle · <kbd>V</kbd> view · <kbd>Space</kbd> shoot · <kbd>P</kbd> pause · <kbd>H</kbd> home</p>
+        </div>
+      </div>
+
+      <!-- Waiting for your friend (after Create a game) -->
+      <div class="overlay" id="ovRoom" hidden>
+        <div class="panel">
+          <h2>Your game is ready</h2>
+          <p class="small">Send your friend this code, or the link.</p>
+          <div class="roomcode" id="roomCode">------</div>
+          <div><button class="btn-go" id="btnCopy">Copy link</button><button class="btn-go alt" id="btnShare" hidden>Share…</button></div>
+          <p id="roomWait"><strong>Waiting for your friend…</strong></p>
+          <p class="small" id="roomInfo"></p>
+          <button class="opt" id="btnRoomCancel">Cancel</button>
+        </div>
+      </div>
+
+      <!-- Join a friend's game (from the link, or a code typed on the title) -->
+      <div class="overlay" id="ovJoin" hidden>
+        <div class="panel">
+          <h2 id="joinTitle">Join the game</h2>
+          <div class="vs" id="joinHost" hidden><div><canvas id="faceHost"></canvas><span id="nameHost"></span></div></div>
+          <p id="joinInfo">Looking for the game…</p>
+          <div><button class="btn-go" id="btnJoinGo" hidden>▶ Join</button></div>
+          <div class="err" id="joinErr"></div>
+          <button class="opt" id="btnJoinCancel">Back</button>
+        </div>
+      </div>
+
+      <!-- The two players and the coin toss, just before the break -->
+      <div class="overlay" id="ovReady" hidden>
+        <div class="panel">
+          <div class="vs"><div id="rdA"><canvas id="faceRdA"></canvas><span id="nameRdA"></span></div><span class="v">v</span><div id="rdB"><canvas id="faceRdB"></canvas><span id="nameRdB"></span></div></div>
+          <h2 id="readyToss"></h2>
+          <p class="small" id="readyInfo"></p>
         </div>
       </div>
 
@@ -375,7 +429,7 @@
           <h2>Paused</h2>
           <div>
             <button class="btn-go green" id="btnResume">▶ Resume</button>
-            <button class="btn-go" id="btnReset2">↺ Reset the balls</button>
+            <button class="btn-go alt" id="btnConcede">Give up this game</button>
           </div>
           <div class="opts"><button class="opt" id="optSound2">Sound</button></div>
           <p class="small" id="pauseNote"></p>
@@ -388,9 +442,10 @@
           <h2 id="endTitle">Game over</h2>
           <div class="endscore" id="endScore"></div>
           <p id="endLine"></p>
+          <p class="small" id="endRematch"></p>
           <div>
-            <button class="btn-go" id="btnAgain">↻ Play again</button>
-            <button class="btn-go alt" id="btnEndHome">🏠 Home</button>
+            <button class="btn-go" id="btnAgain">↻ Rematch</button>
+            <button class="btn-go alt" id="btnEndHome">🏠 Leave</button>
           </div>
         </div>
       </div>
@@ -1183,6 +1238,7 @@ function makeEye3D(THREE, BS, canvas) {
 <!-- ===================================================================================================
      GAME: drawing the table from above, the cue and guide, sound, menus and input.
      =================================================================================================== -->
+<script src="online.js"></script>
 <script id="game-ui">
 window.addEventListener('DOMContentLoaded', () => {
   'use strict';
@@ -1194,7 +1250,7 @@ window.addEventListener('DOMContentLoaded', () => {
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const DEG = Math.PI / 180;
   const NAME = { white: 'White', yellow: 'Yellow', red: 'Red' };
-  const PLAYER = { white: 'Archie', yellow: 'Marker' };   // white is the player you chose (applyAvatar)
+  const PLAYER = { white: 'Player 1', yellow: 'Your friend' };   // the creator plays the white, the friend the yellow (netNames)
   const lerp = (a, b, k) => a + (b - a) * k;
   const ease = k => k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
   const angDiff = (a, b) => Math.atan2(Math.sin(b - a), Math.cos(b - a));
@@ -1212,14 +1268,29 @@ window.addEventListener('DOMContentLoaded', () => {
   const POCKET_NAME = { BL: 'top-left', BR: 'bottom-left', ML: 'top middle', MR: 'bottom middle', TL: 'top-right', TR: 'bottom-right' };
 
   /* ---------------- Saving (guarded: works in private windows) ---------------- */
-  const SAVE_KEY = 'billiards.save.v1';
+  const SAVE_KEY = 'friend.save.v1';   // shared with snooker-friend.html; only the fields in store() are kept
   const save = { sound: true, power: 0.4, target: 50, match: null, stats: { played: 0, won: 0, bestBreak: 0, rustyBest: 0 }, school: [], avatar: null };   // rustyBest: Marker's best break (saved under his old name)
-  try { const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); if (s && typeof s === 'object') Object.assign(save, s); } catch (e) {}
+  save.friends = {}; save.lastRoom = null;
+  const readSave = k => { try { const s = JSON.parse(localStorage.getItem(k) || 'null'); return s && typeof s === 'object' ? s : null; } catch (e) { return null; } };
+  { const s = readSave(SAVE_KEY) || {};
+    for (const k of ['sound', 'power', 'avatar']) if (s[k] !== undefined) save[k] = s[k];
+    if (s.friends && typeof s.friends === 'object') save.friends = s.friends;
+    if (s.lastRoom && s.lastRoom.game === 'billiards') save.lastRoom = s.lastRoom;
+    if (s.billiardsTarget) save.target = s.billiardsTarget;
+    // the player chosen in Billiards or Snooker, so it isn't chosen again
+    if (!save.avatar) for (const k of ['billiards.save.v1', 'snooker.save.v1']) { const o = readSave(k); if (o && o.avatar) { save.avatar = o.avatar; break; } } }
   if (!Array.isArray(save.school)) save.school = [];
   if (![50, 100, 200].includes(save.target)) save.target = 50;
   if (!BS.LEVELS[save.level]) save.level = 'medium';
   const levelName = lv => (BS.LEVELS[lv] || BS.LEVELS.medium).name;
-  function store() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) {} }
+  function store() {
+    try {
+      const s = readSave(SAVE_KEY) || {};
+      Object.assign(s, { sound: save.sound, power: save.power, avatar: save.avatar, friends: save.friends, billiardsTarget: save.target });
+      if (save.lastRoom) s.lastRoom = save.lastRoom; else if (s.lastRoom && s.lastRoom.game === 'billiards') delete s.lastRoom;
+      localStorage.setItem(SAVE_KEY, JSON.stringify(s));
+    } catch (e) {}
+  }
 
   /* ---------------- Canvas and the table's place on it ---------------- */
   const cv = $('game'), ctx = cv.getContext('2d');
@@ -1242,7 +1313,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const cr = $('corner').getBoundingClientRect(), cb = cr.bottom - r.top;
     topPx = Math.max(40, cb * LH / cssH + 4);
     cornerLeft = (cr.left - r.left) * LW / cssW;
-    // Top view: room on the left for you and Marker, and on the right for the power cue
+    // Top view: room on the left for the two players, and on the right for the power cue
     const side = gaugeRoom(), gl = side && !$('players').hidden ? ($('players').getBoundingClientRect().width + 10) * LW / cssW : 0, gr = side ? 54 * LW / cssW : 0;
     const botPx = 30, availW = LW - 16 - gl - gr, availH = LH - topPx - botPx;
     K = Math.min(availW / (L + 2 * FRAME), availH / (W + 2 * FRAME));
@@ -1320,7 +1391,7 @@ window.addEventListener('DOMContentLoaded', () => {
   const cueBall = () => BS.find(game.st, game.cue);
   const isMatch = () => game.mode === 'match' && game.m;
   const humanAim = () => game.phase === 'aim';                      // 'aim' is only ever your turn (or a practice one)
-  const inHandNow = () => isMatch() && game.m.fromHand && game.m.turn === 'white';
+  const inHandNow = () => isMatch() && game.m.fromHand && game.m.turn === NET.me;
   function aimAtBall(id) { const c = cueBall(), o = BS.find(game.st, id); if (c && o && o.on) game.aim = Math.atan2(o.y - c.y, o.x - c.x); }
   function aimAtNearest() {
     const c = cueBall(); let best = null, bd = 1e9;
@@ -1372,28 +1443,8 @@ window.addEventListener('DOMContentLoaded', () => {
     updateControls();
   }
 
-  /* ---------------- A match against Marker ---------------- */
+  /* ---------------- A match against a friend ---------------- */
   const snapshot = m => JSON.parse(JSON.stringify(m));
-  function storeMatch() { save.match = game.m && !game.m.over ? snapshot(game.m) : null; store(); }
-  function startMatch(first) {
-    const f = first || (Math.random() < 0.5 ? 'white' : 'yellow');
-    game.mode = 'match'; game.m = BS.newMatch(save.target, f, save.level);
-    game.texts = []; game.report = ''; game.view = 'top'; game.handTop = false; game.next = null; game.spin = noSpin();
-    storeMatch();
-    showScreen('play');
-    banner('Coin toss: ' + (f === 'white' ? 'you break' : 'Marker breaks'), 'First to ' + save.target, 2.0);
-    game.phase = 'between'; game.betweenT = -0.9;   // let the coin toss show, then the first turn
-    game.st = BS.newState(game.m.balls);
-    updateControls();
-  }
-  function continueMatch() {
-    if (!save.match) return;
-    game.mode = 'match'; game.m = snapshot(save.match);
-    game.view = 'top'; game.handTop = false; game.next = null; game.spin = noSpin();
-    game.texts = []; game.report = 'Welcome back: ' + PLAYER[game.m.turn] + ' to play.';
-    showScreen('play');
-    beginTurn();
-  }
   function beginTurn() {
     const m = game.m;
     if (m.over) { endMatch(); return; }
@@ -1401,12 +1452,11 @@ window.addEventListener('DOMContentLoaded', () => {
     game.st = BS.newState(m.balls); game.cue = m.turn; game.acc = 0; game.drag = null; game.aiming = false;
     game.spin = noSpin(); game.camFix = null;
     // ball in hand is placed from above: flick the Top / Eye switch to go back to the Eye view
-    game.handTop = game.view === 'eye' && m.fromHand && m.turn === 'white';
+    game.handTop = game.view === 'eye' && m.fromHand && m.turn === NET.me;
     aimAtNearest();
-    if (m.turn === 'yellow') {
-      game.phase = 'cpu';
-      game.cpu = { plan: BS.cpuPlanner(m, m.level, Math.random), t: 0, done: false, turnT: 0, from: game.aim, to: game.aim, spin: noSpin() };
-      banner("Marker's turn", m.fromHand ? 'Ball in hand' : '', 1.1);
+    if (m.turn !== NET.me) {
+      game.phase = 'friend';   // waiting for the friend's shot (netApply)
+      banner(PLAYER[m.turn] + "'s turn", m.fromHand ? 'Ball in hand' : '', 1.1);
     } else {
       game.phase = 'aim'; game.power = clamp(save.power, 0.01, 1);
       banner('Your turn', m.fromHand ? 'Ball in hand: drag the white anywhere in the D' : (m.brk ? 'Break ' + m.brk : ''), m.fromHand ? 2.2 : 1.1);
@@ -1415,15 +1465,18 @@ window.addEventListener('DOMContentLoaded', () => {
     updateControls();
   }
   function endMatch() {
-    const m = game.m, won = m.winner === 'white';
-    const st = save.stats;
-    st.played++; if (won) st.won++;
-    st.bestBreak = Math.max(st.bestBreak, m.best.white); st.rustyBest = Math.max(st.rustyBest, m.best.yellow);
-    save.match = null; store();
-    $('endTitle').textContent = won ? '🏆 ' + PLAYER.white + ' wins!' : 'Marker wins';
-    $('endScore').textContent = PLAYER.white + ' ' + m.score.white + ' – ' + m.score.yellow + ' Marker';
-    $('endLine').textContent = 'First to ' + m.target + ' against ' + levelName(m.level) + ' Marker · ' + m.shots + ' shots · your best break ' + m.best.white + ', Marker\'s ' + m.best.yellow +
-      (m.best.white && m.best.white >= st.bestBreak ? ' (your best ever!)' : '');
+    const m = game.m, won = m.winner === NET.me, them = NET.them;
+    const f = friendRecord(), key = Online.code + ':' + NET.matchNo;
+    if (f && !f.counted.includes(key)) {   // each match counted once, even if the page is reloaded afterwards
+      f.counted = f.counted.concat(key).slice(-30);
+      f.played++; if (won) f.won++; f.best = Math.max(f.best, m.best[NET.me]); f.last = Date.now();
+      store();
+    }
+    $('endTitle').textContent = won ? '🏆 You win!' : '🏆 ' + PLAYER[them] + ' wins';
+    $('endScore').textContent = PLAYER.white + ' ' + m.score.white + ' – ' + m.score.yellow + ' ' + PLAYER.yellow;
+    $('endLine').textContent = (m.conceded ? PLAYER[m.conceded] + ' gave up · ' : '') + 'First to ' + m.target + ' · ' + m.shots + ' shots · best breaks: ' +
+      PLAYER.white + ' ' + m.best.white + ', ' + PLAYER.yellow + ' ' + m.best.yellow + (f ? ' · against ' + PLAYER[them] + ' you have won ' + f.won + ' of ' + f.played : '');
+    rematchText();
     (won ? SFX.win : SFX.lose)();
     game.phase = 'over';
     showScreen('end');
@@ -1456,7 +1509,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const topView = viewNow() === 'top';
     $('powerBox').hidden = $('shootBtn').hidden = topView;
     $('pullCue').hidden = !(topView && screen === 'play');
-    $('players').hidden = !(topView && (screen === 'play' || screen === 'pause') && isMatch());   // only in a game against Marker
+    $('players').hidden = !(topView && (screen === 'play' || screen === 'pause') && isMatch());   // only in a game
     const turn = isMatch() ? (game.m.over ? null : game.m.turn) : 'white';
     $('pcWhite').classList.toggle('turn', turn === 'white'); $('pcYellow').classList.toggle('turn', turn === 'yellow');
     $('pcWhite').classList.toggle('wait', turn === 'yellow'); $('pcYellow').classList.toggle('wait', turn === 'white');
@@ -1472,7 +1525,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
   /* ---------------- The players: head-and-shoulders portraits, drawn in code ----------------
      First you choose one of 10 cartoon players (each name has at most 6 letters); you then play the white under that
-     name. Marker, the computer (yellow), has red curly hair and freckles, a maroon waistcoat and a yellow bow tie.
+     name; the friend's portrait comes from the room (netNames).
      Everyone wears a white shirt, a waistcoat and a bow tie. hair: the style; fem: eyelashes and lip colour;
      extra: moustache, goatee, freckles, earrings, hoops or a flower. */
   const AVATARS = [
@@ -1487,7 +1540,6 @@ window.addEventListener('DOMContentLoaded', () => {
     { id: 'rene', name: 'Rene', skin: '#6e4127', skinDark: '#52301c', hair: 'afro', hairCol: '#1a120d', coat: '#4b2a7a', tie: '#2ec4b6', bg: '#5a4a2e', fem: true, extra: 'hoops' },
     { id: 'maria', name: 'Maria', skin: '#dba57a', skinDark: '#bb845a', hair: 'curls', hairCol: '#3b2214', coat: '#1f5a3a', tie: '#1f6fd1', bg: '#5a3a46', fem: true, extra: 'flower' },
   ];
-  const MARKER = { id: 'marker', name: 'Marker', skin: '#f1c49c', skinDark: '#d9a47a', hair: 'curly', hairCol: '#c4501b', brow: '#a8400f', coat: '#7a1f2b', tie: '#f2c300', bg: '#3d4a63', extra: 'freckles' };
   const BACK_HAIR = { long: 1, part: 1, bob: 1, afro: 1, curls: 1 };   // hair that hides the ears
   function drawFace(el, a, cw = 56) {
     const w = 56, h = 62, k = cw / w, dpr = Math.min(window.devicePixelRatio || 1, 3);
@@ -1588,11 +1640,9 @@ window.addEventListener('DOMContentLoaded', () => {
   const avatarNow = () => AVATARS.find(a => a.id === save.avatar) || AVATARS[0];
   function applyAvatar() {
     const a = avatarNow();
-    PLAYER.white = a.name;
-    drawFace($('faceYou'), a); $('faceYou').setAttribute('aria-label', a.name); $('nameYou').textContent = a.name;
+    drawFace($('faceMe'), a, 40);
     $('meName').textContent = a.name;
-    $('pill').textContent = 'Game 5 · ' + (save.avatar ? a.name : 'You') + ' v Marker';
-    $('titleSub').textContent = a.name + ' v Marker · English billiards';
+    $('titleSub').textContent = 'English billiards with a friend';
   }
   function avatarGrid() {
     const g = $('avGrid');
@@ -1601,12 +1651,12 @@ window.addEventListener('DOMContentLoaded', () => {
       b.className = 'avbtn'; b.dataset.av = a.id; b.setAttribute('aria-label', 'Play as ' + a.name); sp.textContent = a.name;
       b.append(cvs, sp); g.append(b);
       drawFace(cvs, a, 84);
-      b.onclick = () => { SFX.click(); save.avatar = a.id; store(); applyAvatar(); showScreen('title'); };
+      b.onclick = () => { SFX.click(); save.avatar = a.id; store(); applyAvatar(); showScreen('title'); const rc = new URLSearchParams(location.search).get('room'); if (rc && !NET.seat) openJoin(rc); };
     }
     for (const b of g.children) b.classList.toggle('sel', b.dataset.av === save.avatar);
   }
   $('btnChange').onclick = () => { SFX.click(); showScreen('avatar'); };
-  drawFace($('faceMarker'), MARKER); applyAvatar();
+  applyAvatar();
 
   /* ---------------- Top view: pull the power cue down to set the power, let go to shoot ----------------
      The further down it is pulled the harder the shot; the cue on the table draws back with it. Pushing it back to
@@ -1787,7 +1837,7 @@ window.addEventListener('DOMContentLoaded', () => {
     }
     if (game.phase !== 'aim') return;
     const [sx, sy] = logical(e); let b = pickBall(sx, sy);
-    if (isMatch() && !(inHandNow() && b && b.id === 'white')) b = null;   // in a match only the white in hand can be moved
+    if (isMatch() && !(inHandNow() && b && b.id === NET.me)) b = null;   // in a match only the white in hand can be moved
     if (b) game.drag = b;
     else if (onCue(sx, sy)) { game.aiming = true; cv.style.cursor = 'grabbing'; aimFromCue(toW(sx, sy)); }
     else return;                                   // the bare cloth does nothing: aim by holding the cue stick
@@ -1806,7 +1856,7 @@ window.addEventListener('DOMContentLoaded', () => {
       // show a hand over the cue stick, so it is clear it can be picked up
       if (e.pointerType === 'mouse' && screen === 'play' && viewNow() === 'top') {
         const [sx, sy] = logical(e), b = game.phase === 'aim' ? pickBall(sx, sy) : null;
-        const movable = b && (!isMatch() || (inHandNow() && b.id === 'white'));
+        const movable = b && (!isMatch() || (inHandNow() && b.id === NET.me));
         cv.style.cursor = movable ? 'move' : game.phase === 'aim' && onCue(sx, sy) ? 'grab' : 'default';
       }
       return;
@@ -1819,7 +1869,8 @@ window.addEventListener('DOMContentLoaded', () => {
   cv.addEventListener('pointercancel', endPointer);
 
   /* ---------------- Screens ---------------- */
-  const OVS = { avatar: 'ovAvatar', title: 'ovTitle', pause: 'ovPause', end: 'ovEnd' };
+  const MENUS = ['title', 'avatar', 'room', 'join'];   // screens with no game behind them
+  const OVS = { avatar: 'ovAvatar', title: 'ovTitle', pause: 'ovPause', end: 'ovEnd', room: 'ovRoom', join: 'ovJoin', ready: 'ovReady' };
   function showScreen(name) {
     screen = name;
     for (const k in OVS) $(OVS[k]).hidden = k !== name;
@@ -1827,8 +1878,8 @@ window.addEventListener('DOMContentLoaded', () => {
     controls.hidden = !(name === 'play' || name === 'pause');
     $('pauseBtn').hidden = name !== 'play';
     $('homeBtn').hidden = name === 'title' || name === 'avatar';
-    $('btnReset2').hidden = !!isMatch();
-    $('pauseNote').textContent = isMatch() ? 'The game is saved after every shot, so you can leave and carry on later.' : '';
+    $('btnConcede').hidden = !isMatch() || game.m.over;
+    $('pauseNote').textContent = isMatch() ? 'The game is kept in the room, so you can leave and come back to it with the same Google account.' : '';
     paused = name === 'pause';
     if (name === 'title') titleInfo();
     if (name === 'avatar') avatarGrid();
@@ -1836,21 +1887,17 @@ window.addEventListener('DOMContentLoaded', () => {
     if (name === 'play') { try { wrap.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) {} }
   }
   function titleInfo() {
-    const m = save.match;
-    $('btnContinue').hidden = !m;
-    if (m) $('btnContinue').textContent = '▶ Continue: ' + PLAYER.white + ' ' + m.score.white + ' – ' + m.score.yellow + ' Marker (' + levelName(m.level) + ')';
-    for (const b of document.querySelectorAll('[data-level]')) b.classList.toggle('sel', b.dataset.level === save.level);
+    $('signedOut').hidden = NET.signedIn; $('signedIn').hidden = !NET.signedIn; $('btnSignOut').hidden = !NET.signedIn || Online.FAKE;
+    const lr = save.lastRoom;
+    $('btnContinue').hidden = !lr;
+    if (lr) $('btnContinue').textContent = '▶ Back to the game (' + lr.code + ')';
     for (const b of document.querySelectorAll('[data-target]')) b.classList.toggle('sel', +b.dataset.target === save.target);
-    const s = save.stats, parts = [];
-    if (s.played) parts.push('Played ' + s.played + ', won ' + s.won);
-    if (s.bestBreak) parts.push('your best break ' + s.bestBreak);
-    if (s.rustyBest) parts.push("Marker's best " + s.rustyBest);
-    const made = save.school.filter(Boolean).length;
-    if (made) parts.push('Spin school ' + made + ' of ' + BS.DRILLS.length + ' made');
-    $('titleStats').textContent = parts.join(' · ');
+    const fs = Object.values(save.friends).filter(f => f.played).sort((a, b) => b.last - a.last).slice(0, 3);
+    $('titleStats').textContent = fs.map(f => 'Against ' + avatarBy(f.portrait).name + ': won ' + f.won + ' of ' + f.played + (f.best ? ', best break ' + f.best : '')).join(' · ');
   }
   function goHome() {
     if (screen !== 'title') SFX.click();
+    leaveRoom();
     // a match is saved after every shot; leaving mid-shot keeps the position from before that shot
     game.phase = 'aim'; game.cpu = null; game.mode = 'practice'; game.m = null; game.next = null; game.camFix = null;
     $('spinPop').hidden = true;
@@ -1860,15 +1907,13 @@ window.addEventListener('DOMContentLoaded', () => {
   $('homeBtn').onclick = goHome;
   $('pauseBtn').onclick = () => { pause(); $('pauseBtn').blur(); };
   $('btnResume').onclick = () => { SFX.click(); showScreen('play'); };
-  $('btnReset2').onclick = () => { showScreen('play'); resetBalls(); };
-  $('btnPractice').onclick = () => { SFX.click(); startPractice(); };
-  $('btnSchool').onclick = () => { SFX.click(); const n = BS.DRILLS.findIndex((d, i) => !save.school[i]); startSchool(n < 0 ? 0 : n); };
-  $('btnMarker').onclick = () => { SFX.click(); startMatch(); };
-  $('btnContinue').onclick = () => { SFX.click(); continueMatch(); };
-  $('btnAgain').onclick = () => { SFX.click(); startMatch(); };
+  $('btnConcede').onclick = () => {
+    if (!isMatch() || game.m.over || !confirm('Give up this game? ' + PLAYER[NET.them] + ' wins it.')) return;
+    SFX.click(); showScreen('play');
+    Online.sendMove('concede', {}).catch(netError);
+  };
   $('btnEndHome').onclick = () => { SFX.click(); goHome(); };
   for (const b of document.querySelectorAll('[data-target]')) b.onclick = () => { save.target = +b.dataset.target; store(); SFX.click(); titleInfo(); };
-  for (const b of document.querySelectorAll('[data-level]')) b.onclick = () => { save.level = b.dataset.level; store(); SFX.click(); titleInfo(); };
   function optButtons() {
     for (const id of ['optSound', 'optSound2']) { const b = $(id); b.className = 'opt ' + (save.sound ? 'on' : 'off'); b.textContent = 'Sound: ' + (save.sound ? 'on' : 'off'); }
     $('sndBtn').textContent = save.sound ? '🔊' : '🔇';
@@ -1979,45 +2024,32 @@ window.addEventListener('DOMContentLoaded', () => {
   }
   function matchShotDone() {
     const m = game.m, s = m.turn;
+    if (s !== NET.me) {   // the friend's shot, played here for show: their page's result decides (takeResult)
+      NET.mySim = BS.cloneBalls(game.st.balls);
+      game.phase = 'waitResult'; game.spin = noSpin(); game.camFix = null; updateControls(); return;
+    }
     const r = BS.applyShot(m, game.st, game.start);
-    game.spin = noSpin(); game.camFix = null;
-    game.report = resultText(r) + (r.cont ? ' · Break ' + r.brk : '') + (r.redSpot && r.redSpot !== 'billiard' ? ' · Red on the ' + r.redSpot + ' spot' : '');
-    const [cx, cy] = [0, L / 2];
-    if (r.foul) { floatText(cx, cy, 'Foul! ' + r.penalty + ' to ' + PLAYER[BS.OTHER[s]], '#ff8a80'); SFX.foul(); }
-    else if (r.points) { floatText(cx, cy, '+' + r.points + (r.parts.length > 1 ? '  (' + r.parts.map(p => partName(p.k, s)).join(' + ') + ')' : '  ' + partName(r.parts[0].k, s)), '#ffd60a'); SFX.score(r.points); }
-    storeMatch();
+    send('result', { m: snapshot(m), r });
+    showResult(r, s, true);
     game.phase = 'between'; game.betweenT = 0;
     updateControls();
   }
-  function updateCpu(dt) {
-    const g = game, c = g.cpu, m = g.m;
-    c.t += dt;
-    if (!c.done) {
-      // think: try shots in the sim, a few per frame (8 ms) so the screen never freezes
-      const t0 = performance.now();
-      while (!c.plan.done() && performance.now() - t0 < 8) c.plan.step(1);
-      c.work = (c.work || 0) + performance.now() - t0;   // real time spent thinking (a slow device does less per frame)
-      // while thinking, the cue drifts slowly between the shots he is looking at
-      const look = c.plan.looking();
-      if (look) g.aim += angDiff(g.aim, look.aim) * Math.min(1, dt * 2);
-      // he plays when he has tried everything, or after 1.5 s of thinking with the best so far (so a slow phone
-      // never waits more than about 2 s)
-      if (c.plan.done() || c.work > 1500) {
-        c.plan.finish(); c.done = true;
-        const b = BS.cpuShot(c.plan, Math.random);   // his choice, with the wobble of his level
-        BS.placeAt(m.balls, m.turn, b.place.x, b.place.y);
-        c.from = g.aim; c.to = b.aim; c.turnT = 0; c.spin = b.spin;
-        g.power = b.power;
-      }
-    } else {
-      c.turnT += dt;
-      const k = Math.min(1, c.turnT / 0.6);
-      g.aim = c.from + angDiff(c.from, c.to) * ease(k);
-      if (k >= 1 && c.turnT > 0.85 && c.t > 1.2) { g.aim = c.to; g.phase = 'strike'; g.strikeT = 0; g.shotSpin = c.spin; updateControls(); }
-    }
+  function showResult(r, s, live) {
+    game.spin = noSpin(); game.camFix = null;
+    game.report = resultText(r) + (r.cont ? ' · Break ' + r.brk : '') + (r.redSpot && r.redSpot !== 'billiard' ? ' · Red on the ' + r.redSpot + ' spot' : '');
+    const [cx, cy] = [0, L / 2];
+    if (!live) return;
+    if (r.foul) { floatText(cx, cy, 'Foul! ' + r.penalty + ' to ' + PLAYER[BS.OTHER[s]], '#ff8a80'); SFX.foul(); }
+    else if (r.points) { floatText(cx, cy, '+' + r.points + (r.parts.length > 1 ? '  (' + r.parts.map(p => partName(p.k, s)).join(' + ') + ')' : '  ' + partName(r.parts[0].k, s)), '#ffd60a'); SFX.score(r.points); }
   }
   function update(dt) {
     const g = game;
+    dt *= FAST;
+    if (g.slide) {   // balls gliding to the striker's result
+      const sl = g.slide; sl.t += dt; const k = ease(Math.min(1, sl.t / 0.25));
+      for (const b of g.st.balls) { const f = sl.from[b.id], t = sl.to.find(q => q.id === b.id); if (f && f.on && t && t.on) { b.x = lerp(f.x, t.x, k); b.y = lerp(f.y, t.y, k); } }
+      if (sl.t >= 0.25) { g.slide = null; g.st = BS.newState(g.m.balls); }
+    }
     for (const tx of g.texts) tx.t += dt;
     g.texts = g.texts.filter(tx => tx.t < 1.8);
     if (g.banner) { g.banner.t -= dt; if (g.banner.t <= 0) g.banner = null; }
@@ -2027,21 +2059,309 @@ window.addEventListener('DOMContentLoaded', () => {
         g.start = BS.cloneBalls(g.st.balls);
         const cb = cueBall();
         g.camFix = { x: cb.x, y: cb.y, aim: g.aim, e: g.eyeE };      // the eye stays where it was while the balls run
+        if (isMatch() && g.m.turn === NET.me) send('shot', { place: { x: cb.x, y: cb.y }, aim: g.aim, power: g.power, spin: g.shotSpin });
         BS.strike(g.st, g.cue, g.aim, g.power, g.shotSpin); g.evi = 1; g.acc = 0;
         SFX.cue(g.power); g.phase = 'roll'; g.report = '';
       }
-    } else if (g.phase === 'cpu') {
-      updateCpu(dt);
+    } else if (g.phase === 'friendAim') {
+      updateFriendAim(dt);
     } else if (g.phase === 'between') {
       g.betweenT += dt;
       if (g.betweenT >= 1.0) { const f = g.next; g.next = null; if (f) f(); else beginTurn(); }
     } else if (g.phase === 'roll') {
       g.acc += dt;
       let n = 0;
-      while (g.acc >= BS.DT && n++ < 4) { BS.step(g.st, BS.DT); g.acc -= BS.DT; }
+      while (g.acc >= BS.DT && n++ < 4 * FAST) { BS.step(g.st, BS.DT); g.acc -= BS.DT; }
       handleEvents();
       if (!BS.anyMoving(g.st)) shotDone();
     }
+  }
+
+  /* ---------------- Playing a friend through the online room (online.js) ----------------
+     Every change to a game is a numbered move in the room, and both pages apply the same moves in the same order:
+       toss     the creator: which match this is, who breaks, first to how many
+       shot     the striker: where the white is, aim, power, spin (the friend's page turns the cue and plays it too)
+       result   the striker: the whole match after the shot, scored by applyShot on the striker's page, which has the
+                final say; the friend's page takes it once its own playback has stopped
+       concede  either player gives up the game
+       rematch  either player asks for (or agrees to) another game; when both have, the creator tosses again
+     A page applies its own shot and result as they happen, so their echoes are skipped (by id). After a reload or a
+     lost connection nothing is skipped: the moves from the start rebuild the game, without the animations. */
+  const FAST = Q.has('fast') ? clamp(+Q.get('fast') || 1, 1, 50) : 1;   // tests only: run the game faster
+  const COLOUR = { a: 'white', b: 'yellow' };
+  const NET = { signedIn: false, seat: null, me: 'white', them: 'yellow', queue: [], mine: new Set(), matchNo: 0, first: null,
+    target: 50, rematch: { a: 0, b: 0 }, tossSent: 0, same: false, mySim: null, dev: [], errors: [] };
+  const otherSeat = () => (NET.seat === 'a' ? 'b' : 'a');
+  const avatarBy = id => AVATARS.find(a => a.id === id) || AVATARS[0];
+  const newId = () => Math.random().toString(36).slice(2, 10);
+  function netError(e) {
+    NET.errors.push(e && e.message || String(e));
+    console.warn('Play with a friend:', e);
+    banner('Connection problem', 'The move could not be sent. Check your connection.', 3);
+  }
+  function send(kind, d) {   // a move this page has already applied: its echo is skipped
+    d.id = newId(); NET.mine.add(d.id);
+    return Online.sendMove(kind, d).catch(netError);
+  }
+  function msgOf(e) {
+    if (!e) return '';
+    if (e.code === 'auth/popup-closed-by-user' || e.code === 'auth/cancelled-popup-request') return 'Sign-in was closed before it finished.';
+    if (e.code === 'not-set-up') return 'The online room is not set up on this copy of the game.';
+    return e.message || String(e);
+  }
+  function keepParams() {   // the page address without ?room, keeping test settings
+    const u = new URL(location.href);
+    for (const k of [...u.searchParams.keys()]) if (!['fake', 'as', 'grace', 'fast', 'debug', 'eye'].includes(k)) u.searchParams.delete(k);
+    return u.pathname + u.search;
+  }
+
+  // names and portraits, from the room: the creator is white, the friend yellow; a friend with your portrait is marked
+  function netNames() {
+    const pl = (Online.room && Online.room.players) || {};
+    const a = pl.a && avatarBy(pl.a.portrait), b = pl.b && avatarBy(pl.b.portrait);
+    NET.same = !!(a && b && a.id === b.id);
+    const nm = (av, seat) => !av ? (seat === 'a' ? 'Player 1' : 'Your friend') : av.name + (NET.same && seat !== NET.seat ? ' (friend)' : '');
+    PLAYER.white = nm(a, 'a'); PLAYER.yellow = nm(b, 'b');
+    if (a) drawFace($('faceYou'), a); if (b) drawFace($('faceMarker'), b);
+    $('nameYou').textContent = PLAYER.white; $('nameYellow').textContent = PLAYER.yellow;
+    $('pcWhite').classList.toggle('same', NET.same && NET.seat === 'b'); $('pcYellow').classList.toggle('same', NET.same && NET.seat === 'a');
+    hudKey = '';
+  }
+  function friendRecord() {   // this friend's line in your results, by their sign-in ID
+    const p = Online.room && Online.room.players && Online.room.players[otherSeat()];
+    if (!p || !p.uid) return null;
+    const f = save.friends[p.uid] || (save.friends[p.uid] = { portrait: p.portrait, played: 0, won: 0, best: 0, last: 0, counted: [] });
+    f.portrait = p.portrait; if (!Array.isArray(f.counted)) f.counted = [];
+    return f;
+  }
+
+  /* entering and leaving a room */
+  function enterRoom(r) {
+    NET.seat = r.seat; NET.me = COLOUR[r.seat]; NET.them = COLOUR[otherSeat()];
+    NET.matchNo = 0; NET.rematch = { a: 0, b: 0 }; NET.tossSent = 0;
+    try { NET.target = JSON.parse(Online.room.settings).target || 50; } catch (e) { NET.target = 50; }
+    save.lastRoom = { game: 'billiards', code: r.code }; store();
+    history.replaceState(null, '', Online.link(r.code));
+    netNames();
+  }
+  function leaveRoom() {
+    if (!NET.seat) return;
+    if (!isMatch() || game.m.over) save.lastRoom = null;   // a game still going can be gone back to from the title
+    store();
+    Online.leave(); NET.seat = null; NET.queue = []; NET.matchNo = 0;
+    game.mode = 'practice'; game.m = null;
+    history.replaceState(null, '', keepParams());
+  }
+  Online.onMove(mv => NET.queue.push(mv));
+  Online.onFriend(s => {
+    if (!NET.seat) return;
+    netNames();
+    if (screen === 'room' && s === 'here') $('roomWait').innerHTML = '<strong>' + PLAYER[NET.them] + ' has joined!</strong>';
+    if (s === 'here') maybeToss();
+  });
+  function maybeToss() {   // the creator tosses the coin once the friend has joined (only once, even after a reload)
+    if (NET.seat !== 'a' || NET.matchNo || NET.tossSent) return;
+    setTimeout(() => {
+      if (NET.seat !== 'a' || NET.matchNo || NET.tossSent || !Online.room.players.b || Online.moves.some(mv => mv.k === 'toss')) return;
+      NET.tossSent = 1;
+      Online.sendMove('toss', { match: 1, first: Math.random() < 0.5 ? 'white' : 'yellow', target: NET.target }).catch(netError);
+    }, 700 / FAST);
+  }
+
+  /* the moves, applied in order; a move that has to wait (the last shot is still running) stays first in the queue */
+  function netTick() {
+    if (!NET.seat) return;
+    while (NET.queue.length) {
+      const mv = NET.queue[0];
+      if (mv.d && mv.d.id && NET.mine.has(mv.d.id)) { NET.queue.shift(); continue; }
+      if (netApply(mv, NET.queue.length > 1) === false) break;
+      NET.queue.shift();
+    }
+  }
+  function netApply(mv, more) {
+    const d = mv.d || {}, m = game.m, mover = COLOUR[mv.seat];
+    switch (mv.k) {
+      case 'toss':
+        if (mv.seat !== 'a' || !(d.match > NET.matchNo)) return true;
+        startNetMatch(d, more); return true;
+      case 'shot':
+        if (!isMatch() || m.over || m.turn !== mover) return true;                 // not their turn: ignored
+        if (NET.queue.slice(1).some(q => q.k === 'result' && q.seat === mv.seat)) return true;   // catching up: the result will do
+        if (game.phase !== 'friend') return false;                                 // still finishing the last turn
+        friendShot(d); return true;
+      case 'result':
+        if (!isMatch() || m.over || m.turn !== mover || !d.m) return true;
+        if (game.phase === 'strike' || game.phase === 'roll' || game.phase === 'friendAim') return false;
+        takeResult(d, mover, !more && game.phase === 'waitResult'); return true;
+      case 'concede':
+        if (!isMatch() || m.over) return true;
+        m.over = true; m.winner = COLOUR[mv.seat === 'a' ? 'b' : 'a']; m.conceded = mover;
+        game.report = PLAYER[mover] + ' gave up the game.'; game.slide = null;
+        if (screen !== 'play') showScreen('play');
+        game.phase = 'between'; game.betweenT = 0.4; return true;
+      case 'rematch':
+        NET.rematch[mv.seat] = Math.max(NET.rematch[mv.seat], d.match || 0);
+        rematchText(); maybeRematch(); return true;
+      default: return true;   // other kinds (reactions, Phase 3) are not used yet
+    }
+  }
+  function startNetMatch(d, more) {
+    NET.matchNo = d.match; NET.first = d.first; NET.target = d.target; NET.tossSent = Math.max(NET.tossSent, d.match);
+    game.mode = 'match'; game.m = BS.newMatch(d.target, d.first, 'medium');
+    game.st = BS.newState(game.m.balls); game.texts = []; game.report = ''; game.handTop = false; game.next = null;
+    game.spin = noSpin(); game.slide = null; game.camFix = null;
+    netNames();
+    const toss = 'Coin toss: ' + (d.first === NET.me ? 'you break' : PLAYER[d.first] + ' breaks');
+    if (more) { showScreen('play'); beginTurn(); return; }   // catching up: straight to the table
+    const pl = Online.room.players;
+    drawFace($('faceRdA'), avatarBy(pl.a.portrait), 72); drawFace($('faceRdB'), avatarBy(pl.b && pl.b.portrait), 72);
+    $('rdA').classList.toggle('same', NET.same && NET.seat === 'b'); $('rdB').classList.toggle('same', NET.same && NET.seat === 'a');
+    $('nameRdA').textContent = PLAYER.white; $('nameRdB').textContent = PLAYER.yellow;
+    $('readyToss').textContent = toss;
+    $('readyInfo').textContent = (d.match > 1 ? 'Game ' + d.match + ' · ' : '') + 'First to ' + d.target + ' · ' + PLAYER.white + ' plays the white, ' + PLAYER.yellow + ' the yellow';
+    showScreen('ready'); SFX.turn();
+    game.phase = 'between'; game.betweenT = 0.2;
+    setTimeout(() => { if (screen === 'ready') { showScreen('play'); banner(toss, 'First to ' + d.target, 1.6); updateControls(); } }, 2400 / FAST);
+    updateControls();
+  }
+  // the friend's shot: put their white where they played it from, turn the cue to their aim, then play it here too
+  function friendShot(d) {
+    const m = game.m;
+    if (d.place && isFinite(d.place.x) && isFinite(d.place.y)) BS.placeAt(game.st.balls, m.turn, d.place.x, d.place.y);
+    game.cpu = { from: game.aim, to: +d.aim || 0, turnT: 0 };
+    game.power = clamp(+d.power || 0, 0, 1); game.shotSpin = { x: clamp(+(d.spin && d.spin.x) || 0, -1, 1), y: clamp(+(d.spin && d.spin.y) || 0, -1, 1) };
+    game.phase = 'friendAim';
+    updateControls();
+  }
+  function updateFriendAim(dt) {
+    const c = game.cpu; c.turnT += dt;
+    game.aim = c.from + angDiff(c.from, c.to) * ease(Math.min(1, c.turnT / 0.5));
+    if (c.turnT >= 0.7) { game.aim = c.to; game.phase = 'strike'; game.strikeT = 0; updateControls(); }
+  }
+  // the striker's result: the match as it now stands. Balls that ended a little off here slide to their places.
+  function takeResult(d, striker, live) {
+    const from = {};
+    for (const b of game.st.balls) from[b.id] = { x: b.x, y: b.y, on: b.on };
+    const m = game.m = d.m;
+    if (live && NET.mySim) {   // how far this page's playback ended from the striker's (the tests read this)
+      let dev = 0;
+      for (const b of NET.mySim) { const t = m.balls.find(q => q.id === b.id); if (b.on && t && t.on && b.id !== 'red') dev = Math.max(dev, Math.hypot(b.x - t.x, b.y - t.y)); }
+      NET.dev.push(dev);
+    }
+    NET.mySim = null;
+    if (live) {
+      game.st = BS.newState(BS.cloneBalls(m.balls));
+      for (const b of game.st.balls) { const f = from[b.id]; if (f && f.on && b.on) { b.x = f.x; b.y = f.y; } }
+      game.slide = { t: 0, from, to: m.balls };
+    } else { game.st = BS.newState(m.balls); game.slide = null; }
+    if (d.r) showResult(d.r, striker, live); else game.report = '';
+    if (d.r && d.r.cont) game.report += ' · Break ' + d.r.brk;
+    game.phase = 'between'; game.betweenT = live ? 0 : 1;
+    updateControls();
+  }
+
+  /* a new game in the same room: both ask, then the creator tosses; the player who didn't break last time breaks */
+  function rematchText() {
+    if (!NET.seat) return;
+    const mine = NET.rematch[NET.seat] >= NET.matchNo, theirs = NET.rematch[otherSeat()] >= NET.matchNo;
+    $('btnAgain').disabled = mine;
+    $('endRematch').textContent = mine && !theirs ? 'Waiting for ' + PLAYER[NET.them] + ' to say yes…' : !mine && theirs ? PLAYER[NET.them] + ' wants a rematch!' : mine && theirs ? 'Starting the rematch…' : '';
+  }
+  function maybeRematch() {
+    if (NET.seat !== 'a' || !NET.matchNo || NET.rematch.a < NET.matchNo || NET.rematch.b < NET.matchNo || NET.tossSent > NET.matchNo) return;
+    NET.tossSent = NET.matchNo + 1;
+    Online.sendMove('toss', { match: NET.matchNo + 1, first: BS.OTHER[NET.first], target: NET.target }).catch(netError);
+  }
+  $('btnAgain').onclick = () => {
+    SFX.click();
+    if (NET.rematch[NET.seat] < NET.matchNo) Online.sendMove('rematch', { match: NET.matchNo }).catch(netError);
+    $('btnAgain').disabled = true;
+  };
+
+  /* signing in, creating and joining */
+  function signIn() {
+    $('titleErr').textContent = '';
+    return Online.signIn().then(u => { NET.signedIn = !!u; titleInfo(); return u; }, e => { $('titleErr').textContent = $('joinErr').textContent = msgOf(e); return null; });
+  }
+  $('btnSignIn').onclick = () => { SFX.click(); signIn(); };
+  $('btnSignOut').onclick = () => { SFX.click(); leaveRoom(); Online.signOut().then(() => { NET.signedIn = false; titleInfo(); }); };
+  async function createGame() {
+    $('titleErr').textContent = '';
+    try {
+      const r = await Online.createRoom('billiards', { target: save.target }, save.avatar || 'archie');
+      enterRoom(r);
+      $('roomCode').textContent = r.code;
+      $('roomInfo').textContent = 'First to ' + NET.target + ' · you play the white';
+      $('roomWait').innerHTML = '<strong>Waiting for your friend…</strong>';
+      $('btnShare').hidden = !navigator.share;
+      showScreen('room');
+    } catch (e) { $('titleErr').textContent = msgOf(e); }
+  }
+  $('btnCreate').onclick = () => { SFX.click(); createGame(); };
+  $('btnCopy').onclick = () => {
+    const url = Online.link();
+    (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject()).then(() => { $('btnCopy').textContent = '✓ Copied'; setTimeout(() => { $('btnCopy').textContent = 'Copy link'; }, 1500); },
+      () => prompt('Copy this link and send it to your friend:', url));
+  };
+  $('btnShare').onclick = () => { navigator.share({ title: 'Billiards with a friend', text: 'Play billiards with me! Room code ' + Online.code, url: Online.link() }).catch(() => {}); };
+  $('btnRoomCancel').onclick = () => { SFX.click(); save.lastRoom = null; leaveRoom(); showScreen('title'); };
+  $('btnJoin').onclick = () => { SFX.click(); const c = $('codeIn').value.trim(); if (c) openJoin(c); else $('titleErr').textContent = 'Type the 6-letter code your friend sent you.'; };
+  $('codeIn').addEventListener('keydown', e => { if (e.key === 'Enter') $('btnJoin').click(); e.stopPropagation(); });
+  $('btnContinue').onclick = () => { SFX.click(); if (save.lastRoom) openJoin(save.lastRoom.code); };
+  $('btnJoinCancel').onclick = () => { SFX.click(); leaveRoom(); showScreen('title'); };
+  let joinCode = null;
+  // the Join screen: who invited you and the settings, then Join (or straight back in to a game you are already in)
+  async function openJoin(code) {
+    joinCode = String(code).toUpperCase().replace(/[^A-Z0-9]/g, '');
+    $('joinErr').textContent = ''; $('joinHost').hidden = true; $('btnJoinGo').hidden = true;
+    $('joinTitle').textContent = 'Join the game ' + joinCode;
+    showScreen('join');
+    if (!NET.signedIn) {
+      $('joinInfo').textContent = 'Sign in first, so the game knows it is you if you come back later.';
+      $('btnJoinGo').textContent = 'Sign in with Google'; $('btnJoinGo').hidden = false;
+      $('btnJoinGo').onclick = () => { SFX.click(); signIn().then(u => { if (u) openJoin(joinCode); }); };
+      return;
+    }
+    $('joinInfo').textContent = 'Looking for the game…';
+    try {
+      const p = await Online.peekRoom(joinCode);
+      if (p.mine) return joinNow();
+      if (p.game !== 'billiards') {
+        $('joinInfo').innerHTML = 'That code is for a game of ' + (p.game === 'snooker' ? 'Snooker' : p.game) + '.';
+        if (p.game === 'snooker') $('joinInfo').innerHTML += ' <a class="lnk" href="snooker-friend.html?room=' + joinCode + (Online.FAKE ? '&fake' : '') + '">Open Snooker with a friend</a>';
+        return;
+      }
+      if (p.old) { $('joinInfo').textContent = 'That game is more than a day old, so it has closed. Ask your friend to create a new one.'; return; }
+      if (p.full) { $('joinInfo').textContent = 'Two players are already in that game.'; return; }
+      const host = avatarBy(p.creator);
+      drawFace($('faceHost'), host, 72); $('nameHost').textContent = host.name + (host.id === save.avatar ? ' (friend)' : '');
+      $('joinHost').hidden = false;
+      $('joinInfo').textContent = host.name + ' invites you to a game of billiards, first to ' + ((p.settings && p.settings.target) || 50) + '. You play the yellow.';
+      $('btnJoinGo').textContent = '▶ Join'; $('btnJoinGo').hidden = false;
+      $('btnJoinGo').onclick = () => { SFX.click(); joinNow(); };
+    } catch (e) { $('joinInfo').textContent = msgOf(e); }
+  }
+  async function joinNow() {
+    $('btnJoinGo').hidden = true; $('joinErr').textContent = '';
+    try {
+      const r = await Online.joinRoom(joinCode, 'billiards', save.avatar || 'archie');
+      enterRoom(r);
+      // the moves now arrive and set up the table (the coin toss, then any shots already played)
+      if (r.seat === 'a' && !(Online.room.players && Online.room.players.b)) {
+        $('roomCode').textContent = r.code; $('roomInfo').textContent = 'First to ' + NET.target + ' · you play the white';
+        $('roomWait').innerHTML = '<strong>Waiting for your friend…</strong>'; $('btnShare').hidden = !navigator.share; showScreen('room');
+      } else { $('joinInfo').textContent = 'Joined! Waiting for the coin toss…'; maybeToss(); }
+    } catch (e) {
+      $('joinInfo').textContent = msgOf(e);
+      if (save.lastRoom && save.lastRoom.code === joinCode && ['no-room', 'old', 'full'].includes(e.code)) { save.lastRoom = null; store(); }
+    }
+  }
+  function netStart() {
+    Online.start().then(u => {
+      NET.signedIn = !!u; titleInfo();
+      const code = Q.get('room');
+      if (code && save.avatar) openJoin(code);
+    }, e => { $('titleErr').textContent = msgOf(e); });
   }
 
   /* ---------------- Drawing ---------------- */
@@ -2183,7 +2503,7 @@ window.addEventListener('DOMContentLoaded', () => {
   }
   function cuePull() {
     if (game.phase === 'aim') return 0.03 + game.power * 0.17;
-    if (game.phase === 'cpu') return 0.05 + 0.03 * Math.sin(performance.now() / 260);   // Marker lines up
+    if (game.phase === 'friend' || game.phase === 'friendAim') return 0.05 + 0.03 * Math.sin(performance.now() / 260);   // the friend lines up
     if (game.phase === 'strike') return (0.03 + game.power * 0.17) * (1 - clamp(game.strikeT / 0.1, 0, 1));
     return null;
   }
@@ -2238,13 +2558,12 @@ window.addEventListener('DOMContentLoaded', () => {
   // elements in the same size as the Home button; when there is no room they shorten, then drop the last pill.
   function hudPill(text, cls, dot) { return '<span class="hp' + (cls ? ' ' + cls : '') + '">' + (dot ? '<i class="dot" style="background:' + COL[dot][1] + '"></i>' : '') + text + '</span>'; }
   function hudVersions() {
-    if (screen === 'title' || screen === 'avatar') return [''];
+    if (MENUS.includes(screen)) return [''];
     const deg = ((game.aim / DEG) % 360 + 360) % 360;
     if (isMatch()) {
       const m = game.m, p = id => hudPill(PLAYER[id] + ' ' + m.score[id], m.turn === id && !m.over ? 'turn' : '', id);
       const two = p('white') + p('yellow');
-      const lv = levelName(m.level);
-      return [two + hudPill((m.brk ? 'Break ' + m.brk + ' · ' : '') + 'First to ' + m.target + ' · ' + lv, 'y'),
+      return [two + hudPill((m.brk ? 'Break ' + m.brk + ' · ' : '') + 'First to ' + m.target + ' · Room ' + (Online.code || ''), 'y'),
               two + hudPill((m.brk ? 'Break ' + m.brk + ' · ' : '') + 'First to ' + m.target, 'y'),
               two + hudPill(m.brk ? 'Break ' + m.brk : 'to ' + m.target, 'y'), two, p(m.turn === 'yellow' ? 'yellow' : 'white')];
     }
@@ -2268,7 +2587,7 @@ window.addEventListener('DOMContentLoaded', () => {
     // shot report (or a warning) along the bottom
     let msg = game.phase === 'roll' || game.phase === 'strike' ? '' : game.report, warn = false;
     if (game.phase === 'aim' && game.warn) { msg = game.warn; warn = true; }
-    else if (game.phase === 'cpu') msg = levelName(game.m.level) + ' Marker is thinking…';
+    else if (game.phase === 'friend' || game.phase === 'friendAim') msg = PLAYER[game.m.turn] + ' is lining up…';
     if (msg) {
       ctx.font = '600 12px system-ui, sans-serif'; ctx.textBaseline = 'middle';
       let s = msg; while (ctx.measureText(s).width > LW - 40 && s.length > 10) s = s.slice(0, -4) + '…';
@@ -2401,7 +2720,7 @@ window.addEventListener('DOMContentLoaded', () => {
     line3(c, [[-HW, BAULK, 0], [HW, BAULK, 0]], 'rgba(235,245,235,.6)', 1);
     line3(c, Array.from({ length: 33 }, (_, i) => { const t = Math.PI * i / 32; return [D_R * Math.cos(t), BAULK - D_R * Math.sin(t), 0]; }), 'rgba(235,245,235,.6)', 1);
     for (const k in BS.SPOT) poly3(c, circ(BS.SPOT[k].x, BS.SPOT[k].y, 0.007, 0.001, 8), 'rgba(235,245,235,.8)');
-    if (isMatch() && game.m.fromHand && (game.phase === 'aim' || game.phase === 'cpu'))
+    if (isMatch() && game.m.fromHand && (game.phase === 'aim' || game.phase === 'friend' || game.phase === 'friendAim'))
       poly3(c, Array.from({ length: 25 }, (_, i) => { const t = Math.PI * i / 24; return [D_R * Math.cos(t), BAULK - D_R * Math.sin(t), 0.001]; }), 'rgba(255,214,10,.16)', 'rgba(255,214,10,.8)', 1.5);
     drawTarget();
     if (game.phase === 'aim') drawGuideEye();
@@ -2529,7 +2848,7 @@ window.addEventListener('DOMContentLoaded', () => {
       E: EYE.E, F: EYE.F, U: EYE.U, fov: EYE.fov, aspect: LW / LH, balls: game.st.balls,
       cue: cb && cb.on && pull !== null ? { x: cb.x, y: cb.y, aim: game.aim, pull, spin: tipSpin() } : null,
       target: game.mode === 'school' ? BS.DRILLS[game.drill].target : null,
-      inHand: isMatch() && game.m.fromHand && (game.phase === 'aim' || game.phase === 'cpu')
+      inHand: isMatch() && game.m.fromHand && (game.phase === 'aim' || game.phase === 'friend' || game.phase === 'friendAim')
     });
     // the guide and the spin hint are drawn on the 2D canvas over it, through the same camera
     ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height);
@@ -2557,8 +2876,8 @@ window.addEventListener('DOMContentLoaded', () => {
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.drawImage(tableCv, 0, 0);
       ctx.setTransform(scale, 0, 0, scale, 0, 0);
-      if (screen === 'title' || screen === 'avatar') return;
-      if (isMatch() && game.m.fromHand && (game.phase === 'aim' || game.phase === 'cpu')) drawBaulkShade();
+      if (MENUS.includes(screen)) return;
+      if (isMatch() && game.m.fromHand && (game.phase === 'aim' || game.phase === 'friend' || game.phase === 'friendAim')) drawBaulkShade();
       drawTarget();
       if (game.phase === 'aim' && !game.drag) drawGuide();
       for (const b of game.st.balls) if (b.on) drawBall(b);
@@ -2576,6 +2895,7 @@ window.addEventListener('DOMContentLoaded', () => {
   }
   function frame(nowMs) {
     const dt = Math.min(0.05, (nowMs - last) / 1000); last = nowMs;
+    netTick();
     if (screen === 'play' && !paused) update(dt);
     draw();
     requestAnimationFrame(frame);
@@ -2586,11 +2906,9 @@ window.addEventListener('DOMContentLoaded', () => {
 
   /* ---------------- Start ---------------- */
   showScreen(save.avatar ? 'title' : 'avatar');   // the first step: choose your player
-  if (Q.has('school')) startSchool(clamp((parseInt(Q.get('drill'), 10) || 1) - 1, 0, BS.DRILLS.length - 1));
-  else if (Q.has('practice')) startPractice();
-  else if (Q.has('match')) startMatch(['white', 'yellow'].includes(Q.get('first')) ? Q.get('first') : null);
+  netStart();
   if (Q.has('eye')) { game.view = 'eye'; updateControls(); }
-  if (DEBUG) window.__bil = { BS, game, startPractice, startMatch, startSchool, toggleView, setSpin, continueMatch, goHome, save, shoot, resetBalls, view: () => ({ LW, LH, K }), toCss: (x, y) => { const [sx, sy] = toS(x, y), r = cv.getBoundingClientRect(); return [r.left + sx * r.width / LW, r.top + sy * r.height / LH]; } };
+  if (DEBUG) window.__bil = { BS, game, NET, Online, PLAYER, toggleView, setSpin, goHome, save, shoot, openJoin, createGame, screen: () => screen, view: () => ({ LW, LH, K }), toCss: (x, y) => { const [sx, sy] = toS(x, y), r = cv.getBoundingClientRect(); return [r.left + sx * r.width / LW, r.top + sy * r.height / LH]; } };
 });
 </script>
 <!-- three.js r160, https://threejs.org, MIT licence, Copyright 2010-2023 Three.js Authors. Used only for the 3D Eye view.

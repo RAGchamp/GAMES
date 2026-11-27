@@ -238,9 +238,14 @@
       catch (e) { if (/permission/i.test(e.message)) return false; throw e; }
     }
     async function setPortrait(seat, portrait) { await R('rooms/' + st.code + '/players/' + seat + '/portrait').set(portrait); }
+    // Firebase shows our own write to us at once, before the server has accepted it. A move whose number the friend
+    // took first is then taken back, so our own moves are handed on only once the server has accepted them.
+    const inflight = new Set();
     async function writeMove(n, m) {
-      try { await R('rooms/' + st.code + '/moves/' + n).set(Object.assign({ t: TS() }, m)); return true; }
+      inflight.add(n);
+      try { await R('rooms/' + st.code + '/moves/' + n).set(Object.assign({ t: TS() }, m)); lastN = Math.max(lastN, n); arrive(Object.assign({ t: Date.now() }, m)); return true; }
       catch (e) { if (/permission/i.test(e.message)) return false; throw e; }   // number taken by the friend's move
+      finally { inflight.delete(n); }
     }
     function writeLive(d) { R('rooms/' + st.code + '/live').set({ seat: st.seat, d, t: TS() }).catch(() => {}); }
     let lastN = 0;
@@ -257,7 +262,7 @@
         friendSeen(fp ? !!fp.here : null, fp && fp.portrait); };
       pl.on('value', onPl); refs.push([pl, 'value', onPl]);
       const mv = R(base + '/moves').orderByKey();
-      const onMv = s => { const m = s.val(); if (m) { lastN = Math.max(lastN, m.n); arrive(m); } };
+      const onMv = s => { const m = s.val(); if (!m || (m.seat === st.seat && inflight.has(m.n))) return; lastN = Math.max(lastN, m.n); arrive(m); };
       mv.on('child_added', onMv); refs.push([mv, 'child_added', onMv]);
       const lv = R(base + '/live');
       const onLv = s => { const v = s.val(); if (v && v.seat !== st.seat) { let d = null; try { d = JSON.parse(v.d); } catch (e) {}
