@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Play With a Friend</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<!--
+  Play with a friend plan (Game 7): online versions of Billiards and Snooker in which two people, each on their own
+  computer or phone, play each other instead of Marker. Built in GAME-7-With-friend/ from copies of
+  GAME-5-Billiards/billiards.html and GAME-6-Snooker/snooker.html. Same layout and style as SNOOKER-GAME-PLAN.html.
+  Plan written 25 Nov 2026; the decisions in section 10 were agreed by the owner on 26 Nov 2026 (Google sign-in,
+  GitHub Pages, Billiards first, Firebase in the owner's own Google account, App Check).
+-->
+<style>
+  :root{
+    --biz-blue:#0d6efd;
+    --biz-blue-dark:#084298;
+    --biz-yellow:#ffc107;
+    --biz-red:#dc3545;
+    --biz-green:#198754;
+    --biz-purple:#6f42c1;
+    --nav-blue:#04264d;
+    --nav-yellow:#ffd60a;
+  }
+  body{ background:#f7f8fa; margin:0; }
+
+  .topnav{
+    position:sticky; top:0; z-index:1030;
+    background:var(--nav-blue); color:var(--nav-yellow);
+    padding:.9rem 1.5rem; display:flex; justify-content:space-between; align-items:center;
+    box-shadow:0 .15rem .5rem rgba(0,0,0,.25);
+  }
+  .topnav .brand{ display:inline-flex; align-items:center; text-decoration:none; }
+  .topnav .brand-logo{ height:44px; width:auto; display:block; }
+  .topnav .tagline{ font-weight:600; font-size:1.05rem; color:var(--nav-yellow); letter-spacing:.15em; word-spacing:.6em; font-style:italic; }
+  @media (max-width:576px){ .topnav{ flex-direction:column; text-align:center; gap:.4rem; padding:.75rem 1rem; } }
+
+  .step-num{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:1.9rem; height:1.9rem; border-radius:50%;
+    background:var(--biz-yellow); color:#2b2b2b; font-weight:800; font-size:.95rem; margin-right:.55rem; flex:none;
+  }
+  .step-title{ display:flex; align-items:center; font-weight:700; font-size:1.1rem; margin-bottom:.75rem; }
+  .step-card{ border:2px solid #c9d3e3; border-radius:.6rem; }
+
+  .prompt{ background:linear-gradient(120deg,var(--biz-blue-dark),var(--biz-blue)); color:#fff; border-radius:.6rem; padding:.9rem 1.1rem; font-size:1.02rem; }
+  .about-box{ background:#fde2ec; border:2px solid #f5a3c0; border-radius:.6rem; padding:.9rem 1.1rem; }
+  .about-box h2{ font-size:1.05rem; font-weight:700; color:#8a1f4a; margin-bottom:.4rem; }
+  .about-box p{ font-size:.92rem; color:#3b2a31; }
+
+  .now-box{ display:flex; gap:.75rem; flex-wrap:wrap; }
+  .now-card{ flex:1 1 220px; background:#fff; border:2px solid #dde3ec; border-radius:.6rem; padding:.7rem .9rem; }
+  .now-card.now{ border-color:#c79100; background:#fff8e1; }
+  .now-card .lbl{ font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#6c757d; }
+  .now-card .val{ font-size:1.15rem; font-weight:800; line-height:1.25; margin:.15rem 0 .25rem; }
+  .now-card .det{ font-size:.86rem; color:#5a6475; }
+
+  .phase{ border-left:5px solid var(--biz-blue); }
+  .phase.p2{ border-left-color:var(--biz-green); }
+  .phase.p3{ border-left-color:var(--biz-purple); }
+  .phase.p4{ border-left-color:#c79100; }
+  .phase.p5{ border-left-color:var(--biz-red); }
+  .phase.p6{ border-left-color:#0aa2c0; }
+  .phase ul{ margin-bottom:.4rem; }
+  .accept{ background:#eefaf3; border:1px solid #bfe3cf; border-radius:.45rem; padding:.5rem .75rem; font-size:.88rem; }
+  .accept b{ color:var(--biz-green); }
+
+  table.plan th{ background:#eef3fb; font-size:.8rem; text-transform:uppercase; letter-spacing:.04em; }
+  table.plan td, table.plan th{ font-size:.9rem; vertical-align:top; }
+
+  pre.tree{ background:#0f1b2d; color:#d7e3f4; border-radius:.5rem; padding:.9rem 1rem; font-size:.85rem; margin:0; overflow-x:auto; }
+  pre.tree .c{ color:#ffd60a; }
+
+  /* The two computers and the room between them */
+  .link-row{ display:flex; align-items:stretch; gap:.6rem; flex-wrap:wrap; }
+  .pc{ flex:1 1 180px; background:#fff; border:2px solid #c9d3e3; border-radius:.6rem; padding:.7rem .9rem; text-align:center; }
+  .pc .ico{ font-size:2rem; line-height:1; }
+  .pc b{ display:block; margin:.25rem 0 .15rem; }
+  .pc .det{ font-size:.82rem; color:#5a6475; }
+  .pc.room{ background:#fff8e1; border-color:#c79100; }
+  .arrow{ flex:0 0 auto; display:flex; align-items:center; justify-content:center; font-size:1.5rem; color:#6c757d; }
+  @media (max-width:576px){ .arrow{ flex-basis:100%; transform:rotate(90deg); } }
+
+  /* Turn timeline */
+  .seq{ counter-reset:s; list-style:none; padding-left:0; }
+  .seq li{ counter-increment:s; position:relative; padding:.35rem 0 .35rem 2.4rem; font-size:.9rem; border-bottom:1px dashed #dde3ec; }
+  .seq li::before{ content:counter(s); position:absolute; left:0; top:.35rem; width:1.7rem; height:1.7rem; border-radius:50%;
+                   background:#04264d; color:#ffd60a; font-weight:800; font-size:.8rem; display:flex; align-items:center; justify-content:center; }
+  .who{ border-radius:.3rem; padding:0 .35rem; font-size:.7rem; font-weight:700; white-space:nowrap; }
+  .who.a{ background:#e7f1ff; color:#084298; border:1px solid #9ec5fe; }
+  .who.b{ background:#eefaf3; color:#0f5132; border:1px solid #a3cfbb; }
+
+  .tag{ border-radius:.3rem; padding:0 .35rem; font-size:.7rem; font-weight:700; color:#fff; white-space:nowrap; }
+  .tag-must{ background:var(--biz-green); } .tag-nice{ background:#6c757d; } .tag-open{ background:var(--biz-red); }
+  .reuse{ border-radius:.3rem; padding:0 .35rem; font-size:.7rem; font-weight:700; background:#e7f1ff; color:#084298; border:1px solid #9ec5fe; white-space:nowrap; }
+  .new{ border-radius:.3rem; padding:0 .35rem; font-size:.7rem; font-weight:700; background:#fff3d6; color:#7a5600; border:1px solid #f0c75e; white-space:nowrap; }
+
+  footer{ background:var(--nav-blue); }
+  footer a{ color:#fff; }
+</style>
+</head>
+<body>
+
+<!-- STICKY TOP NAV -->
+<div class="topnav">
+  <a class="brand" href="../index.html"><img class="brand-logo" src="../logo.svg" alt="RAG Champ"></a>
+  <div class="tagline">AI Games Portal</div>
+</div>
+
+<main class="container my-4">
+
+  <!-- How AI plays a part (pink box) -->
+  <div class="about-box mb-4">
+    <h2>What is this plan and how does AI play a part?</h2>
+    <p class="mb-0">This page is the build plan for <strong>Game 7: Play with a friend</strong>, the seventh entry in the RAG Champ Games portal. It is not a new sport. It takes the two cue games already built, <a href="../GAME-5-Billiards/billiards.html">Billiards</a> and <a href="../GAME-6-Snooker/snooker.html">Snooker</a>, and makes versions of them where you <b>invite a friend</b>. Each of you plays on your own computer or phone, wherever you are, and your friend takes the place of Marker, the computer opponent. Like the other games, it is written by an AI coding agent (Claude Code) in plain JavaScript. What is new is a small amount of code that passes each shot between the two players through an online "room". <strong>PLEASE NOTE: players don't need any AI to play the game.</strong> The AI is used only to write the code.</p>
+  </div>
+
+  <h1 class="h3 fw-bold mb-1">🤝 Play With a Friend: Development Plan</h1>
+  <p class="text-muted mb-3">Plan date: 25 Nov 2026 · Status: <strong>Plan only. The decisions in section 10 were agreed on 26 Nov 2026; ready to start Phase 1</strong> · <a href="BILLIARDS-GAME-PLAN.html">Billiards plan</a> · <a href="SNOOKER-GAME-PLAN.html">Snooker plan</a></p>
+
+  <div class="prompt mb-4">
+    <strong>Goal:</strong> Build <code class="text-warning">GAME-7-With-friend/</code>, holding a <b>Billiards</b> and a <b>Snooker</b> page that two people play against each other over the internet. One player <b>creates a game</b> and gets a short <b>room code and link</b>, which they send to a friend (WhatsApp, text or email). The friend opens the link, signs in with Google, chooses their player from the same 10 portraits, and the match starts. Each player sees the table on their own screen and picks their own view (Top or Eye). When it is your friend's turn you <b>watch them aim and shoot</b>, the way you watch Marker now. The rules, scoring, fouls and frames are exactly the ones in the existing games. The original Billiards and Snooker stay as they are, against Marker.
+  </div>
+
+  <div class="now-box mb-4">
+    <div class="now-card now"><div class="lbl">Players</div><div class="val">You + one friend</div><div class="det">Two people, each on their own device, anywhere. No computer opponent in these versions.</div></div>
+    <div class="now-card"><div class="lbl">Games</div><div class="val">🎱 Billiards · 🔴 Snooker</div><div class="det">The same rules, table, physics, controls and views as Games 5 and 6.</div></div>
+    <div class="now-card"><div class="lbl">Invite</div><div class="val">Code + link</div><div class="det">Create a game, share the link (e.g. <code>…snooker.html?room=K7QPZM</code>), your friend opens it and joins.</div></div>
+    <div class="now-card"><div class="lbl">Connection</div><div class="val">An online room</div><div class="det">Google Firebase (free plan) passes the moves between you; you sign in with Google. The games are played from GitHub Pages.</div></div>
+  </div>
+
+  <!-- 1. How it fits together -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">1</span>How the two computers talk</div>
+      <p class="small">A web page can't reach another person's computer by itself, so both pages connect to a shared <b>room</b> held by an online service. Each player writes their moves into the room and reads the other player's moves from it. Nothing else is needed: the games stay plain web pages, and no server of our own has to be kept running.</p>
+      <div class="link-row mb-3">
+        <div class="pc"><div class="ico">💻</div><b>You (creator)</b><div class="det">Creates the game, chooses the settings (reds, frames, points), sends the link</div></div>
+        <div class="arrow">⇄</div>
+        <div class="pc room"><div class="ico">☁️</div><b>The room</b><div class="det">Players, settings, the list of moves, who is still connected. Deleted after a day</div></div>
+        <div class="arrow">⇄</div>
+        <div class="pc"><div class="ico">📱</div><b>Your friend</b><div class="det">Opens the link, signs in with Google, chooses a portrait, joins; can be on a phone</div></div>
+      </div>
+      <p class="small mb-0"><b>Why so little is sent:</b> both games are <b>turn-based</b> and the physics is already kept apart from the drawing code (the <code>sim</code> script). <code>simulate(state, 'white', angle, power, maxT, spin)</code> plays a whole shot from a handful of numbers. So a shot is sent as about five numbers, and the other screen plays it out with the same code. About a dozen small messages go each way per shot. That is tiny, and it works on a weak phone signal.</p>
+    </div>
+  </div>
+
+  <!-- 2. A turn, step by step -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">2</span>How a turn plays</div>
+      <div class="row g-3">
+        <div class="col-lg-7">
+          <ol class="seq mb-0">
+            <li><span class="who a">Striker</span> lines up. Their aim, power and spin are sent about <b>10 times a second</b> (only when they change), so the other screen shows the cue moving, as it does for Marker now.</li>
+            <li><span class="who a">Striker</span> with ball in hand drags the white. Its place is sent the same way.</li>
+            <li><span class="who a">Striker</span> presses SHOOT. The <b>shot</b> is sent: where the white is, angle, power, spin and a move number.</li>
+            <li><span class="who a">Striker</span>'s screen plays the shot and the referee scores it (<code>applyShot</code>, unchanged). The <b>result</b> is sent: every ball's final place and the whole match state (scores, break, ball on, free ball, whose turn, frames).</li>
+            <li><span class="who b">Watcher</span> plays the same shot from the shot numbers, so they see the balls move. When the balls stop, any ball that is off <b>slides</b> to the place the result says (in about a quarter of a second), and the striker's score is taken as final.</li>
+            <li>Whoever's turn it is now goes on from step 1. After a foul, the player who didn't foul gets the <b>Play on / Play again</b> choice, and their answer is sent as a move.</li>
+          </ol>
+        </div>
+        <div class="col-lg-5">
+          <div class="accept mb-2" style="background:#fff8e1;border-color:#f0c75e"><b style="color:#7a5600">Why the striker's screen has the final say:</b> different browsers (Chrome, Safari, Firefox, phone or laptop) can work out <code>sin</code> and <code>cos</code> very slightly differently. In a pack of 15 reds a difference of a billionth of a millimetre can grow into a different result. So the watcher's playback is for show, and the striker's result is what counts. Usually the two agree to the millimetre anyway; when they don't, the watcher's balls glide the last bit instead of jumping.</div>
+          <p class="small mb-0"><b>Chance decided by one side:</b> the toss for who breaks, the respotted-black toss (<code>applyShot</code> uses <code>rnd</code>) and Snooker's colour respotting all happen on the striker's screen (the creator's for the opening toss) and arrive with the result, so both screens always agree.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Choosing the online service -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">3</span>Choosing the online service</div>
+      <div class="table-responsive">
+        <table class="table table-bordered plan mb-2">
+          <thead><tr><th>Option</th><th>How it works</th><th>Good</th><th>Not so good</th></tr></thead>
+          <tbody>
+            <tr><td><b>A. Google Firebase</b><br><span class="tag tag-must">chosen</span></td><td>Both pages read and write the room in Firebase's Realtime Database. It tells each page at once when something changes.</td><td>Reliable on any network; free plan is far more than two friends need (100 people connected at once, 10 GB a month); offers sign-in (Google or "guest"); shows when someone has left.</td><td>The owner creates a free Firebase project (about 15 minutes, guided). The pages load Google's Firebase script from the web. The game must be opened from a web address, not a file on disk.</td></tr>
+            <tr><td><b>B. Direct link</b><br>(WebRTC, using PeerJS)</td><td>The two browsers connect straight to each other after a short introduction through a free "broker".</td><td>No account to create; nothing stored anywhere.</td><td>The free broker is best-effort; some home, school and office networks block direct links (a relay server would cost money); no sign-in; harder to rejoin after a page reload.</td></tr>
+            <tr><td><b>C. Our own small server</b><br>(Node + WebSockets)</td><td>A tiny relay hosted on Render, Fly.io or Cloudflare.</td><td>Full control; the server could even check every shot.</td><td>Something to deploy, watch and possibly pay for; most work.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="small mb-0">The room code is written so the service can be swapped: all talk with the service goes through one small file (<code>online.js</code>, section 7) with five functions: <b>create room</b>, <b>join room</b>, <b>send move</b>, <b>on move</b> and <b>on friend left/back</b>. Moving from A to B or C later changes only that file.</p>
+    </div>
+  </div>
+
+  <!-- 4. Screens -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">4</span>The screens</div>
+      <div class="table-responsive">
+        <table class="table table-bordered plan mb-0">
+          <thead><tr><th>Screen</th><th>What is on it</th></tr></thead>
+          <tbody>
+            <tr><td><b>Title</b></td><td><b>Sign in with Google</b> (once per device; Google is only used to sign in, and your Google name, email and photo are never shown or stored in the room). Then your portrait and name (from the 10 portraits, as now), <b>Create a game</b>, <b>Join with a code</b>, How to play, and your results against each friend. No Practice or Marker here; those stay in the original games (linked from the title).</td></tr>
+            <tr><td><b>Create</b></td><td>The settings the creator picks: Snooker: 6, 10 or 15 reds and 1, 3 or 5 frames; Billiards: 50, 100 or 200 up. Then the room code in big letters, a <b>Copy link</b> button and a <b>Share</b> button (the phone's own share menu, so it opens WhatsApp and the like). "Waiting for your friend…" until they arrive.</td></tr>
+            <tr><td><b>Join</b></td><td>Opened from the link (the code is filled in) or by typing the 6-letter code. Shows who invited you and the settings, then <b>Join</b>.</td></tr>
+            <tr><td><b>Ready</b></td><td>Both portraits side by side, the coin toss for who breaks the first frame, then the table.</td></tr>
+            <tr><td><b>In the game</b></td><td>As now, with the friend's portrait and name where Marker's are. If you both chose the same portrait, the friend's has a different frame colour and "(friend)" after the name on your screen. On the friend's turn: "Maya is lining up…". A small connection light by each name (green: here, amber: slow, grey: left). Three quick reactions to tap (👏 Good shot, 😮 Unlucky, 😄 Ha!), shown as a short pop-up on the other screen.</td></tr>
+            <tr><td><b>Friend left</b></td><td>A short drop (a phone screen locking, a weak signal) only turns the friend's light amber. After about <b>30 seconds</b> away: "Maya has lost the connection. Waiting for them to come back…" with <b>Keep waiting</b> (as long as you like) and <b>End the match</b>. A player who reloads the page, comes back later, or signs in with the same Google account on another device returns to the same table (the room holds the latest result).</td></tr>
+            <tr><td><b>End</b></td><td>The winner, the frame scores and the highest breaks, then <b>Rematch</b> (the same two, in the same room, the other player breaks) or <b>Leave</b>.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. Messages -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">5</span>What is kept in the room</div>
+      <div class="row g-3">
+        <div class="col-lg-5">
+<pre class="tree">rooms/K7QPZM/
+├── game       <span class="c">'snooker' or 'billiards'</span>
+├── settings   <span class="c">reds, frames or points up</span>
+├── players/
+│   ├── a      <span class="c">creator: sign-in ID, portrait, here?</span>
+│   └── b      <span class="c">friend: sign-in ID, portrait, here?</span>
+├── live       <span class="c">striker's aim, power, spin,
+│              white's place (overwritten)</span>
+├── moves/     <span class="c">numbered list, never changed</span>
+│   ├── 1      <span class="c">toss</span>
+│   ├── 2      <span class="c">shot</span>
+│   ├── 3      <span class="c">result</span>
+│   └── …
+└── created    <span class="c">time made; rooms over 24 h old
+               are deleted when a new room
+               is created</span></pre>
+        </div>
+        <div class="col-lg-7">
+          <table class="table table-sm table-bordered plan mb-0">
+            <thead><tr><th>Move</th><th>Sent by</th><th>Holds</th></tr></thead>
+            <tbody>
+              <tr><td><code>toss</code></td><td>creator</td><td>who breaks first</td></tr>
+              <tr><td><code>shot</code></td><td>striker</td><td>white's place, angle, power, spin</td></tr>
+              <tr><td><code>result</code></td><td>striker</td><td>all ball places, the whole match state</td></tr>
+              <tr><td><code>choice</code></td><td>non-offender</td><td>play on or play again, after a foul</td></tr>
+              <tr><td><code>concede</code></td><td>either</td><td>gives up the frame (Snooker) or the game</td></tr>
+              <tr><td><code>react</code></td><td>either</td><td>one of the three quick reactions</td></tr>
+              <tr><td><code>rematch</code></td><td>either</td><td>asks for (or accepts) another match</td></tr>
+            </tbody>
+          </table>
+          <p class="small mt-2 mb-0">Moves are numbered and only ever added, never changed, so a page that reconnects reads the moves it missed and catches up. Each page checks that a move is the one it expects (the right number, from the player whose turn it is) and ignores anything else.</p>
+          <p class="small mt-2 mb-0"><b>Deleting old rooms:</b> Firebase's Realtime Database never deletes anything by itself, and a scheduled clean-up job needs the paid plan. So each time a room is created, the page also deletes any rooms more than 24 hours old. The rules allow a delete only for rooms that old. This keeps everything on the free plan.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. Reused and new -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">6</span>What is reused, and what is new</div>
+      <ul class="small mb-0">
+        <li><span class="reuse">reused</span> The whole <code>sim</code> script of each game: table, balls, physics, the referee (<code>referee</code>, <code>applyShot</code>), frames, free ball, respotted black, concede. Unchanged.</li>
+        <li><span class="reuse">reused</span> The <code>eye3d</code> Eye view, the Top view, the controls, sounds, pop-ups, phone layouts and the 10 portraits.</li>
+        <li><span class="new">changed</span> The players are still <code>'you'</code> and <code>'cpu'</code> inside the code, so the <code>sim</code> stays the same. On <b>both</b> screens <code>'you'</code> is the creator and <code>'cpu'</code> is the friend, so the two match states are always the same and can be compared directly. Each page knows which one it is (<code>me</code>), and the <code>game-ui</code> asks "is <code>m.turn</code> me?" instead of "is it <code>'you'</code>?". Names, portraits and messages ("You need snookers", "Maya needs snookers") are shown from the viewer's side. In Billiards this also keeps the balls right: the creator plays the white, the friend the yellow, on both screens. Every "Marker" on screen becomes the friend's name.</li>
+        <li><span class="new">changed</span> The spot where Marker takes his turn (<code>game.phase = 'cpu'</code> in <code>game-ui</code>) becomes <code>'friend'</code>: wait for the friend's moves and play them out. Marker's own shot search (<code>cpuPlanner</code>) isn't called.</li>
+        <li><span class="new">changed</span> Marker's choices (play on or play again, conceding) come from the friend instead.</li>
+        <li><span class="new">new</span> <code>online.js</code>, the room screens, the connection lights, reconnecting, quick reactions and rematch.</li>
+        <li><b>Saving:</b> the original games save under <code>billiards.save.v1</code> and <code>snooker.save.v1</code>. The online pages read the chosen portrait from there (so you don't choose it again) but keep their own save (<code>friend.save.v1</code>: your portrait, the last room, the results against each friend), so an online match never overwrites a game against Marker. Results are kept <b>per friend's sign-in ID</b> (shown with the portrait they last used), so two different friends who both play as "Maya" stay separate.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 7. Deliverables -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">7</span>Deliverables and technical design</div>
+      <div class="row g-3">
+        <div class="col-lg-5">
+<pre class="tree">GAMES/
+├── index.html                  <span class="c">← new "Game 7" card</span>
+├── CLAUDE.md                   <span class="c">← add Game 7</span>
+├── GAME-7-With-friend/
+│   ├── billiards-friend.html   <span class="c">← copy of Billiards, online</span>
+│   ├── snooker-friend.html     <span class="c">← copy of Snooker, online</span>
+│   ├── online.js               <span class="c">← the room code, shared</span>
+│   ├── F-PAD/build/
+│   │   └── make-friend.js      <span class="c">← copies sim + eye3d in</span>
+│   └── F-PAD/tests/            <span class="c">← tests (git-ignored)</span>
+└── info/
+    ├── PLAY-WITH-A-FRIEND.html <span class="c">← this page</span>
+    └── HOW-PLAY-WITH-A-FRIEND-WORKS.html
+                                <span class="c">← explainer (Phase 6)</span></pre>
+        </div>
+        <div class="col-lg-7">
+          <ul class="small mb-0">
+            <li><b>Copies, not changes:</b> the two game pages start as copies of <code>billiards.html</code> and <code>snooker.html</code>, so the games against Marker can't be broken by this work. The only change to the originals is a small <b>Play a friend</b> link on their title screens.</li>
+            <li><b>Kept in step by a build script:</b> <code>F-PAD/build/make-friend.js</code> copies the <code>sim</code> and <code>eye3d</code> scripts (and the three.js line) from the original games into the friend pages, leaving their own <code>game-ui</code> alone. After a physics or rule fix in an original game, running the script brings it into the friend copy too. CLAUDE.md will say so.</li>
+            <li><b>One shared file</b> for the room code, <code>online.js</code>, used by both pages, so it is written and fixed once. (The games are otherwise one file each; this is the one exception.)</li>
+            <li><b>Firebase project</b> in the owner's own Google account, on the free plan. Its public web settings (meant to be visible in a web page) sit at the top of <code>online.js</code>, in the public GitHub repo.</li>
+            <li><b>Safety:</b> strict database <b>rules</b> allow only signed-in players to make a room, only the two players in a room to write to it, only adding moves (never changing old ones), small moves, and deleting a room only once it is 24 hours old. On top of that, <b>Firebase App Check</b> lets only pages served from the game's GitHub Pages address use the database. Testing on <code>localhost</code> uses an App Check debug token.</li>
+            <li><b>Sign-in: Google sign-in</b> (Firebase Authentication). Each player's hidden sign-in ID is what the room rules check, so signing in on another device with the same account takes back your seat. Google is used only to sign in: the other player sees just your chosen portrait and its name, and your Google name, email and photo are never written to the room.</li>
+            <li><b>Hosted on GitHub Pages</b> from the <code>RAGchamp/GAMES</code> repo. Firebase only works from an <code>https://</code> page (or <code>http://localhost</code> for testing), not from a file opened on disk, so both players open the GitHub Pages address. That address is also added to Firebase's allowed sign-in domains and to App Check.</li>
+            <li><b>Test hooks</b> as in the other games: <code>?room=CODE</code> (join), <code>?debug</code> (readout and <code>window.__friend</code>), and <code>?fake</code>, which swaps <code>online.js</code> for a stand-in that passes moves between two tabs on the same computer (no internet), so most of the work can be tested without Firebase.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Phases -->
+  <h2 class="h5 fw-bold mt-4 mb-3">Build phases</h2>
+
+  <div class="card shadow-sm mb-3 phase">
+    <div class="card-body">
+      <h2 class="h6 fw-bold">Phase 1: The room, and the two copies</h2>
+      <ul>
+        <li>Copy <code>billiards.html</code> and <code>snooker.html</code> into <code>GAME-7-With-friend/</code> as <code>billiards-friend.html</code> and <code>snooker-friend.html</code>, and write <code>make-friend.js</code>, which copies the <code>sim</code> and <code>eye3d</code> scripts back in from the originals.</li>
+        <li>GitHub Pages is turned on for the repo.</li>
+        <li>The owner creates the free Firebase project in their own Google account, with Google sign-in and App Check switched on (step-by-step instructions given at this point). The room rules are written.</li>
+        <li><code>online.js</code>: sign in, create, join, send move, on move, on friend left/back (with the 30-second grace), clean up old rooms; plus the <code>?fake</code> stand-in for two tabs.</li>
+        <li>A small test page: two people in a room sending "ping" moves back and forth.</li>
+      </ul>
+      <div class="accept"><b>Done when:</b> two browser windows, signed in with two Google accounts, join the same room by code; a move sent by one arrives at the other in well under a second, in order; closing one window shows "left" on the other after the grace time, and reopening it catches up on any moves it missed; a third account can't join a full room; a page not on the GitHub Pages address (or localhost with the debug token) is refused by App Check; creating a room deletes rooms more than 24 hours old.</div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mb-3 phase p2">
+    <div class="card-body">
+      <h2 class="h6 fw-bold">Phase 2: Billiards with a friend</h2>
+      <ul>
+        <li>Sign-in, Title, Create, Join and Ready screens; the coin toss for who breaks.</li>
+        <li>Turns: Marker's turn replaced by the friend's; shot and result moves; the watcher plays the shot, then slides any ball that is off to where the result says.</li>
+        <li>The creator plays the white, the friend the yellow; 50, 100 or 200 up, as now. Billiards' own rules (cannons, in-offs, the red respotted, the foul for missing), concede and the end screen with Rematch.</li>
+        <li>The friend's name and portrait wherever Marker's were, marked "(friend)" if you both chose the same portrait; results against each friend.</li>
+      </ul>
+      <div class="accept"><b>Done when:</b> a 50-up game can be played to the end between two windows; both screens show the same balls and scores after every shot; a scripted test plays 200 random shots between two pages and checks that both match states are the same after each one.</div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mb-3 phase p3">
+    <div class="card-body">
+      <h2 class="h6 fw-bold">Phase 3: Watching your friend, and losing the connection</h2>
+      <ul>
+        <li>The live aim: the friend's cue, guide line and power shown as they line up; the white moving when they have ball in hand.</li>
+        <li>The connection lights; amber for a short drop, then after about 30 seconds "Friend has lost the connection" with Keep waiting / End the match; coming back after a reload, a lost signal, or signing in on another device.</li>
+        <li>The three quick reactions with a short pop-up and sound.</li>
+        <li>Built in <code>billiards-friend.html</code> first, written so Phase 4 reuses it for Snooker.</li>
+      </ul>
+      <div class="accept"><b>Done when:</b> the friend's cue moves smoothly (no jumps) on a slow connection; locking a phone for a few seconds doesn't show "lost the connection"; turning off a phone's Wi-Fi mid-shot and back on returns it to the right table with the right scores; reloading either page mid-game carries on the game; signing in on a second device with the same account takes back the seat.</div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mb-3 phase p4">
+    <div class="card-body">
+      <h2 class="h6 fw-bold">Phase 4: Snooker with a friend</h2>
+      <ul>
+        <li>The same changes in <code>snooker-friend.html</code>: 6, 10 or 15 reds and 1, 3 or 5 frames, as now; the break alternates frame by frame.</li>
+        <li>Snooker's own rules sent and checked the same way: the foul choice, free ball, respotted black, colour respotting, concede, frames.</li>
+      </ul>
+      <div class="accept"><b>Done when:</b> a full 15-red frame, and a best of 3 with 6 reds, can be played between two windows with both screens showing the same balls, scores and frames after every shot; every foul choice and the respotted black work; the 200-shot scripted test passes for Snooker too.</div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mb-3 phase p5">
+    <div class="card-body">
+      <h2 class="h6 fw-bold">Phase 5: The real test, two people, two places</h2>
+      <ul>
+        <li>The owner and a friend play each game from two homes: laptop to laptop, laptop to phone, phone to phone, Wi-Fi and mobile data.</li>
+        <li>Fixes from that test: the phone layout of the new screens, the Share button, timings.</li>
+      </ul>
+      <div class="accept"><b>Done when:</b> the owner and a friend have played a frame of Snooker and a game of Billiards from different places with no mismatch, and the owner is happy with how it feels.</div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mb-3 phase p6">
+    <div class="card-body">
+      <h2 class="h6 fw-bold">Phase 6: Portal and explainer</h2>
+      <ul>
+        <li>A "Game 7: Play with a friend" card on <code>index.html</code>, with links to both games.</li>
+        <li>A small <b>Play a friend</b> link on the title screens of the original <code>billiards.html</code> and <code>snooker.html</code> (a link only; nothing else in them changes).</li>
+        <li><code>info/HOW-PLAY-WITH-A-FRIEND-WORKS.html</code>: how the room works, why only a few numbers are sent per shot, why the striker's screen has the final say (with a small demo of two "screens" drifting apart in a pack of reds), and how reconnecting works.</li>
+        <li>CLAUDE.md updated.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 8. Test checklist -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">8</span>Test checklist</div>
+      <ul class="small mb-0">
+        <li>Create, share and join on a laptop and on a phone; a wrong or old code gives a clear message.</li>
+        <li>Both screens agree on every ball, score, break and frame after every shot, in both games (scripted 200-shot tests and played frames).</li>
+        <li>Each player can switch between Top and Eye view without affecting the other.</li>
+        <li>Moves can't be made out of turn: pressing SHOOT on the friend's turn does nothing; a move with the wrong number is ignored.</li>
+        <li>Reloading a page, closing the lid of a laptop, or losing the phone signal and coming back all return to the same table.</li>
+        <li>Rooms more than 24 hours old are deleted when a new room is created; a third person can't join or write to a room; a page not served from GitHub Pages is refused by App Check.</li>
+        <li>No Google name, email or photo is written to the room or shown to the other player.</li>
+        <li>Two players with the same portrait can be told apart; results are kept per friend.</li>
+        <li>Running <code>make-friend.js</code> after a change to an original game's <code>sim</code> brings the change into the friend copy, and the scripted tests still pass.</li>
+        <li>The original Billiards and Snooker are unchanged apart from the Play a friend link, and still play against Marker.</li>
+        <li>Firebase use stays well inside the free plan (checked in its dashboard after the Phase 5 test).</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 9. Not in this version -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">9</span>Not in this version</div>
+      <ul class="small mb-0">
+        <li>Playing strangers, finding an opponent, rankings or leaderboards.</li>
+        <li>More than two players, or people watching a match.</li>
+        <li>Typed chat, voice or video (the three quick reactions only).</li>
+        <li>A shot clock (you can take as long as you like).</li>
+        <li>A paid Firebase plan or scheduled server jobs.</li>
+        <li>Checking shots for cheating: the striker's screen is trusted, which is fine between friends.</li>
+        <li>Marker in the online pages, or two people taking turns on one device.</li>
+        <li>Online versions of the other games (Car Race, Chintu, Javelin, Golf).</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 10. Decisions -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">10</span>Decisions (agreed 26 Nov 2026)</div>
+      <ul class="small mb-0">
+        <li><span class="tag tag-must">agreed</span> <strong>Online service: Google Firebase</strong> (option A in section 3), Realtime Database on its free plan.</li>
+        <li><span class="tag tag-must">agreed</span> <strong>Sign-in: Google sign-in</strong> (changed from the proposed guest sign-in). Signing in on another device with the same account takes back your seat.</li>
+        <li><span class="tag tag-must">agreed</span> <strong>Name shown: your portrait's name only.</strong> Google is used only to sign in; your Google name, email and photo are never stored in the room or shown.</li>
+        <li><span class="tag tag-must">agreed</span> <strong>Hosted on GitHub Pages</strong> from the <code>RAGchamp/GAMES</code> repo (Firebase needs <code>https://</code>; it can't run from a file on disk).</li>
+        <li><span class="tag tag-must">agreed</span> <strong>Firebase project in the owner's personal Google account.</strong></li>
+        <li><span class="tag tag-must">agreed</span> <strong>Protection: strict database rules plus Firebase App Check</strong>, so only pages from the GitHub Pages address can use the database.</li>
+        <li><span class="tag tag-must">agreed</span> <strong>Old rooms are deleted when a new room is created</strong> (any room over 24 hours old), so everything stays on the free plan.</li>
+        <li><span class="tag tag-must">agreed</span> <strong>Copies of the two games</strong> in <code>GAME-7-With-friend/</code>, not changes to the originals, plus one shared <code>online.js</code>.</li>
+        <li><span class="tag tag-must">agreed</span> <strong>A build script</strong> (<code>make-friend.js</code>) copies <code>sim</code> and <code>eye3d</code> from the originals, so physics and rule fixes are made once.</li>
+        <li><span class="tag tag-must">agreed</span> <strong>The creator picks the settings</strong>; a coin toss decides who breaks the first frame, then the break alternates.</li>
+        <li><span class="tag tag-must">agreed</span> <strong>No shot clock</strong>: you can take as long as you like.</li>
+        <li><span class="tag tag-must">agreed</span> <strong>Three quick reactions</strong>, no typed chat.</li>
+        <li><span class="tag tag-must">agreed</span> <strong>A friend who drops out</strong> gets about 30 seconds' grace (amber light), then you can keep waiting as long as you like or end the match. No automatic win.</li>
+        <li><span class="tag tag-must">agreed</span> <strong>The same portrait can be chosen by both players</strong>; the friend's gets a different frame colour and "(friend)" on your screen.</li>
+        <li><span class="tag tag-must">agreed</span> <strong>Results are kept per friend</strong>, by their sign-in ID.</li>
+        <li><span class="tag tag-must">agreed</span> <strong>When the watcher's replay ends slightly off</strong>, the balls slide to the striker's result in about a quarter of a second.</li>
+        <li><span class="tag tag-must">agreed</span> <strong>Where to find it:</strong> a Game 7 card on the portal, plus a Play a friend link on the Billiards and Snooker title screens.</li>
+        <li><span class="tag tag-must">agreed</span> <strong>Billiards first</strong> (changed from Snooker first), then Snooker.</li>
+        <li><span class="tag tag-must">fixed</span> <strong>Same rules as Games 5 and 6.</strong> Nothing in the rules, physics or controls changes for online play.</li>
+      </ul>
+    </div>
+  </div>
+
+</main>
+
+<footer class="text-white py-4 mt-5">
+  <div class="container text-center small">AI Games Portal · Play with a friend plan · <a href="SNOOKER-GAME-PLAN.html">🔴 Snooker plan</a> · <a href="BILLIARDS-GAME-PLAN.html">🎱 Billiards plan</a> · <a href="../GAME-6-Snooker/snooker.html">🔴 Play Snooker</a> · <a href="../GAME-5-Billiards/billiards.html">🎱 Play Billiards</a> · <a href="../index.html">🏠 Games Home</a></div>
+</footer>
+
+</body>
+</html>
