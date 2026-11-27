@@ -107,6 +107,10 @@ connection lights on the portraits, "seems to have dropped out" then, after the 
 box (Keep waiting / End the match), no pause when a page is hidden in a game with a friend (it catches up; the page
 asks for a screen wake lock), and three quick reactions (`react` moves, at most one per 1.5 s, shown only if sent after
 the page joined). Tests: `phase3.js`, `gone.js`, `hide.js`.
+**Phase 4 (Snooker with a friend) is shelved (27 Nov 2026).** The owner will take it up later; do not start it unless
+asked. `snooker-friend.html` is still a plain copy of Snooker (not linked; keep it in step with `make-friend.js`).
+When it is resumed, bring over the Billiards friend `game-ui` work (Phases 2 and 3) and add Snooker's `choice` move
+(play on / play again after a foul), free ball, respotted black and frames. Phases 5 and 6 come after it.
 
 ## Abandoned: Geography game (22 Nov 2026)
 
