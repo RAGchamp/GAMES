@@ -111,6 +111,10 @@ the page joined). Tests: `phase3.js`, `gone.js`, `hide.js`.
 asked. `snooker-friend.html` is still a plain copy of Snooker (not linked; keep it in step with `make-friend.js`).
 When it is resumed, bring over the Billiards friend `game-ui` work (Phases 2 and 3) and add Snooker's `choice` move
 (play on / play again after a foul), free ball, respotted black and frames. Phases 5 and 6 come after it.
+The explainer `info/HOW-PLAY-WITH-A-FRIEND-WORKS.html` (27 Nov 2026, linked from the portal card as "How it works")
+covers Billiards with a friend only. Its demos copy numbers from `online.js` and the friend `game-ui` (live aim every
+100 ms, the watcher's easing `dt * 14`, GRACE 30 s, the 0.25 s slide, MAX_DATA, MAX_LIVE, the code letters); change
+them there too if those change, and add Snooker to it when Phase 4 is done.
 
 ## Abandoned: Geography game (22 Nov 2026)
 

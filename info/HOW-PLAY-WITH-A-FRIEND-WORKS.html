@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How Play with a Friend Works</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<!--
+  How Play with a friend works: the "How it works" page for Game 7 (Phase 6 of the plan PLAY-WITH-A-FRIEND.html).
+  Covers Billiards with a friend only (billiards-friend.html); Snooker with a friend (Phase 4) is shelved.
+  Explains the online room, the numbered moves, why a shot is only a few numbers, why the striker's page has the final
+  say, live aim, connection lights and the grace time, reloading and catching up, safety and privacy, and what Claude
+  Code built, with a dated timeline. Same layout as HOW-SNOOKER-WORKS.html.
+  The demos copy numbers from GAME-7-With-friend/online.js and the game-ui script of billiards-friend.html: live aim at
+  most 10 a second (100 ms) and the watcher's easing (k = dt * 14), GRACE = 30 s, the 0.25 s slide, the room code
+  letters, MAX_DATA and MAX_LIVE. If those change, change them here too. The drift demo is a simplified table (no
+  spin, no pockets), not the game's sim.
+-->
+<style>
+  :root{
+    --biz-blue:#0d6efd;
+    --biz-blue-dark:#084298;
+    --biz-yellow:#ffc107;
+    --biz-red:#dc3545;
+    --biz-green:#198754;
+    --nav-blue:#04264d;
+    --nav-yellow:#ffd60a;
+  }
+  body{ background:#f7f8fa; margin:0; }
+  .topnav{
+    position:sticky; top:0; z-index:1030;
+    background:var(--nav-blue); color:var(--nav-yellow);
+    padding:.9rem 1.5rem; display:flex; justify-content:space-between; align-items:center;
+    box-shadow:0 .15rem .5rem rgba(0,0,0,.25);
+  }
+  .topnav .brand{ display:inline-flex; align-items:center; text-decoration:none; }
+  .topnav .brand-logo{ height:44px; width:auto; display:block; }
+  .topnav .tagline{ font-weight:600; font-size:1.05rem; color:var(--nav-yellow); letter-spacing:.15em; word-spacing:.6em; font-style:italic; }
+  @media (max-width:576px){ .topnav{ flex-direction:column; text-align:center; gap:.4rem; padding:.75rem 1rem; } }
+
+  .step-num{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:1.9rem; height:1.9rem; border-radius:50%;
+    background:var(--biz-yellow); color:#2b2b2b; font-weight:800; font-size:.95rem; margin-right:.55rem; flex:none;
+  }
+  .step-title{ display:flex; align-items:center; font-weight:700; font-size:1.1rem; margin-bottom:.75rem; }
+  .step-card{ border:2px solid #c9d3e3; border-radius:.6rem; }
+  .ctrl-label{ font-size:.75rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#6c757d; margin-bottom:.25rem; display:block; }
+  .about-box{ background:#fde2ec; border:2px solid #f5a3c0; border-radius:.6rem; padding:.9rem 1.1rem; }
+  .about-box h2{ font-size:1.05rem; font-weight:700; color:#8a1f4a; margin-bottom:.4rem; }
+  .about-box p{ font-size:.92rem; color:#3b2a31; }
+  .facts{ display:flex; flex-wrap:wrap; gap:.6rem; }
+  .fact{ flex:1 1 140px; background:#fff; border:2px solid #dde3ec; border-radius:.6rem; padding:.5rem .75rem; }
+  .fact .val{ font-size:1.35rem; font-weight:800; line-height:1.15; color:var(--nav-blue); }
+  .fact .lbl{ font-size:.75rem; color:#5a6475; }
+  pre.code{ background:#0f1b2d; color:#d7e3f4; border-radius:.5rem; padding:.7rem .9rem; font-size:.8rem; margin:0; white-space:pre-wrap; }
+  pre.code .c{ color:#8fa7c7; }
+  pre.code .y{ color:#ffd60a; }
+  table.ref th{ background:#eef3fb; font-size:.78rem; text-transform:uppercase; letter-spacing:.04em; }
+  table.ref td, table.ref th{ font-size:.88rem; vertical-align:top; }
+  .demo{ background:#fff; border:2px dashed #9ec5fe; border-radius:.6rem; padding:.75rem .9rem; }
+  .demo h3{ font-size:.95rem; font-weight:800; color:var(--biz-blue-dark); margin:0 0 .4rem; }
+  .demo canvas{ width:100%; display:block; border-radius:.45rem; background:#1c8a45; touch-action:none; }
+  .demo label{ font-size:.8rem; font-weight:700; color:#3b4656; display:flex; justify-content:space-between; }
+  .demo input[type=range]{ width:100%; }
+  .read{ font-size:.9rem; font-weight:700; }
+  .flow{ display:flex; flex-wrap:wrap; align-items:stretch; gap:.4rem; }
+  .flow .box{ flex:1 1 130px; background:#eef3fb; border:2px solid #c9d3e3; border-radius:.5rem; padding:.45rem .6rem; font-size:.84rem; }
+  .flow .box b{ display:block; color:var(--nav-blue); }
+  .flow .arrow{ align-self:center; font-weight:800; color:#6c757d; }
+  @media (max-width:700px){ .flow .arrow{ display:none; } }
+  .timeline td:first-child{ white-space:nowrap; }
+  .tag{ border-radius:.3rem; padding:0 .35rem; font-size:.7rem; font-weight:700; color:#fff; background:#6c757d; white-space:nowrap; }
+  .tag.chg{ background:var(--biz-red); }
+  .shotbtns{ display:flex; flex-wrap:wrap; gap:.35rem; margin-bottom:.45rem; align-items:center; }
+  .shotbtns .lab{ font-size:.75rem; font-weight:800; color:#5a6475; text-transform:uppercase; letter-spacing:.04em; min-width:5.2rem; }
+  .shotbtns button{ border:2px solid #c9d3e3; background:#fff; border-radius:2rem; padding:.12rem .6rem; font-size:.8rem; font-weight:700; color:var(--nav-blue); }
+  .shotbtns button.on{ border-color:#c4161c; background:#fdecea; color:#c4161c; }
+  .shotbtns button:disabled{ opacity:.45; }
+  /* the move list demo */
+  .movelog{ background:#0f1b2d; color:#d7e3f4; border-radius:.5rem; padding:.5rem .7rem; font-size:.78rem; font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; min-height:9.5rem; max-height:14rem; overflow-y:auto; }
+  .movelog div{ white-space:pre-wrap; }
+  .movelog .n{ color:#ffd60a; }
+  .movelog .a{ color:#9fd3ff; } .movelog .b{ color:#ffe08a; }
+  .screens{ display:flex; gap:.5rem; margin-top:.5rem; flex-wrap:wrap; }
+  .screen{ flex:1 1 180px; border:2px solid #c9d3e3; border-radius:.5rem; padding:.4rem .6rem; font-size:.82rem; background:#f7f9fc; }
+  .screen b{ color:var(--nav-blue); }
+  /* connection lights */
+  .light{ display:inline-block; width:.85rem; height:.85rem; border-radius:50%; vertical-align:-2px; margin-right:.3rem; border:1px solid rgba(0,0,0,.3); }
+  .light.here{ background:#2fbf5b; } .light.slow{ background:#f0a020; } .light.left{ background:#9aa3ad; }
+  .gonebox{ border:2px solid #c9d3e3; border-radius:.5rem; padding:.5rem .7rem; background:#f7f9fc; font-size:.86rem; min-height:4.6rem; }
+  kbd{ background:#04264d; }
+  footer{ background:var(--nav-blue); }
+  footer a{ color:#fff; }
+</style>
+</head>
+<body>
+
+<!-- STICKY TOP NAV -->
+<div class="topnav">
+  <a class="brand" href="../index.html"><img class="brand-logo" src="../logo.svg" alt="RAG Champ"></a>
+  <div class="tagline">AI Games Portal</div>
+</div>
+
+<main class="container my-4">
+
+  <div class="about-box mb-4">
+    <h2>What is this page and how does AI play a part?</h2>
+    <p class="mb-0">This page explains how <strong>Game 7: Play with a friend</strong> works inside. You play <strong>Billiards</strong> against a friend, each of you on your own computer or phone, wherever you are. It covers how the two screens talk through an online room, why a shot needs only a few numbers, why the striker's screen has the final say, how you see your friend line up, and what happens when someone's connection drops. Claude Code (an AI coding agent) wrote it from a <a href="PLAY-WITH-A-FRIEND.html">plan</a>, starting from a copy of <a href="../GAME-5-Billiards/billiards.html">Billiards</a>. <strong>Players don't need any AI to play.</strong> Snooker with a friend is planned too, but is on hold for now, so this page is about Billiards.</p>
+  </div>
+
+  <h1 class="h3 fw-bold mb-1">🤝 How Play with a Friend Works</h1>
+  <p class="text-muted mb-3"><a href="../GAME-7-With-friend/billiards-friend.html">▶ Play Billiards with a friend</a> · <a href="PLAY-WITH-A-FRIEND.html">📋 The development plan</a> · <a href="HOW-BILLIARDS-WORKS.html">💡 How Billiards works</a> · <a href="../index.html">🏠 Games Home</a></p>
+
+  <div class="facts mb-4">
+    <div class="fact"><div class="val">2 files</div><div class="lbl"><code>billiards-friend.html</code> (the game) and <code>online.js</code> (all talk with the online room)</div></div>
+    <div class="fact"><div class="val">6 numbers</div><div class="lbl">make one shot: where the white is (2), the aim, the power and the spin (2)</div></div>
+    <div class="fact"><div class="val">10 a second</div><div class="lbl">at most, your aim goes to your friend while you line up</div></div>
+    <div class="fact"><div class="val">30 s</div><div class="lbl">of grace before a friend who dropped out counts as gone</div></div>
+    <div class="fact"><div class="val">24 h</div><div class="lbl">a room lasts; older ones are deleted when a new one is made</div></div>
+    <div class="fact"><div class="val">Free</div><div class="lbl">Firebase's free plan and GitHub Pages: no server of our own</div></div>
+  </div>
+
+  <!-- 1. The room -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">1</span>Two screens and a room between them</div>
+      <p>A web page can't reach another person's computer by itself. So both pages connect to a shared <b>room</b> kept by an online service, <b>Google Firebase</b> (its Realtime Database, on the free plan). Each player writes their moves into the room and reads the other player's moves from it. Firebase tells a page within a fraction of a second when something in the room changes. The games stay plain web pages, served from GitHub Pages, and no server of our own has to be kept running.</p>
+      <div class="flow mb-3">
+        <div class="box"><b>💻 You (the creator)</b>Sign in with Google, choose first to 50, 100 or 200, and get a room code and a link to send.</div>
+        <div class="arrow">⇄</div>
+        <div class="box"><b>☁️ The room</b>The game, the settings, the two players, the numbered list of moves, and who is still connected.</div>
+        <div class="arrow">⇄</div>
+        <div class="box"><b>📱 Your friend</b>Opens the link, signs in, chooses a portrait and joins. A coin toss says who breaks.</div>
+      </div>
+      <div class="row g-3">
+        <div class="col-lg-6">
+          <span class="ctrl-label">What is kept in the room</span>
+<pre class="code">rooms/K7QPZM/
+├── game       <span class="c">'billiards'</span>
+├── settings   <span class="c">first to 50, 100 or 200</span>
+├── created    <span class="c">the time it was made</span>
+├── players/
+│   ├── a      <span class="c">creator: sign-in ID, portrait, here?</span>
+│   └── b      <span class="c">friend:  sign-in ID, portrait, here?</span>
+├── live       <span class="c">the striker's aim (overwritten)</span>
+└── moves/     <span class="c">numbered, only ever added</span>
+    ├── 1      <span class="y">toss</span>
+    ├── 2      <span class="y">shot</span>
+    ├── 3      <span class="y">result</span>
+    └── …</pre>
+        </div>
+        <div class="col-lg-6">
+          <p class="small mb-2"><b>The room code</b> is 6 characters from 32 letters and digits, leaving out 0, O, 1 and I so it can't be misread when said out loud. That makes about a billion codes. The link is the game's address with <code>?room=K7QPZM</code> on the end, so a friend can just tap it in WhatsApp.</p>
+          <p class="small mb-2"><b>One file does all the talking.</b> Every call to Firebase is in <code>online.js</code>, behind a few functions: create a room, join it, send a move, hear about each move, and hear when the friend comes or goes. Moving to another service later would change only that file.</p>
+          <p class="small mb-0"><b>Two players, two colours.</b> The creator always plays the white and the friend the yellow. Inside the rules (the <code>sim</code> script, copied unchanged from Billiards) the players are simply <code>'white'</code> and <code>'yellow'</code>, so both screens hold exactly the same match and it can be compared directly.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Moves -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">2</span>A game is a list of numbered moves</div>
+      <p>Everything that changes a game is a <b>move</b>: a small message with a number, who sent it, and what kind it is. Moves are only ever added, never changed, and both pages apply them <b>in order, 1, 2, 3…</b>. If two moves arrive the wrong way round, the page holds the later one until the earlier one comes. If both players try to write move 7 at the same moment, the room's rules let only the first one in; the other page waits and tries again as move 8. Step through a short game:</p>
+      <div class="row g-3">
+        <div class="col-lg-7">
+          <div class="demo">
+            <h3>Try it: the moves in the room, and what each screen does</h3>
+            <div class="shotbtns" id="mvBtns">
+              <button id="mvNext">Next move ▶</button>
+              <button id="mvReload">Reload Lee's page ↻</button>
+              <button id="mvReset">Start again</button>
+            </div>
+            <div class="movelog" id="mvLog" aria-live="polite"></div>
+            <div class="screens">
+              <div class="screen"><b>Maya's screen</b> (creator, white)<br><span id="mvA"></span></div>
+              <div class="screen"><b>Lee's screen</b> (friend, yellow)<br><span id="mvB"></span></div>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-5">
+          <table class="table table-sm table-bordered ref mb-2">
+            <thead><tr><th>Move</th><th>Sent by</th><th>Holds</th></tr></thead>
+            <tbody>
+              <tr><td><b>toss</b></td><td>the creator</td><td>which match this is, who breaks, first to how many</td></tr>
+              <tr><td><b>shot</b></td><td>the striker</td><td>where the white is, aim, power, spin</td></tr>
+              <tr><td><b>result</b></td><td>the striker</td><td>the whole match after the shot: every ball's place, scores, break, whose turn</td></tr>
+              <tr><td><b>concede</b></td><td>either</td><td>gives up the game</td></tr>
+              <tr><td><b>rematch</b></td><td>either</td><td>asks for (or agrees to) another game; when both have, the creator tosses again and the other player breaks</td></tr>
+              <tr><td><b>react</b></td><td>either</td><td>👏 Good shot, 😮 Unlucky or 😄 Ha (at most one every 1.5 s)</td></tr>
+            </tbody>
+          </table>
+          <p class="small mb-0">A page ignores a move that doesn't fit: a shot from the player whose turn it isn't, or a toss from anyone but the creator. Your own page shows your shot as you play it, so when your own move comes back from the room it is skipped (each one carries a short id). A move can be at most 12,000 characters; a whole match fits easily.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. A shot, and the final say -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">3</span>Why a shot is six numbers, and why the striker has the final say</div>
+      <p>Billiards keeps its physics apart from the drawing code. One function plays a whole shot from the place of the white, the aim, the power and the spin. So the striker sends just those <b>six numbers</b>, and the friend's page plays the same shot with the same code: their cue turns to the aim, strikes, and the balls run on both screens.</p>
+      <div class="flow mb-3">
+        <div class="box"><b>1. Striker shoots</b>The <code>shot</code> move goes to the room as the cue strikes.</div>
+        <div class="arrow">→</div>
+        <div class="box"><b>2. Both play it</b>The friend's cue swings to the aim in half a second and strikes; the balls run on both screens.</div>
+        <div class="arrow">→</div>
+        <div class="box"><b>3. Striker scores it</b>When the balls stop, the striker's page runs the referee (<code>applyShot</code>) and sends the <code>result</code>.</div>
+        <div class="arrow">→</div>
+        <div class="box"><b>4. Friend takes it</b>The friend's page takes the result as final. Any ball that ended a little off slides into place in a quarter of a second.</div>
+      </div>
+      <p><b>Why not let both pages score the shot themselves?</b> Different browsers and phones can work out <code>sin</code> and <code>cos</code> very slightly differently, and every time one ball hits another, a tiny difference in where they meet grows. So the friend's playback is for show, and the striker's result is what counts. Try it on a simplified table:</p>
+      <div class="row g-3">
+        <div class="col-lg-7">
+          <div class="demo">
+            <h3>Try it: the same shot on two screens, one aimed a tiny bit differently</h3>
+            <canvas id="drCv" width="700" height="360" aria-label="A billiards table seen from above with the paths of the white, yellow and red on two screens: solid for the striker's, dashed for the friend's"></canvas>
+            <div class="shotbtns mt-2" id="drShots"><span class="lab">The shot</span></div>
+            <label>Difference in aim <span id="drV"></span></label><input type="range" id="drDiff" min="-15" max="-1" step="1" value="-6">
+            <div class="shotbtns mt-1"><button id="drSlide">Slide to the striker's result</button></div>
+            <p class="read mb-0" id="drRead"></p>
+          </div>
+        </div>
+        <div class="col-lg-5">
+          <span class="ctrl-label">The result and the slide (from billiards-friend.html)</span>
+<pre class="code"><span class="c">// striker's page, when the balls stop</span>
+r = applyShot(m, state, start);
+send('result', { m: snapshot(m), r });
+
+<span class="c">// friend's page: the result is final</span>
+game.m = d.m;
+slide = { t: 0, from: whereMyBallsAre,
+          to: m.balls };   <span class="c">// 0.25 s</span></pre>
+          <p class="small mt-2 mb-0">With only three balls, a shot usually has just a few ball-on-ball hits, so a difference of a billionth of a degree stays far too small to see (try 10⁻⁹ above). A shot with several hits multiplies it each time, and a bigger difference can send the red somewhere else entirely. In the game's own test, <b>200 shots between two pages</b> gave the same match on both after every shot, and the friend's playback ended <b>exactly</b> where the striker's did (the largest gap was 0 m). Two pages in the same browser always agree to the last digit; the slide is there for when two different browsers don't. The demo's table has no spin and no pockets, so it is a sketch of the effect, not the game's physics.</p>
+        </div>
+      </div>
+      <p class="small mt-3 mb-0"><b>Chance, too, is decided on one side.</b> The coin toss for who breaks is made on the creator's page and sent as the <code>toss</code> move, and anything else left to chance happens on the striker's page and arrives in the result. So both screens always agree. The striker's page is trusted, which is fine between friends; checking shots for cheating is left out on purpose.</p>
+    </div>
+  </div>
+
+  <!-- 4. Live aim -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">4</span>Watching your friend line up</div>
+      <p>While the striker lines up, their aim, power, spin and (with the white in hand) the white's place go to the room's <b>live</b> slot. It isn't a move: each update simply overwrites the last one, at most <b>10 times a second</b>, and only when something changes. The last update always goes, so the friend's cue ends exactly where the striker's stopped. The watching page doesn't jump its cue to each update. Every frame it moves part of the way there, so the cue glides even when updates arrive late or bunched up. Drag on the table to aim (or leave it to swing by itself):</p>
+      <div class="row g-3">
+        <div class="col-lg-7">
+          <div class="demo">
+            <h3>Try it: the striker's cue (white) and what the friend sees (yellow)</h3>
+            <canvas id="lvCv" width="700" height="300" aria-label="A white ball with two cues: the striker's, which you move, and the friend's, which follows the updates sent through the room"></canvas>
+            <label class="mt-2">Delay through the room <span id="lvV"></span></label><input type="range" id="lvDelay" min="0" max="600" step="20" value="120">
+            <div class="shotbtns mt-1"><span class="lab">The friend's cue</span><button id="lvEase" class="on">Glides</button><button id="lvJump">Jumps to each update</button></div>
+            <p class="read mb-0" id="lvRead"></p>
+          </div>
+        </div>
+        <div class="col-lg-5">
+          <span class="ctrl-label">Sending and following (from online.js and billiards-friend.html)</span>
+<pre class="code"><span class="c">// striker: at most every 100 ms; the last one always goes</span>
+sendLive({ n: shotNumber, a: aim, p: power,
+           s: [spinX, spinY], w: whiteInHand });
+
+<span class="c">// friend, every frame (dt in seconds)</span>
+k = min(1, dt * 14);
+aim   += (live.a - aim) * k;
+power += (live.p - power) * k;</pre>
+          <p class="small mt-2 mb-0">Each update carries the shot number, so a late update from the last turn is never shown on the next one. An update can be at most 600 characters (one is about 60). In the game's test, the friend's cue never turned more than 0.06 radians (about 3°) between two frames, and when the striker stopped, both cues pointed the same way to within a ten-thousandth of a radian. The friend also sees the guide line and the power cue being pulled back.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. Connection -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">5</span>When a connection drops, and coming back</div>
+      <p>Each player's entry in the room has a <b>here</b> flag. A page sets it when it connects, and asks Firebase in advance to clear it if the connection is lost. So when a phone loses its signal or a tab is closed, the server clears the flag itself, and the other page hears about it. A small light by each portrait shows it:</p>
+      <div class="row g-3">
+        <div class="col-lg-7">
+          <div class="demo">
+            <h3>Try it: Lee has been away for…</h3>
+            <label>Seconds since Lee's page dropped out <span id="gnV"></span></label><input type="range" id="gnT" min="0" max="90" step="1" value="0">
+            <div class="shotbtns mt-1"><button id="gnBack">Lee comes back</button><button id="gnWait" disabled>Keep waiting</button></div>
+            <div class="gonebox" id="gnBox" aria-live="polite"></div>
+          </div>
+        </div>
+        <div class="col-lg-5">
+          <ul class="small mb-0">
+            <li><span class="light here"></span><b>Green: here.</b></li>
+            <li><span class="light slow"></span><b>Amber: dropped out a moment ago.</b> A screen locking or a weak signal does only this. The message along the bottom of the table says your friend seems to have dropped out.</li>
+            <li><span class="light left"></span><b>Grey: gone.</b> After <b>30 seconds</b> away, a box says your friend has lost the connection, with <b>Keep waiting</b> (as long as you like) and <b>End the match</b>. There is no automatic win. When they come back, the box closes by itself with "Lee is back".</li>
+          </ul>
+        </div>
+      </div>
+      <div class="row g-3 mt-1">
+        <div class="col-md-4">
+          <span class="ctrl-label">Reloading and catching up</span>
+          <p class="small mb-0">Because every move is kept in order, a page that reloads, comes back after a lost signal, or is opened on another device reads <b>all the moves from move 1</b> and rebuilds the same game, straight to the table, without the animations. While catching up, a shot whose result is already in the list is skipped (the result has the balls), and old reactions don't pop up again. The game's test reloads the friend's page after 200 shots and carries on with both pages in step.</p>
+        </div>
+        <div class="col-md-4">
+          <span class="ctrl-label">Your seat is yours</span>
+          <p class="small mb-0">The room remembers each player by their Google <b>sign-in ID</b>, a hidden code, not a name. Sign in with the same account on another phone or laptop, open the link, and you get your seat back. A third person who opens the link is told the game is full. The title screen offers to go back to a game that is still going.</p>
+        </div>
+        <div class="col-md-4">
+          <span class="ctrl-label">Phones</span>
+          <p class="small mb-0">In the games against Marker, hiding the page pauses the game. With a friend it doesn't: their shot may arrive while your screen is off, and when you look again your page catches up on the moves. While you are in a game with a friend the page also asks the phone to keep its screen on (the browser's <b>Screen Wake Lock</b>), so it doesn't go dark while you watch them line up.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. Safety -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">6</span>Keeping the room safe and private</div>
+      <div class="row g-3">
+        <div class="col-md-4">
+          <span class="ctrl-label">The database rules</span>
+          <ul class="small mb-0">
+            <li>Only a signed-in player can make a room, and only with themselves as the creator.</li>
+            <li>Only the two players in a room can write to it. Each can write only their own moves, and an existing move can never be changed.</li>
+            <li>The room's size is checked: a code of 6 allowed letters, a move of at most 12,000 characters, the live slot at most 600.</li>
+            <li>A room can be deleted only once it is more than 24 hours old.</li>
+          </ul>
+        </div>
+        <div class="col-md-4">
+          <span class="ctrl-label">App Check, and the free plan</span>
+          <p class="small mb-2">The page's Firebase settings are public (they have to be, in a web page). On top of the rules, <b>Firebase App Check</b> lets only pages served from the game's GitHub Pages address use the database, so a copy of the page elsewhere is refused.</p>
+          <p class="small mb-0">Firebase never deletes anything by itself, and a scheduled clean-up needs the paid plan. So each time a room is made, the page also deletes up to 10 rooms more than a day old. That keeps everything on the free plan, which allows far more than two friends need.</p>
+        </div>
+        <div class="col-md-4">
+          <span class="ctrl-label">Your name stays yours</span>
+          <p class="small mb-2">Google is used <b>only to sign in</b>. Your Google name, email and photo are never written to the room or shown. Your friend sees only the portrait you chose and its name. If you both chose the same portrait, your friend's gets a different frame colour and "(friend)" after the name on your screen.</p>
+          <p class="small mb-0">Your results against each friend (played, won, best break) are kept on your own device, under each friend's sign-in ID, separate from your games against Marker.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. What Claude Code built -->
+  <div class="card shadow-sm step-card mb-3">
+    <div class="card-body">
+      <div class="step-title"><span class="step-num">7</span>What Claude Code built, and how it was checked</div>
+      <p class="small">Claude Code wrote it from the plan, starting from a copy of Billiards. The only borrowed code is Firebase's own web library (loaded from Google when you play) and three.js for the Eye view, as in Billiards. The pieces:</p>
+      <div class="flow mb-3">
+        <div class="box"><b>sim and eye3d: copied</b>The rules, physics and the 3D view, copied unchanged from <code>billiards.html</code> by a build script (<code>make-friend.js</code>). A fix to Billiards' physics is made once and copied across.</div>
+        <div class="arrow">→</div>
+        <div class="box"><b>game-ui: the friend's version</b>Sign-in, Create and Join screens, the toss, moves in and out, the slide, live aim, lights, reactions, rematch and results.</div>
+        <div class="arrow">→</div>
+        <div class="box"><b>online.js: the room</b>Firebase, or with <code>?fake</code> a stand-in that passes moves between tabs of one browser, so most of the game can be tested without the internet.</div>
+      </div>
+
+      <span class="ctrl-label">Timeline</span>
+      <p class="small mb-2"><span class="tag chg">decided</span> marks choices the owner made.</p>
+      <table class="table table-sm table-bordered ref timeline mb-3">
+        <thead><tr><th>When</th><th>What was built</th></tr></thead>
+        <tbody>
+          <tr><td>25 Nov 2026</td><td><b>The plan</b> written: Billiards and Snooker against a friend, in 6 phases.</td></tr>
+          <tr><td>26 Nov 2026</td><td><span class="tag chg">decided</span> Firebase in the owner's own Google account on the free plan, <b>Google sign-in</b> (instead of the suggested guest sign-in), hosted on GitHub Pages, App Check on top of the rules, old rooms deleted when a new one is made, copies of the games rather than changes to the originals, 30 seconds' grace with no automatic win, three quick reactions and no typed chat, and <b>Billiards first</b> (instead of Snooker first).</td></tr>
+          <tr><td>26 Nov 2026</td><td><b>Phase 1, the room:</b> the two copies and <code>make-friend.js</code>, the Firebase project and its rules, <code>online.js</code> with the <code>?fake</code> stand-in, and a ping test page.</td></tr>
+          <tr><td>27 Nov 2026</td><td><b>Phase 2, Billiards with a friend:</b> sign-in, Create, Join and Ready screens, the coin toss, shots and results as moves, the slide, give up, rematch, results against each friend, and rebuilding the game after a reload. Our own moves are now handed on only once Firebase has accepted them.</td></tr>
+          <tr><td>27 Nov 2026</td><td><b>Phones:</b> no pause when the screen goes off, and the Screen Wake Lock. The portal's Game 7 card.</td></tr>
+          <tr><td>27 Nov 2026</td><td><b>Phase 3, watching your friend:</b> the connection lights and the "lost the connection" box, the live aim, and the quick reactions.</td></tr>
+          <tr><td>27 Nov 2026</td><td><span class="tag chg">decided</span> <b>Snooker with a friend (Phase 4) shelved</b>, to be taken up later.</td></tr>
+          <tr><td>27 Nov 2026</td><td><b>This page</b> (part of Phase 6), for Billiards with a friend.</td></tr>
+        </tbody>
+      </table>
+
+      <span class="ctrl-label">How it was checked</span>
+      <ul class="small mb-0">
+        <li><b>The room</b> (Phase 1 test): two test pages join by code and see the same moves in the same order, each in well under a second. A third player can't join a full room. A closed page shows amber, then grey after the grace time. Reopening the link takes back the seat and catches up on every move. Old rooms are deleted, and wrong or old codes and oversized moves are refused with a clear message.</li>
+        <li><b>A whole game</b> (Phase 2 test): two pages play 200 shots against each other, with the same match on both after every shot. Then a reload mid-game, giving up, a rematch where the other player breaks, a full game, and the results against the friend. All 15 checks pass.</li>
+        <li><b>Watching</b> (Phase 3 tests): the friend's cue, power, spin and white in hand follow the striker smoothly. Reactions pop up on both screens, at most one per 1.5 s, and not again after a reload. The "lost the connection" box comes and goes, and hiding a page doesn't pause it.</li>
+        <li><b>Still to come</b> (Phase 5): the owner and a friend playing from two homes, laptop and phone, on Wi-Fi and mobile data.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="text-center my-4">
+    <a class="btn btn-lg fw-bold text-white px-4" style="background:#04264d;border:3px solid #ffd60a;border-radius:2rem;color:#ffd60a!important" href="../GAME-7-With-friend/billiards-friend.html">▶ Play Billiards with a friend</a>
+    <a class="btn btn-lg fw-bold px-4 ms-2" style="border:2px solid #04264d;color:#04264d;border-radius:2rem" href="../index.html">🏠 Games Home</a>
+  </div>
+  <p class="small text-muted text-center">Online room: Google Firebase. Eye view: three.js by the three.js authors (MIT licence). Everything else written with Claude Code.</p>
+
+</main>
+
+<footer class="text-white py-4 mt-5">
+  <div class="container text-center small">AI Games Portal · How Play with a friend works · <a href="../GAME-7-With-friend/billiards-friend.html">🤝 Play Billiards with a friend</a> · <a href="PLAY-WITH-A-FRIEND.html">📋 Play with a friend plan</a> · <a href="HOW-BILLIARDS-WORKS.html">💡 How Billiards works</a> · <a href="HOW-SNOOKER-WORKS.html">💡 How Snooker works</a> · <a href="../index.html">🏠 Games Home</a></div>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const lerp = (a, b, k) => a + (b - a) * k;
+  const ease = k => k * k * (3 - 2 * k);
+
+  /* ---------- The numbers (copied from online.js and the game-ui script of billiards-friend.html) ---------- */
+  const LIVE_MS = 100, FOLLOW = 14, GRACE = 30, SLIDE = 0.25;
+  const L = 3.569, W = 1.778, R = 0.02625 * 2;   // the table and the 2x balls of Billiards
+  const COL = { white: '#f3efe2', yellow: '#f2c300', red: '#c4161c' };
+
+  function setupCanvas(cv) {   // sharp on high-density screens; draw in the canvas's own width/height units
+    const w = cv.width, h = cv.height, dpr = Math.min(window.devicePixelRatio || 1, 2);
+    if (!cv.dataset.w) { cv.dataset.w = w; cv.dataset.h = h; cv.width = w * dpr; cv.height = h * dpr; }
+    const c = cv.getContext('2d'); c.setTransform(cv.width / +cv.dataset.w, 0, 0, cv.height / +cv.dataset.h, 0, 0);
+    return [c, +cv.dataset.w, +cv.dataset.h];
+  }
+  function ball(c, x, y, r, col, ghost) {
+    c.globalAlpha = ghost ? 0.55 : 1;
+    const g = c.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.1, x, y, r * 1.05);
+    g.addColorStop(0, 'rgba(255,255,255,.75)'); g.addColorStop(0.35, col); g.addColorStop(1, col);
+    c.fillStyle = g; c.beginPath(); c.arc(x, y, r, 0, 7); c.fill();
+    c.strokeStyle = 'rgba(0,0,0,.5)'; c.lineWidth = Math.max(0.6, r * 0.09); c.stroke();
+    c.globalAlpha = 1;
+  }
+
+  /* ---------- 2. The moves in the room ---------- */
+  const SCRIPT = [
+    { seat: 'a', k: 'toss', d: '{match: 1, first: "yellow", target: 50}', A: 'Shows the Ready screen: "Coin toss: Lee breaks".', B: 'Shows the Ready screen: "Coin toss: you break".' },
+    { seat: 'b', k: 'shot', d: '{place: {x: 0.12, y: 0.62}, aim: 0.031, power: 0.55, spin: {x: 0, y: 0}}', A: 'Puts Lee\'s yellow where it was played from, turns the cue to the aim and plays the shot for show.', B: 'Already playing it (its own move: the echo is skipped).' },
+    { seat: 'b', k: 'result', d: '{m: {scores: {white: 0, yellow: 2}, turn: "yellow", balls: [...], ...}, r: {points: 2}}', A: 'Takes Lee\'s result as final; the balls slide the last few millimetres. "+2 Pot red".', B: 'Scored it with applyShot and sent it. Lee plays on.' },
+    { seat: 'a', k: 'react', d: '{r: "good"}', A: 'Shows "👏 You: Good shot!" (its own move: the echo is skipped).', B: 'Pops up "👏 Maya: Good shot!" with a little chime.' },
+    { seat: 'b', k: 'shot', d: '{place: {...}, aim: 2.71, power: 0.8, spin: {x: 0.3, y: -0.4}}', A: 'Plays Lee\'s second shot for show.', B: 'Playing it.' },
+    { seat: 'b', k: 'result', d: '{m: {scores: {white: 0, yellow: 2}, turn: "white", ...}, r: {points: 0}}', A: 'No score: now it is Maya\'s turn. Her cue is live.', B: 'No score: now Lee watches Maya line up.' },
+    { seat: 'a', k: 'shot', d: '{place: {...}, aim: 0.44, power: 0.62, spin: {x: 0, y: 0.2}}', A: 'Playing it.', B: 'Plays Maya\'s shot for show.' },
+    { seat: 'a', k: 'result', d: '{m: {scores: {white: 3, yellow: 2}, turn: "white", ...}, r: {points: 3}}', A: 'Scored it: +3 (in-off the red). Maya plays on.', B: 'Takes Maya\'s result as final.' },
+  ];
+  let mvN = 0, mvReloaded = false;
+  function mvLine(i) {
+    const s = SCRIPT[i];
+    return '<div><span class="n">' + String(i + 1).padStart(2) + '</span> <span class="' + s.seat + '">' + (s.seat === 'a' ? 'Maya' : 'Lee ') + '</span> ' + s.k.padEnd(6) + ' ' + s.d.replace(/</g, '&lt;') + '</div>';
+  }
+  function mvShow() {
+    let html = '';
+    for (let i = 0; i < mvN; i++) html += mvLine(i);
+    $('mvLog').innerHTML = html || '<div style="color:#8fa7c7">The room is empty: Lee has just joined. Press Next move.</div>';
+    $('mvLog').scrollTop = 1e6;
+    const last = SCRIPT[mvN - 1];
+    if (mvReloaded) {
+      const shotsSkipped = SCRIPT.slice(0, mvN).filter((s, i) => s.k === 'shot' && SCRIPT.slice(i + 1, mvN).some(q => q.k === 'result' && q.seat === s.seat)).length;
+      $('mvA').textContent = 'Carries on as before. Lee\'s light went amber for a moment, then green again.';
+      $('mvB').textContent = 'Reloaded: read all ' + mvN + ' moves from move 1 and rebuilt the same game, straight to the table with no animations. ' + shotsSkipped + ' shot' + (shotsSkipped === 1 ? '' : 's') + ' skipped (the result after it already has the balls), and the old reaction did not pop up again.';
+    } else {
+      $('mvA').textContent = last ? last.A : 'Waiting for Lee… then tosses the coin.';
+      $('mvB').textContent = last ? last.B : 'Joined; waiting for the toss.';
+    }
+    $('mvNext').disabled = mvN >= SCRIPT.length;
+    $('mvReload').disabled = mvN === 0;
+  }
+  $('mvNext').onclick = () => { if (mvN < SCRIPT.length) { mvN++; mvReloaded = false; mvShow(); } };
+  $('mvReload').onclick = () => { mvReloaded = true; mvShow(); };
+  $('mvReset').onclick = () => { mvN = 0; mvReloaded = false; mvShow(); };
+
+  /* ---------- 3. Two screens drifting apart (a simplified table: no spin, no pockets, a little friction) ---------- */
+  const DT = 1 / 600, DEC = 0.3, E_CUSH = 0.8, E_BALL = 0.95, V0 = 5;
+  const START = [{ x: 0.6, y: 0.55 }, { x: 0.89, y: 0.42 }, { x: 0, y: L - 0.324 }];   // white, yellow, red (on its spot)
+  const IDS = ['white', 'yellow', 'red'];
+  function run(aim) {
+    const b = START.map(p => ({ x: p.x, y: p.y, vx: 0, vy: 0 }));
+    b[0].vx = V0 * Math.sin(aim); b[0].vy = V0 * Math.cos(aim);
+    const path = b.map(o => [[o.x, o.y]]); let hits = 0;
+    for (let s = 0; s < 600 * 30; s++) {
+      let moving = false;
+      for (const o of b) {
+        const sp = Math.hypot(o.vx, o.vy);
+        if (sp > 0) { const ns = Math.max(0, sp - DEC * DT); o.vx *= ns / sp; o.vy *= ns / sp; moving = moving || ns > 0; }
+        o.x += o.vx * DT; o.y += o.vy * DT;
+        if (o.x < -W / 2 + R) { o.x = -W / 2 + R; o.vx = -o.vx * E_CUSH; }
+        if (o.x > W / 2 - R) { o.x = W / 2 - R; o.vx = -o.vx * E_CUSH; }
+        if (o.y < R) { o.y = R; o.vy = -o.vy * E_CUSH; }
+        if (o.y > L - R) { o.y = L - R; o.vy = -o.vy * E_CUSH; }
+      }
+      for (let i = 0; i < 3; i++) for (let j = i + 1; j < 3; j++) {
+        const p = b[i], q = b[j], dx = q.x - p.x, dy = q.y - p.y, d = Math.hypot(dx, dy);
+        if (d < 2 * R && d > 0) {
+          const nx = dx / d, ny = dy / d, vr = (p.vx - q.vx) * nx + (p.vy - q.vy) * ny;
+          if (vr > 0) { const J = (1 + E_BALL) / 2 * vr; p.vx -= J * nx; p.vy -= J * ny; q.vx += J * nx; q.vy += J * ny; hits++; }
+          const o = (2 * R - d) / 2; p.x -= o * nx; p.y -= o * ny; q.x += o * nx; q.y += o * ny;
+        }
+      }
+      if (s % 12 === 0) b.forEach((o, k) => path[k].push([o.x, o.y]));
+      if (!moving) break;
+    }
+    b.forEach((o, k) => path[k].push([o.x, o.y]));
+    return { b, hits, path };
+  }
+  const SHOTS = [{ name: 'Three hits', aim: 0.02 }, { name: 'Two hits', aim: 0.1 }, { name: 'Off a cushion', aim: 0.25 }, { name: 'No hit', aim: 0.07 }];
+  let drShot = 0, drA = null, drB = null, drSlide = null;
+  function fmtLen(m) {
+    if (m === 0) return '0 (exactly the same)';
+    if (m >= 0.01) return (m * 100).toFixed(m >= 1 ? 0 : 1) + ' cm';
+    if (m >= 1e-3) return (m * 1000).toFixed(1) + ' mm';
+    if (m >= 1e-6) return (m * 1e6).toFixed(1) + ' µm (thousandths of a mm)';
+    if (m >= 1e-9) return (m * 1e9).toFixed(1) + ' nm (millionths of a mm)';
+    return m.toExponential(1) + ' m';
+  }
+  function drCompute() {
+    const e = +$('drDiff').value, aim = SHOTS[drShot].aim;
+    drA = run(aim); drB = run(aim + Math.pow(10, e) * Math.PI / 180); drSlide = null;
+    $('drV').textContent = '10' + String(e).replace('-', '⁻').replace(/\d/g, d => '⁰¹²³⁴⁵⁶⁷⁸⁹'[d]) + '°';
+    const gap = Math.max(...drA.b.map((o, k) => Math.hypot(o.x - drB.b[k].x, o.y - drB.b[k].y)));
+    $('drRead').textContent = 'The striker\'s white made ' + drA.hits + ' ball-on-ball hit' + (drA.hits === 1 ? '' : 's') + '. Where the balls stop, the two screens differ by at most ' + fmtLen(gap) + (gap > 0.02 ? ': the friend would see a different shot, which is why the striker\'s result is the one that counts.' : gap > 0.001 ? ': the slide would hide it.' : '.');
+    for (const b of $('drShots').querySelectorAll('button')) b.classList.toggle('on', +b.dataset.i === drShot);
+    drDraw();
+  }
+  function drDraw() {
+    const [c, w, h] = setupCanvas($('drCv'));
+    // the table lies on its side: its length across the canvas
+    const k = Math.min((w - 24) / L, (h - 24) / W), ox = (w - L * k) / 2, oy = (h - W * k) / 2;
+    const X = p => ox + p[1] * k, Y = p => oy + (p[0] + W / 2) * k;
+    c.fillStyle = '#5a3a1e'; c.fillRect(0, 0, w, h);
+    c.fillStyle = '#1c8a45'; c.fillRect(ox, oy, L * k, W * k);
+    c.strokeStyle = 'rgba(255,255,255,.35)'; c.lineWidth = 1; c.beginPath(); c.moveTo(ox + 0.737 * k, oy); c.lineTo(ox + 0.737 * k, oy + W * k); c.stroke();
+    for (const [run_, dash] of [[drA, []], [drB, [5, 5]]]) {
+      run_.path.forEach((p, i) => {
+        c.strokeStyle = COL[IDS[i]]; c.globalAlpha = dash.length ? 0.9 : 0.6; c.lineWidth = dash.length ? 1.6 : 2.4; c.setLineDash(dash);
+        c.beginPath(); p.forEach((q, j) => j ? c.lineTo(X(q), Y(q)) : c.moveTo(X(q), Y(q))); c.stroke();
+      });
+    }
+    c.setLineDash([]); c.globalAlpha = 1;
+    START.forEach((p, i) => { c.strokeStyle = 'rgba(255,255,255,.5)'; c.beginPath(); c.arc(X([p.x, p.y]), Y([p.x, p.y]), R * k, 0, 7); c.stroke(); });
+    const t = drSlide ? ease(Math.min(1, drSlide.t / SLIDE)) : 0;
+    drA.b.forEach((o, i) => ball(c, X([o.x, o.y]), Y([o.x, o.y]), R * k, COL[IDS[i]]));
+    drB.b.forEach((o, i) => { const a = drA.b[i], x = lerp(o.x, a.x, t), y = lerp(o.y, a.y, t); ball(c, X([x, y]), Y([x, y]), R * k, COL[IDS[i]], true); });
+    c.font = '700 12px system-ui, sans-serif'; c.fillStyle = '#fff'; c.textAlign = 'left';
+    c.fillText('solid: the striker\'s screen · dashed and faint: the friend\'s', ox + 6, oy + 16);
+  }
+  SHOTS.forEach((s, i) => { const b = document.createElement('button'); b.textContent = s.name; b.dataset.i = i; b.onclick = () => { drShot = i; drCompute(); }; $('drShots').appendChild(b); });
+  $('drDiff').addEventListener('input', drCompute);
+  $('drSlide').onclick = () => {
+    drSlide = { t: 0 }; let last = performance.now();
+    const step = now => { if (!drSlide) return; drSlide.t += (now - last) / 1000; last = now; drDraw(); if (drSlide.t < SLIDE) requestAnimationFrame(step); };
+    requestAnimationFrame(step);
+  };
+
+  /* ---------- 4. Live aim: sent at most every 100 ms, through a delay, and followed with k = dt * 14 ---------- */
+  const lv = { aim: 0.4, watch: 0.4, target: 0.4, lastSent: -1e9, queue: [], drag: false, auto: true, t: 0, glide: true, maxStep: 0, sent: 0, sentWin: [] };
+  function lvAngle(ev) {
+    const cv = $('lvCv'), r = cv.getBoundingClientRect(), x = (ev.clientX - r.left) / r.width * +cv.dataset.w, y = (ev.clientY - r.top) / r.height * +cv.dataset.h;
+    return Math.atan2(y - 150, x - 350);
+  }
+  $('lvCv').addEventListener('pointerdown', ev => { lv.drag = true; lv.auto = false; lv.aim = lvAngle(ev); $('lvCv').setPointerCapture(ev.pointerId); });
+  $('lvCv').addEventListener('pointermove', ev => { if (lv.drag) lv.aim = lvAngle(ev); });
+  $('lvCv').addEventListener('pointerup', () => { lv.drag = false; setTimeout(() => { if (!lv.drag) lv.auto = true; }, 3000); });
+  $('lvEase').onclick = () => { lv.glide = true; $('lvEase').classList.add('on'); $('lvJump').classList.remove('on'); lv.maxStep = 0; };
+  $('lvJump').onclick = () => { lv.glide = false; $('lvJump').classList.add('on'); $('lvEase').classList.remove('on'); lv.maxStep = 0; };
+  const angDiff = (a, b) => { let d = b - a; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return d; };
+  function cue(c, a, col, alpha) {
+    const cx = 350, cy = 150, r = 14;
+    const x1 = cx - Math.cos(a) * (r + 8), y1 = cy - Math.sin(a) * (r + 8), x2 = cx - Math.cos(a) * (r + 230), y2 = cy - Math.sin(a) * (r + 230);
+    c.globalAlpha = alpha; c.strokeStyle = col; c.lineWidth = 6; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke();
+    c.lineWidth = 1.5; c.setLineDash([6, 6]); c.beginPath(); c.moveTo(cx + Math.cos(a) * (r + 4), cy + Math.sin(a) * (r + 4)); c.lineTo(cx + Math.cos(a) * 340, cy + Math.sin(a) * 340); c.stroke(); c.setLineDash([]);
+    c.globalAlpha = 1;
+  }
+  let lvLast = performance.now(), lvKey = null, lvReadT = 0;
+  function lvFrame(now) {
+    const dt = Math.min(0.1, (now - lvLast) / 1000); lvLast = now; lv.t += dt;
+    if (lv.auto) lv.aim = 0.4 + Math.sin(lv.t * 0.9) * 0.9 + Math.sin(lv.t * 2.3) * 0.15;
+    // the striker's page: send when the aim changes, at most every 100 ms, and the last one always goes
+    const key = Math.round(lv.aim * 1e5);
+    if (key !== lvKey) { lvKey = key; lv.pending = lv.aim; }
+    if (lv.pending !== undefined && now - lv.lastSent >= LIVE_MS) {
+      lv.queue.push({ at: now + +$('lvDelay').value * (0.8 + Math.random() * 0.4), a: lv.pending }); lv.lastSent = now; lv.pending = undefined;
+      lv.sentWin.push(now);
+    }
+    lv.sentWin = lv.sentWin.filter(t => now - t < 1000);
+    // the room delivers them after the delay, in order
+    while (lv.queue.length && lv.queue[0].at <= now) lv.target = lv.queue.shift().a;
+    // the friend's page follows
+    const before = lv.watch;
+    if (lv.glide) lv.watch += angDiff(lv.watch, lv.target) * Math.min(1, dt * FOLLOW); else lv.watch = lv.target;
+    const stepDeg = Math.abs(angDiff(before, lv.watch)) * 180 / Math.PI;
+    lv.maxStep = Math.max(lv.maxStep * Math.pow(0.5, dt), stepDeg);
+    const [c, w, h] = setupCanvas($('lvCv'));
+    c.fillStyle = '#1c8a45'; c.fillRect(0, 0, w, h);
+    cue(c, lv.watch, '#f2c300', 0.95);
+    cue(c, lv.aim, '#ffffff', 0.85);
+    ball(c, 350, 150, 14, COL.white);
+    c.font = '700 12px system-ui, sans-serif'; c.textAlign = 'left'; c.fillStyle = '#fff';
+    c.fillText(lv.auto ? 'Swinging by itself · drag on the table to aim' : 'You are aiming', 12, 20);
+    lvReadT -= dt;
+    if (lvReadT <= 0) {
+      lvReadT = 0.25;
+      const behind = Math.abs(angDiff(lv.watch, lv.aim)) * 180 / Math.PI;
+      $('lvRead').textContent = lv.sentWin.length + ' updates in the last second · the friend\'s cue is ' + behind.toFixed(1) + '° behind yours · its biggest step between frames lately: ' + lv.maxStep.toFixed(1) + '°' + (lv.glide ? '' : ' (watch it jump)');
+    }
+    requestAnimationFrame(lvFrame);
+  }
+  $('lvDelay').addEventListener('input', () => { $('lvV').textContent = $('lvDelay').value + ' ms'; });
+  $('lvV').textContent = $('lvDelay').value + ' ms';
+
+  /* ---------- 5. The connection lights and the grace time (GRACE = 30 s in online.js) ---------- */
+  let gnWaiting = false;
+  function gnShow() {
+    const t = +$('gnT').value;
+    $('gnV').textContent = t === 0 ? 'here' : t + ' s';
+    let html;
+    $('gnWait').disabled = true;
+    if (t === 0) { html = '<span class="light here"></span><b>Lee</b> is here. It\'s Lee\'s turn: you watch the cue move as Lee lines up.'; gnWaiting = false; }
+    else if (t < GRACE) html = '<span class="light slow"></span><b>Lee</b> seems to have dropped out… waiting for them. <span class="text-muted">(' + (GRACE - t) + ' s of grace left: a locked screen or a weak signal usually comes back in time.)</span>';
+    else if (gnWaiting) html = '<span class="light left"></span><b>Lee</b> has lost the connection · waiting for them to come back. <span class="text-muted">You chose Keep waiting: the table stays as it is for as long as you like.</span>';
+    else { html = '<span class="light left"></span><b>Lee has lost the connection.</b> Waiting for Lee to come back… <span class="text-muted">[Keep waiting] [End the match]: no one wins automatically.</span>'; $('gnWait').disabled = false; }
+    $('gnBox').innerHTML = html;
+  }
+  $('gnT').addEventListener('input', () => { if (+$('gnT').value < GRACE) gnWaiting = false; gnShow(); });
+  $('gnWait').onclick = () => { gnWaiting = true; gnShow(); };
+  $('gnBack').onclick = () => {
+    const was = +$('gnT').value; $('gnT').value = 0; gnWaiting = false; gnShow();
+    if (was > 0) $('gnBox').innerHTML = '<span class="light here"></span><b>Lee is back.</b> ' + (was >= GRACE ? 'The box closes by itself, and ' : '') + 'Lee\'s page catches up on any moves it missed and carries on.';
+  };
+
+  mvShow(); drCompute(); gnShow(); requestAnimationFrame(lvFrame);
+})();
+</script>
+</body>
+</html>
