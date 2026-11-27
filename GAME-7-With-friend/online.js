@@ -29,6 +29,7 @@
      Online.leave()                   stops listening and marks this player as gone
      Online.link(code)                the address to send to a friend (not a Promise)
      Online.GRACE                     seconds away before a friend counts as 'left' (30; ?grace=N for tests)
+     Online.serverNow()               the service's clock in ms (move times .t use it; not a Promise)
    Errors are thrown as Error objects whose .code is one of: 'not-set-up', 'signed-out', 'no-room', 'old', 'full',
    'wrong-game', 'not-in-room', 'too-big'.
 */
@@ -362,6 +363,7 @@
     onFriend(fn) { st.friendFns.push(fn); fn(st.friend, st.friendPortrait); },
     onSelf(fn) { st.selfFns.push(fn); },
     leave() { if (st.code) be.stop(); resetRoom(); },
+    serverNow() { return started ? be.serverNow() : Date.now(); },
     link(code) {
       const u = new URL(location.href);
       for (const k of [...u.searchParams.keys()]) if (k !== 'fake') u.searchParams.delete(k);

@@ -101,6 +101,12 @@ the other player breaks). A page skips the echo of its own shot and result (by i
 game without animations. The creator is `'white'`, the friend `'yellow'` (`NET.me`), so the sim is unchanged. Saves
 go under `friend.save.v1` (shared with Snooker; `store()` keeps only its own fields). `node phase2.js` plays two pages
 against each other (200 shots, a reload, give up, rematch, a full 50-up game; `SHOTS=20` for a short run).
+Phase 3 (watching your friend) is done for Billiards: live aim (`netLiveStep`: the striker's aim, power, spin and
+white in hand go to the room's `live` slot, at most 10 a second; the watcher eases towards them and draws the guide),
+connection lights on the portraits, "seems to have dropped out" then, after the 30 s grace, the "lost the connection"
+box (Keep waiting / End the match), no pause when a page is hidden in a game with a friend (it catches up; the page
+asks for a screen wake lock), and three quick reactions (`react` moves, at most one per 1.5 s, shown only if sent after
+the page joined). Tests: `phase3.js`, `gone.js`, `hide.js`.
 
 ## Abandoned: Geography game (22 Nov 2026)
 

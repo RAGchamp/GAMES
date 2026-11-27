@@ -282,6 +282,12 @@
   .friends{ font-size:.8rem; color:#5a6475; margin:.3rem 0; }
   a.lnk{ color:var(--nav-blue); font-weight:700; }
   .pcard{ position:relative; }
+  /* quick reactions: three buttons at the bottom left of the table, shown on the other screen as a pop-up */
+  .reacts{ position:absolute; left:8px; bottom:6px; z-index:4; display:flex; gap:4px; }
+  .reacts[hidden]{ display:none; }
+  .reacts button{ width:2rem; height:2rem; padding:0; border-radius:50%; border:2px solid rgba(255,255,255,.35); background:rgba(4,38,77,.82); font-size:1.05rem; line-height:1; cursor:pointer; }
+  .reacts button:hover{ border-color:#ffd60a; }
+  .reacts button:disabled{ opacity:.4; cursor:default; }
   .pcard .net{ position:absolute; top:4px; right:4px; width:11px; height:11px; border-radius:50%; border:2px solid #04264d; background:#2fb36b; }
   .pcard .net.slow{ background:#f0a020; } .pcard .net.left, .pcard .net.none{ background:#8a8f99; } .pcard .net[hidden]{ display:none; }
   @media (max-width:420px){ .avgrid{ gap:.3rem; } .avbtn span{ font-size:.68rem; } }
@@ -331,6 +337,11 @@
       <div class="players" id="players" hidden>
         <div class="pcard" id="pcWhite"><i class="net" id="netWhite" hidden></i><canvas id="faceYou" aria-label="You"></canvas><span><i class="dot" style="background:#f7f5ee"></i><b id="nameYou">You</b></span></div>
         <div class="pcard" id="pcYellow"><i class="net" id="netYellow" hidden></i><canvas id="faceMarker" aria-label="Marker"></canvas><span><i class="dot" style="background:#f2c300"></i><b id="nameYellow">Friend</b></span></div>
+      </div>
+
+      <!-- Quick reactions (a game with a friend) -->
+      <div class="reacts" id="reacts" hidden>
+        <button data-r="good" title="Good shot!" aria-label="Good shot">👏</button><button data-r="unlucky" title="Unlucky!" aria-label="Unlucky">😮</button><button data-r="ha" title="Ha!" aria-label="Ha!">😄</button>
       </div>
 
       <!-- Top view: the power cue -->
@@ -1472,6 +1483,7 @@ window.addEventListener('DOMContentLoaded', () => {
     aimAtNearest();
     if (m.turn !== NET.me) {
       game.phase = 'friend';   // waiting for the friend's shot (netApply)
+      NET.live = null;
       banner(PLAYER[m.turn] + "'s turn", m.fromHand ? 'Ball in hand' : '', 1.1);
     } else {
       game.phase = 'aim'; game.power = clamp(save.power, 0.01, 1);
@@ -1525,7 +1537,8 @@ window.addEventListener('DOMContentLoaded', () => {
     const topView = viewNow() === 'top';
     $('powerBox').hidden = $('shootBtn').hidden = topView;
     $('pullCue').hidden = !(topView && screen === 'play');
-    $('players').hidden = !(topView && (screen === 'play' || screen === 'pause' || screen === 'gone') && isMatch());   // only in a game
+    $('players').hidden = !(topView && (screen === 'play' || screen === 'pause' || screen === 'gone') && isMatch());
+    $('reacts').hidden = !(screen === 'play' && isMatch() && NET.seat);   // only in a game
     const turn = isMatch() ? (game.m.over ? null : game.m.turn) : 'white';
     $('pcWhite').classList.toggle('turn', turn === 'white'); $('pcYellow').classList.toggle('turn', turn === 'yellow');
     $('pcWhite').classList.toggle('wait', turn === 'yellow'); $('pcYellow').classList.toggle('wait', turn === 'white');
@@ -2073,6 +2086,7 @@ window.addEventListener('DOMContentLoaded', () => {
     for (const tx of g.texts) tx.t += dt;
     g.texts = g.texts.filter(tx => tx.t < 1.8);
     if (g.banner) { g.banner.t -= dt; if (g.banner.t <= 0) g.banner = null; }
+    if (NET.seat && isMatch() && !g.m.over) netLiveStep(dt);
     if (g.phase === 'strike') {
       g.strikeT += dt;
       if (g.strikeT >= 0.1) {
@@ -2157,7 +2171,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
   /* entering and leaving a room */
   function enterRoom(r) {
-    NET.seat = r.seat; NET.me = COLOUR[r.seat]; NET.them = COLOUR[otherSeat()];
+    NET.seat = r.seat; NET.joinedAt = Online.serverNow(); NET.me = COLOUR[r.seat]; NET.them = COLOUR[otherSeat()];
     NET.matchNo = 0; NET.rematch = { a: 0, b: 0 }; NET.tossSent = 0;
     try { NET.target = JSON.parse(Online.room.settings).target || 50; } catch (e) { NET.target = 50; }
     save.lastRoom = { game: 'billiards', code: r.code }; store();
@@ -2201,6 +2215,48 @@ window.addEventListener('DOMContentLoaded', () => {
     if (s === 'here') maybeToss();
   });
   Online.onSelf(c => { NET.self = c; netLights(); });
+
+  /* live aim: while you line up, your aim, power (also while pulling the power cue), spin and, in hand, the white's
+     place go to the room's "live" slot (at most 10 times a second, only when they change); the friend's page eases
+     its cue, guide and white towards them, so the cue moves smoothly even on a slow connection */
+  let liveKey = '';
+  function netLiveStep(dt) {
+    const g = game, m = g.m;
+    if (g.phase === 'aim' && m.turn === NET.me) {
+      const c = cueBall(), r5 = v => Math.round(v * 1e5) / 1e5;
+      const d = { n: m.shots, a: r5(g.aim), p: Math.round(g.power * 1000) / 1000, s: [Math.round(g.spin.x * 100) / 100, Math.round(g.spin.y * 100) / 100],
+        w: m.fromHand && c ? [r5(c.x), r5(c.y)] : null };
+      const key = JSON.stringify(d);
+      if (key !== liveKey) { liveKey = key; Online.sendLive(d); }
+    } else if (friendLive()) {
+      const Lv = NET.live, k = Math.min(1, dt * 14), c = cueBall();
+      g.aim += angDiff(g.aim, Lv.a) * k;
+      g.power = lerp(g.power, Lv.p, k);
+      g.spin = { x: lerp(g.spin.x, Lv.s[0], k), y: lerp(g.spin.y, Lv.s[1], k) };
+      if (Lv.w && m.fromHand && c) { c.x = lerp(c.x, Lv.w[0], k); c.y = lerp(c.y, Lv.w[1], k); }
+    }
+  }
+  Online.onLive(d => {
+    if (!d || typeof d.n !== 'number' || !isFinite(d.a)) return;
+    const s = Array.isArray(d.s) ? d.s : [0, 0], w = Array.isArray(d.w) && isFinite(d.w[0]) && isFinite(d.w[1]) ? [clamp(d.w[0], -HW, HW), clamp(d.w[1], 0, L)] : null;
+    NET.live = { n: d.n, a: d.a, p: clamp(+d.p || 0, 0, 1), s: [clamp(+s[0] || 0, -1, 1), clamp(+s[1] || 0, -1, 1)], w };
+  });
+
+  /* quick reactions: a move, shown on both screens as a short pop-up with a sound (not when catching up) */
+  const REACT = { good: ['👏', 'Good shot!'], unlucky: ['😮', 'Unlucky!'], ha: ['😄', 'Ha!'] };
+  let reactUntil = 0;
+  function showReact(seat, r) {
+    const rx = REACT[r]; if (!rx) return;
+    game.react = { s: rx[0] + ' ' + (seat === NET.seat ? 'You' : PLAYER[COLOUR[seat]]) + ': ' + rx[1], t: 0, mine: seat === NET.seat };
+    if (seat !== NET.seat) { tone(988, 0.09, 'triangle', 0.1); tone(1319, 0.12, 'triangle', 0.1, 0.08); }
+  }
+  for (const b of document.querySelectorAll('#reacts button')) b.onclick = () => {
+    if (!NET.seat || performance.now() < reactUntil) return;
+    reactUntil = performance.now() + 1500;   // one every 1.5 s at most
+    for (const x of document.querySelectorAll('#reacts button')) x.disabled = true;
+    setTimeout(() => { for (const x of document.querySelectorAll('#reacts button')) x.disabled = false; }, 1500);
+    send('react', { r: b.dataset.r }); showReact(NET.seat, b.dataset.r); b.blur();
+  };
   function netLights() {   // green: here, amber: dropped out a moment ago, grey: gone
     const on = !!NET.seat && isMatch();
     for (const col of ['white', 'yellow']) {
@@ -2255,7 +2311,10 @@ window.addEventListener('DOMContentLoaded', () => {
       case 'rematch':
         NET.rematch[mv.seat] = Math.max(NET.rematch[mv.seat], d.match || 0);
         rematchText(); maybeRematch(); return true;
-      default: return true;   // other kinds (reactions, Phase 3) are not used yet
+      case 'react':   // shown only if sent after this page joined (not old ones when a reload catches up)
+        if (!more && (mv.t || 0) >= NET.joinedAt - 1000) showReact(mv.seat, d.r);
+        return true;
+      default: return true;
     }
   }
   function startNetMatch(d, more) {
@@ -2555,13 +2614,15 @@ window.addEventListener('DOMContentLoaded', () => {
     ctx.fillStyle = 'rgba(255,214,10,.14)'; ctx.strokeStyle = 'rgba(255,214,10,.9)'; ctx.lineWidth = 2; ctx.setLineDash([6, 4]);
     ctx.beginPath(); ctx.arc(x, y, tr * K, 0, 7); ctx.fill(); ctx.stroke(); ctx.setLineDash([]);
   }
+  // the friend is lining up and their aim is arriving (live): their cue, power and guide are drawn as they move
+  const friendLive = () => game.phase === 'friend' && !!NET.live && isMatch() && NET.live.n === game.m.shots;
   function cuePull() {
-    if (game.phase === 'aim') return 0.03 + game.power * 0.17;
-    if (game.phase === 'friend' || game.phase === 'friendAim') return 0.05 + 0.03 * Math.sin(performance.now() / 260);   // the friend lines up
+    if (game.phase === 'aim' || friendLive() || game.phase === 'friendAim') return 0.03 + game.power * 0.17;
+    if (game.phase === 'friend') return 0.05 + 0.03 * Math.sin(performance.now() / 260);   // the friend lines up
     if (game.phase === 'strike') return (0.03 + game.power * 0.17) * (1 - clamp(game.strikeT / 0.1, 0, 1));
     return null;
   }
-  const tipSpin = () => game.phase === 'strike' ? game.shotSpin : game.phase === 'aim' ? game.spin : { x: 0, y: 0 };
+  const tipSpin = () => game.phase === 'strike' || game.phase === 'friendAim' ? game.shotSpin : game.phase === 'aim' || friendLive() ? game.spin : { x: 0, y: 0 };
   function drawCue() {
     const c = cueBall(); if (!c || !c.on) return;
     const pull = cuePull(); if (pull === null) return;
@@ -2653,6 +2714,18 @@ window.addEventListener('DOMContentLoaded', () => {
       const w = ctx.measureText(s).width + 22; pill(LW / 2, LH - 26, w, 22, 'center');
       if (warn) { ctx.strokeStyle = '#ff6b5e'; ctx.lineWidth = 2; rr(ctx, LW / 2 - w / 2, LH - 26, w, 22, 11); ctx.stroke(); }
       ctx.fillStyle = warn ? '#ffb3ab' : '#fff'; ctx.textAlign = 'center'; ctx.fillText(s, LW / 2, LH - 15);
+    }
+    if (game.react) {
+      const rc = game.react, now = performance.now(); rc.t0 = rc.t0 || now; rc.t = (now - rc.t0) / 1000;
+      if (rc.t > 2.6) game.react = null;
+      else {
+        ctx.globalAlpha = clamp(Math.min(rc.t * 6, (2.6 - rc.t) * 3), 0, 1);
+        ctx.font = '800 15px system-ui, sans-serif'; ctx.textBaseline = 'middle';
+        const w = ctx.measureText(rc.s).width + 26, y0 = topPx + 6;
+        ctx.fillStyle = rc.mine ? 'rgba(4,38,77,.85)' : 'rgba(255,214,10,.95)'; rr(ctx, LW / 2 - w / 2, y0, w, 28, 14); ctx.fill();
+        ctx.fillStyle = rc.mine ? '#fff' : '#04264d'; ctx.textAlign = 'center'; ctx.fillText(rc.s, LW / 2, y0 + 14.5);
+        ctx.globalAlpha = 1;
+      }
     }
     for (const tx of game.texts) {
       const [x, y] = viewNow() === 'eye' ? (proj(tx.x, tx.y, 0.05) || [LW / 2, LH * 0.4]) : toS(tx.x, tx.y), a = clamp(1.8 - tx.t, 0, 1);
@@ -2782,7 +2855,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if (isMatch() && game.m.fromHand && (game.phase === 'aim' || game.phase === 'friend' || game.phase === 'friendAim'))
       poly3(c, Array.from({ length: 25 }, (_, i) => { const t = Math.PI * i / 24; return [D_R * Math.cos(t), BAULK - D_R * Math.sin(t), 0.001]; }), 'rgba(255,214,10,.16)', 'rgba(255,214,10,.8)', 1.5);
     drawTarget();
-    if (game.phase === 'aim') drawGuideEye();
+    if (game.phase === 'aim' || friendLive()) drawGuideEye();
     // shadows, then the balls from far to near
     const bs = game.st.balls.filter(b => b.on).map(b => ({ b, q: cam(b.x, b.y, R) })).filter(o => o.q[2] > EYE.near + R).sort((a, b) => b.q[2] - a.q[2]);
     for (const o of bs) poly3(c, circ(o.b.x + 0.006, o.b.y + 0.006, R * 1.05, 0.001, 18), 'rgba(0,0,0,.35)');
@@ -2913,7 +2986,7 @@ window.addEventListener('DOMContentLoaded', () => {
     ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height);
     ctx.setTransform(scale, 0, 0, scale, 0, 0);
     hideBehindBalls = true;
-    if (game.phase === 'aim') { drawGuideEye(); drawPath(); }
+    if (game.phase === 'aim' || friendLive()) { drawGuideEye(); drawPath(); }
     hideBehindBalls = false;
   }
 
@@ -2938,7 +3011,7 @@ window.addEventListener('DOMContentLoaded', () => {
       if (MENUS.includes(screen)) return;
       if (isMatch() && game.m.fromHand && (game.phase === 'aim' || game.phase === 'friend' || game.phase === 'friendAim')) drawBaulkShade();
       drawTarget();
-      if (game.phase === 'aim' && !game.drag) drawGuide();
+      if ((game.phase === 'aim' && !game.drag) || friendLive()) drawGuide();
       for (const b of game.st.balls) if (b.on) drawBall(b);
       drawPath();
       drawCue();
