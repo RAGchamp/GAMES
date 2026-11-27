@@ -1942,7 +1942,11 @@ window.addEventListener('DOMContentLoaded', () => {
   $('fsBtn').onclick = () => { toggleFull(); $('fsBtn').blur(); };
   document.addEventListener('fullscreenchange', onFullChange);
   document.addEventListener('webkitfullscreenchange', onFullChange);
-  document.addEventListener('visibilitychange', () => { if (document.hidden) { pause(); game.drag = null; game.aiming = false; } });
+  // hiding the page pauses it, except in a game with a friend: that game lives in the room and carries on, and the page
+  // catches up on the moves when it is shown again
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) { if (!NET.seat) pause(); game.drag = null; game.aiming = false; } else keepAwake();
+  });
 
   /* Keys */
   function powerBy(d) { if (humanAim()) { game.power = clamp(game.power + d, 0.01, 1); save.power = game.power; store(); updateControls(); } }
@@ -2143,9 +2147,19 @@ window.addEventListener('DOMContentLoaded', () => {
     save.lastRoom = { game: 'billiards', code: r.code }; store();
     history.replaceState(null, '', Online.link(r.code));
     netNames();
+    keepAwake();
   }
+  // in a game with a friend, ask the phone to keep its screen on while you wait for their shot (Screen Wake Lock)
+  let wake = null;
+  function keepAwake() {
+    if (!navigator.wakeLock || wake || !NET.seat || document.hidden) return;
+    wake = 'asking';
+    navigator.wakeLock.request('screen').then(w => { wake = w; w.addEventListener('release', () => { if (wake === w) wake = null; }); }, () => { wake = null; });
+  }
+  function letSleep() { if (wake && wake.release) wake.release().catch(() => {}); wake = null; }
   function leaveRoom() {
     if (!NET.seat) return;
+    letSleep();
     if (!isMatch() || game.m.over) save.lastRoom = null;   // a game still going can be gone back to from the title
     store();
     Online.leave(); NET.seat = null; NET.queue = []; NET.matchNo = 0;
