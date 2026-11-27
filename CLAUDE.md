@@ -81,6 +81,19 @@ demos copy numbers and rules from the `sim` script of `snooker.html` (the table 
 `E_BALL`, `V_SEP`, `VALUE`, the referee's foul values, the aim wobbles in `LEVELS`); change them there too if those
 change, along with its quoted test results.
 
+**Game 7: Play with a friend (`GAME-7-With-friend/`, started 26 Nov 2026).** Online Billiards and Snooker against a
+friend, built from the plan `info/PLAY-WITH-A-FRIEND.html`, whose decisions (section 10) are agreed: Firebase
+(Realtime Database, Google sign-in, App Check) in the owner's own Google account on the free plan, hosted on GitHub
+Pages (`https://ragchamp.github.io/GAMES/`), Billiards first. `billiards-friend.html` and `snooker-friend.html` are
+copies of the originals. Their `sim` and `eye3d` scripts and the three.js line are copied in by
+`F-PAD/build/make-friend.js`: make physics and rule fixes in the original game, then run `node make-friend.js`
+(`--check` reports drift); never edit those three parts in the friend pages. Their `game-ui` belongs to them. All
+talk with Firebase goes through `online.js` (shared by both pages; `?fake` swaps in a stand-in that passes moves
+between tabs of one browser, `?as=NAME` fixes a tab's player, `?grace=N` shortens the 30 s grace time). The
+database rules are in `F-PAD/build/database.rules.json` (paste into the Firebase console after changing them), and
+setup steps are in `F-PAD/build/FIREBASE-SETUP.md`. `ping-test.html` is the Phase 1 test page (not linked).
+Tests are in `F-PAD/tests/` (git-ignored): `node phase1.js` (headless Chrome, several tabs, `?fake`).
+
 ## Abandoned: Geography game (22 Nov 2026)
 
 A Geography game was started on 22 Nov 2026: a plan and a poster-style world map (`WORLD-MAP.html` with its

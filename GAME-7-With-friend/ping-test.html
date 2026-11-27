@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Room Ping Test</title>
+<!--
+  Ping test · RAG Champ AI Games Portal · Game 7: Play with a friend (Phase 1)
+  A small page for testing online.js: sign in, create or join a room, and send "ping" moves back and forth.
+  Not linked from the portal. Open it from the game's web address (Firebase), or add ?fake to test between two tabs
+  of the same browser with no internet (?as=NAME fixes a tab's player ID; ?grace=N shortens the 30 s grace time).
+  Test hooks: window.__ping (the log and Online).
+-->
+<style>
+  :root{ --bg:#f7f8fa; --card:#fff; --ink:#1d2433; --muted:#5a6475; --line:#c9d3e3; --blue:#0d6efd; --nav:#04264d; --yel:#ffd60a; }
+  @media (prefers-color-scheme: dark){ :root{ --bg:#10151f; --card:#1a2130; --ink:#e6ebf3; --muted:#9aa6b8; --line:#33405a; } }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:var(--bg); color:var(--ink); font:16px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header{ background:var(--nav); color:var(--yel); padding:.8rem 1rem; font-weight:700; }
+  main{ max-width:640px; margin:0 auto; padding:1rem; }
+  .card{ background:var(--card); border:2px solid var(--line); border-radius:.6rem; padding:.9rem 1rem; margin-bottom:.9rem; }
+  button{ font:inherit; padding:.45rem .9rem; border-radius:.4rem; border:0; background:var(--blue); color:#fff; cursor:pointer; margin:.15rem .3rem .15rem 0; }
+  button:disabled{ opacity:.45; cursor:default; }
+  input{ font:inherit; padding:.4rem .6rem; border:2px solid var(--line); border-radius:.4rem; width:8.5rem; text-transform:uppercase; background:var(--card); color:var(--ink); }
+  .code{ font-size:2rem; font-weight:800; letter-spacing:.2em; }
+  .muted{ color:var(--muted); font-size:.9rem; }
+  .light{ display:inline-block; width:.8rem; height:.8rem; border-radius:50%; background:#999; vertical-align:middle; margin-right:.35rem; }
+  .light.here{ background:#2fb36b; } .light.slow{ background:#f0a020; } .light.left,.light.none{ background:#8a8f99; }
+  #log{ font:13px/1.5 ui-monospace, Consolas, monospace; max-height:16rem; overflow:auto; white-space:pre-wrap; margin:0; }
+  #err{ color:#d33; font-weight:600; }
+</style>
+</head>
+<body>
+<header>Room ping test · Play with a friend</header>
+<main>
+  <div class="card">
+    <div id="who" class="muted">Starting…</div>
+    <button id="signIn" hidden>Sign in with Google</button>
+    <button id="signOut" hidden>Sign out</button>
+  </div>
+  <div class="card" id="roomCard">
+    <button id="create" disabled>Create a room</button>
+    <span style="white-space:nowrap"><input id="codeIn" maxlength="6" placeholder="CODE"> <button id="join" disabled>Join</button></span>
+    <div id="roomInfo" hidden>
+      <div class="code" id="code"></div>
+      <div class="muted">You are seat <b id="seat"></b>. <button id="copy">Copy link</button></div>
+      <div><span class="light none" id="light"></span><span id="friend">Waiting for your friend…</span></div>
+      <div class="muted">Your connection: <span id="self">…</span></div>
+    </div>
+    <div id="err"></div>
+  </div>
+  <div class="card">
+    <button id="ping" disabled>Send ping</button> <button id="leave" disabled>Leave</button>
+    <pre id="log"></pre>
+  </div>
+</main>
+<script src="online.js"></script>
+<script>
+(function () {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const log = [];
+  const say = s => { log.push(s); $('log').textContent = log.slice(-200).join('\n'); $('log').scrollTop = 1e9; };
+  const fail = e => { $('err').textContent = e.message || String(e); say('error: ' + (e.code || '') + ' ' + (e.message || e)); };
+  const name = 'Tester';
+  let pingN = 0;
+  window.__ping = { log, Online, rtt: [] };
+
+  function signedIn(u) {
+    $('who').textContent = u ? 'Signed in' + (Online.FAKE ? ' (test stand-in, ID ' + u.uid + ')' : '') + '.' : 'Not signed in.';
+    $('signIn').hidden = !!u; $('signOut').hidden = !u || Online.FAKE;
+    $('create').disabled = $('join').disabled = !u;
+  }
+  function inRoom(r) {
+    $('roomInfo').hidden = false; $('code').textContent = r.code; $('seat').textContent = r.seat;
+    $('ping').disabled = $('leave').disabled = false; $('err').textContent = '';
+    history.replaceState(null, '', Online.link(r.code));
+    say('in room ' + r.code + ' as seat ' + r.seat);
+  }
+  Online.onMove(m => {
+    const age = Date.now() - (m.d && m.d.sent || 0);
+    if (m.seat !== Online.seat && m.d && m.d.sent) window.__ping.rtt.push(age);
+    say('#' + m.n + ' ' + m.k + ' from ' + m.seat + (m.seat === Online.seat ? ' (me)' : '') + (m.d && m.d.i ? ' ping ' + m.d.i : '') + (m.seat !== Online.seat ? ', ' + age + ' ms after it was sent' : ''));
+  });
+  Online.onFriend((s, portrait) => {
+    $('light').className = 'light ' + s;
+    $('friend').textContent = s === 'none' ? 'Waiting for your friend…' : s === 'here' ? (portrait || 'Friend') + ' is here.' :
+      s === 'slow' ? (portrait || 'Friend') + ' seems to have dropped out…' : (portrait || 'Friend') + ' has lost the connection.';
+    if (Online.code) say('friend: ' + s);
+  });
+  Online.onSelf(c => { $('self').textContent = c ? 'connected' : 'offline'; });
+
+  $('signIn').onclick = () => Online.signIn().then(signedIn).catch(fail);
+  $('signOut').onclick = () => Online.signOut().then(() => location.reload()).catch(fail);
+  $('create').onclick = () => Online.createRoom('ping', { test: true }, name).then(inRoom).catch(fail);
+  $('join').onclick = () => Online.joinRoom($('codeIn').value, 'ping', name).then(inRoom).catch(fail);
+  $('ping').onclick = () => Online.sendMove('ping', { i: ++pingN, sent: Date.now() }).catch(fail);
+  $('leave').onclick = () => { Online.leave(); $('roomInfo').hidden = true; $('ping').disabled = $('leave').disabled = true; say('left the room'); history.replaceState(null, '', location.pathname + (Online.FAKE ? '?fake' : '')); };
+  $('copy').onclick = () => navigator.clipboard.writeText(Online.link()).then(() => say('link copied: ' + Online.link()), fail);
+
+  Online.start().then(u => {
+    signedIn(u);
+    const code = new URLSearchParams(location.search).get('room');
+    if (u && code) { $('codeIn').value = code; return Online.joinRoom(code, 'ping', name).then(inRoom); }
+  }).catch(e => { if (e.code === 'not-set-up') $('who').textContent = 'Firebase is not set up yet. Add ?fake to the address to test between two tabs.'; else fail(e); });
+})();
+</script>
+</body>
+</html>
