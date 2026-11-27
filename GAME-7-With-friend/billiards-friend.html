@@ -281,6 +281,9 @@
   .err{ color:#c4161c; font-weight:700; font-size:.85rem; min-height:1.1em; margin:.2rem 0; }
   .friends{ font-size:.8rem; color:#5a6475; margin:.3rem 0; }
   a.lnk{ color:var(--nav-blue); font-weight:700; }
+  .pcard{ position:relative; }
+  .pcard .net{ position:absolute; top:4px; right:4px; width:11px; height:11px; border-radius:50%; border:2px solid #04264d; background:#2fb36b; }
+  .pcard .net.slow{ background:#f0a020; } .pcard .net.left, .pcard .net.none{ background:#8a8f99; } .pcard .net[hidden]{ display:none; }
   @media (max-width:420px){ .avgrid{ gap:.3rem; } .avbtn span{ font-size:.68rem; } }
   #dbg{ position:absolute; left:6px; top:44px; z-index:4; background:rgba(0,0,0,.6); color:#9f9; font:11px/1.3 monospace; padding:4px 6px; border-radius:4px; pointer-events:none; white-space:pre; }
   #dbg[hidden]{ display:none; }
@@ -326,8 +329,8 @@
       <div id="dbg" hidden></div>
       <div class="hud" id="hud" aria-live="polite"></div>
       <div class="players" id="players" hidden>
-        <div class="pcard" id="pcWhite"><canvas id="faceYou" aria-label="You"></canvas><span><i class="dot" style="background:#f7f5ee"></i><b id="nameYou">You</b></span></div>
-        <div class="pcard" id="pcYellow"><canvas id="faceMarker" aria-label="Marker"></canvas><span><i class="dot" style="background:#f2c300"></i><b id="nameYellow">Friend</b></span></div>
+        <div class="pcard" id="pcWhite"><i class="net" id="netWhite" hidden></i><canvas id="faceYou" aria-label="You"></canvas><span><i class="dot" style="background:#f7f5ee"></i><b id="nameYou">You</b></span></div>
+        <div class="pcard" id="pcYellow"><i class="net" id="netYellow" hidden></i><canvas id="faceMarker" aria-label="Marker"></canvas><span><i class="dot" style="background:#f2c300"></i><b id="nameYellow">Friend</b></span></div>
       </div>
 
       <!-- Top view: the power cue -->
@@ -420,6 +423,19 @@
           <div class="vs"><div id="rdA"><canvas id="faceRdA"></canvas><span id="nameRdA"></span></div><span class="v">v</span><div id="rdB"><canvas id="faceRdB"></canvas><span id="nameRdB"></span></div></div>
           <h2 id="readyToss"></h2>
           <p class="small" id="readyInfo"></p>
+        </div>
+      </div>
+
+      <!-- The friend's connection has gone (after the grace time) -->
+      <div class="overlay" id="ovGone" hidden>
+        <div class="panel">
+          <h2 id="goneTitle">Your friend has lost the connection</h2>
+          <p id="goneInfo">Waiting for them to come back…</p>
+          <p class="small">The game is kept in the room for a day. If you end it now, you can go back to it from the home screen with <strong>Back to the game</strong>.</p>
+          <div>
+            <button class="btn-go green" id="btnKeepWaiting">Keep waiting</button>
+            <button class="btn-go alt" id="btnEndMatch">End the match</button>
+          </div>
         </div>
       </div>
 
@@ -1326,7 +1342,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if (!running) draw();
   }
   // the portraits and the power cue sit beside the table in the Top view while playing
-  function gaugeRoom() { return (screen === 'play' || screen === 'pause') && viewNow() === 'top'; }
+  function gaugeRoom() { return (screen === 'play' || screen === 'pause' || screen === 'gone') && viewNow() === 'top'; }
   let hudKey = '';
   new ResizeObserver(resize).observe(wrap);
   window.addEventListener('resize', resize);
@@ -1509,7 +1525,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const topView = viewNow() === 'top';
     $('powerBox').hidden = $('shootBtn').hidden = topView;
     $('pullCue').hidden = !(topView && screen === 'play');
-    $('players').hidden = !(topView && (screen === 'play' || screen === 'pause') && isMatch());   // only in a game
+    $('players').hidden = !(topView && (screen === 'play' || screen === 'pause' || screen === 'gone') && isMatch());   // only in a game
     const turn = isMatch() ? (game.m.over ? null : game.m.turn) : 'white';
     $('pcWhite').classList.toggle('turn', turn === 'white'); $('pcYellow').classList.toggle('turn', turn === 'yellow');
     $('pcWhite').classList.toggle('wait', turn === 'yellow'); $('pcYellow').classList.toggle('wait', turn === 'white');
@@ -1870,12 +1886,12 @@ window.addEventListener('DOMContentLoaded', () => {
 
   /* ---------------- Screens ---------------- */
   const MENUS = ['title', 'avatar', 'room', 'join'];   // screens with no game behind them
-  const OVS = { avatar: 'ovAvatar', title: 'ovTitle', pause: 'ovPause', end: 'ovEnd', room: 'ovRoom', join: 'ovJoin', ready: 'ovReady' };
+  const OVS = { avatar: 'ovAvatar', title: 'ovTitle', pause: 'ovPause', end: 'ovEnd', room: 'ovRoom', join: 'ovJoin', ready: 'ovReady', gone: 'ovGone' };
   function showScreen(name) {
     screen = name;
     for (const k in OVS) $(OVS[k]).hidden = k !== name;
     $('wrap').classList.toggle('menu', name !== 'play');   // phones: the game area grows to fit the menu (see the CSS)
-    controls.hidden = !(name === 'play' || name === 'pause');
+    controls.hidden = !(name === 'play' || name === 'pause' || name === 'gone');
     $('pauseBtn').hidden = name !== 'play';
     $('homeBtn').hidden = name === 'title' || name === 'avatar';
     $('btnConcede').hidden = !isMatch() || game.m.over;
@@ -2094,7 +2110,7 @@ window.addEventListener('DOMContentLoaded', () => {
   const FAST = Q.has('fast') ? clamp(+Q.get('fast') || 1, 1, 50) : 1;   // tests only: run the game faster
   const COLOUR = { a: 'white', b: 'yellow' };
   const NET = { signedIn: false, seat: null, me: 'white', them: 'yellow', queue: [], mine: new Set(), matchNo: 0, first: null,
-    target: 50, rematch: { a: 0, b: 0 }, tossSent: 0, same: false, mySim: null, dev: [], errors: [] };
+    target: 50, rematch: { a: 0, b: 0 }, tossSent: 0, friend: 'none', self: true, same: false, mySim: null, dev: [], errors: [] };
   const otherSeat = () => (NET.seat === 'a' ? 'b' : 'a');
   const avatarBy = id => AVATARS.find(a => a.id === id) || AVATARS[0];
   const newId = () => Math.random().toString(36).slice(2, 10);
@@ -2168,11 +2184,34 @@ window.addEventListener('DOMContentLoaded', () => {
   }
   Online.onMove(mv => NET.queue.push(mv));
   Online.onFriend(s => {
+    const was = NET.friend; NET.friend = s;
     if (!NET.seat) return;
-    netNames();
+    netNames(); netLights(); hudKey = '';
+    const playing = isMatch() && !game.m.over;
+    if (s === 'left' && playing && (screen === 'play' || screen === 'pause')) {
+      $('goneTitle').textContent = PLAYER[NET.them] + ' has lost the connection';
+      $('goneInfo').textContent = 'Waiting for ' + PLAYER[NET.them] + ' to come back…';
+      showScreen('gone'); SFX.foul();
+    }
+    if (s === 'here' && (was === 'slow' || was === 'left') && playing) {
+      if (screen === 'gone') showScreen('play');
+      banner(PLAYER[NET.them] + ' is back', '', 1.4); SFX.turn();
+    }
     if (screen === 'room' && s === 'here') $('roomWait').innerHTML = '<strong>' + PLAYER[NET.them] + ' has joined!</strong>';
     if (s === 'here') maybeToss();
   });
+  Online.onSelf(c => { NET.self = c; netLights(); });
+  function netLights() {   // green: here, amber: dropped out a moment ago, grey: gone
+    const on = !!NET.seat && isMatch();
+    for (const col of ['white', 'yellow']) {
+      const el = $(col === 'white' ? 'netWhite' : 'netYellow'); el.hidden = !on;
+      const st = col === NET.me ? (NET.self === false ? 'slow' : 'here') : (NET.friend || 'none');
+      el.className = 'net ' + st;
+      el.title = col === NET.me ? (st === 'here' ? 'You are connected' : 'Your connection has dropped') : { here: 'Here', slow: 'Dropped out a moment ago', left: 'Lost the connection', none: 'Not here yet' }[st];
+    }
+  }
+  $('btnKeepWaiting').onclick = () => { SFX.click(); showScreen('play'); };
+  $('btnEndMatch').onclick = () => { SFX.click(); goHome(); };
   function maybeToss() {   // the creator tosses the coin once the friend has joined (only once, even after a reload)
     if (NET.seat !== 'a' || NET.matchNo || NET.tossSent) return;
     setTimeout(() => {
@@ -2225,6 +2264,7 @@ window.addEventListener('DOMContentLoaded', () => {
     game.st = BS.newState(game.m.balls); game.texts = []; game.report = ''; game.handTop = false; game.next = null;
     game.spin = noSpin(); game.slide = null; game.camFix = null;
     netNames();
+    netLights();
     const toss = 'Coin toss: ' + (d.first === NET.me ? 'you break' : PLAYER[d.first] + ' breaks');
     if (more) { showScreen('play'); beginTurn(); return; }   // catching up: straight to the table
     const pl = Online.room.players;
@@ -2602,6 +2642,11 @@ window.addEventListener('DOMContentLoaded', () => {
     let msg = game.phase === 'roll' || game.phase === 'strike' ? '' : game.report, warn = false;
     if (game.phase === 'aim' && game.warn) { msg = game.warn; warn = true; }
     else if (game.phase === 'friend' || game.phase === 'friendAim') msg = PLAYER[game.m.turn] + ' is lining up…';
+    if (isMatch() && !game.m.over && NET.seat && game.phase !== 'roll' && game.phase !== 'strike') {
+      if (NET.friend === 'slow') { msg = PLAYER[NET.them] + ' seems to have dropped out… waiting for them'; warn = true; }
+      else if (NET.friend === 'left') { msg = PLAYER[NET.them] + ' has lost the connection · waiting for them to come back'; warn = true; }
+      else if (NET.self === false) { msg = 'Your connection has dropped · trying to reconnect…'; warn = true; }
+    }
     if (msg) {
       ctx.font = '600 12px system-ui, sans-serif'; ctx.textBaseline = 'middle';
       let s = msg; while (ctx.measureText(s).width > LW - 40 && s.length > 10) s = s.slice(0, -4) + '…';
@@ -2910,7 +2955,7 @@ window.addEventListener('DOMContentLoaded', () => {
   function frame(nowMs) {
     const dt = Math.min(0.05, (nowMs - last) / 1000); last = nowMs;
     netTick();
-    if (screen === 'play' && !paused) update(dt);
+    if ((screen === 'play' || screen === 'gone') && !paused) update(dt);
     draw();
     requestAnimationFrame(frame);
   }
